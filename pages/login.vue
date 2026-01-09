@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { useAuthStore } from '~/stores/auth'
-import { Lock, Mail, ArrowRight, ShieldCheck, Info, UserCheck } from 'lucide-vue-next'
+import { Loader2 } from 'lucide-vue-next'
+import { Button } from '@/components/ui'
+import { Input } from '@/components/ui'
 
 definePageMeta({
   layout: 'empty'
@@ -29,156 +31,88 @@ const handleLogin = async () => {
 </script>
 
 <template>
-  <div class="relative min-h-screen flex items-center justify-center bg-[#f8fafc] font-sans selection:bg-primary/20">
-    <!-- Soft Background Elements -->
-    <div class="absolute inset-0 z-0 overflow-hidden">
-        <div class="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-blue-100/50 blur-[120px] rounded-full"></div>
-        <div class="absolute -bottom-[10%] -right-[10%] w-[50%] h-[50%] bg-primary/5 blur-[120px] rounded-full"></div>
-    </div>
-
-    <!-- Theme Toggle -->
-    <div class="absolute top-8 right-8 z-50">
-      <ThemeToggle />
-    </div>
-    
-    <div class="relative z-10 w-full max-w-[460px] p-6">
-      <!-- Header Section -->
-      <div class="mb-10 text-center">
-        <div class="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-[2rem] bg-white shadow-soft-blue ring-4 ring-blue-50">
-            <UserCheck class="h-10 w-10 text-primary" />
+  <div class="h-screen w-full lg:grid lg:grid-cols-2 overflow-hidden bg-background">
+    <!-- Left Side - Form -->
+    <div class="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-background relative z-10 border-r-4 border-primary/20">
+      <div class="mx-auto grid w-[350px] gap-6">
+        <div class="grid gap-2 text-center">
+             <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10">
+                <span class="text-primary font-bold text-2xl">C</span>
+            </div>
+          <h1 class="text-3xl font-bold tracking-tight text-foreground">Bon retour !</h1>
+          <p class="text-muted-foreground text-sm">Entrez vos coordonnées pour accéder à votre espace</p>
         </div>
-        <h2 class="text-4xl font-extrabold tracking-tight text-slate-900 mb-2">
-          CasaNayo
-        </h2>
-        <p class="text-slate-500 font-medium">Gestionnaire de Propriétés</p>
-      </div>
-
-      <!-- Login Card -->
-      <div class="bg-white rounded-[2.5rem] p-10 shadow-soft-xl border border-slate-100">
-        <form class="space-y-8" @submit.prevent="handleLogin">
-          <div class="space-y-6">
-            <!-- Email -->
-            <div class="space-y-2">
-              <label for="email" class="text-sm font-bold text-slate-700 ml-1">Adresse Email</label>
-              <div class="relative group">
-                <Mail class="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300 transition-colors group-focus-within:text-primary" />
-                <input
-                  v-model="email"
-                  id="email"
-                  type="email"
-                  required
-                  class="w-full rounded-3xl border border-slate-200 bg-slate-50/50 py-4 pl-14 pr-6 text-slate-900 placeholder-slate-400 outline-none transition-all focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/5 font-medium"
-                  placeholder="votre@email.com"
-                />
-              </div>
+        
+        <form @submit.prevent="handleLogin" class="grid gap-4">
+          <div class="grid gap-2">
+            <Label for="email" class="sr-only">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="votre@email.com"
+              v-model="email"
+              required
+              class="h-11 shadow-sm"
+            />
+          </div>
+          <div class="grid gap-2">
+            <div class="flex items-center">
+              <Label for="password" class="sr-only">Mot de passe</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="Mot de passe"
+                v-model="password"
+                required
+                class="h-11 shadow-sm"
+              />
             </div>
-
-            <!-- Mot de passe -->
-            <div class="space-y-2">
-              <div class="flex items-center justify-between px-1">
-                  <label for="password" class="text-sm font-bold text-slate-700">Mot de passe</label>
-                  <a href="#" class="text-xs font-semibold text-primary hover:underline">oublié ?</a>
-              </div>
-              <div class="relative group">
-                <Lock class="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300 transition-colors group-focus-within:text-primary" />
-                <input
-                  v-model="password"
-                  id="password"
-                  type="password"
-                  required
-                  class="w-full rounded-3xl border border-slate-200 bg-slate-50/50 py-4 pl-14 pr-6 text-slate-900 placeholder-slate-400 outline-none transition-all focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/5 font-medium"
-                  placeholder="••••••••••••"
-                />
-              </div>
-            </div>
+            <a href="#" class="ml-auto inline-block text-xs font-medium text-primary hover:underline">
+                Mot de passe oublié ?
+            </a>
           </div>
 
-          <!-- Message d'erreur -->
-          <Transition name="slide-up">
-            <div v-if="error" class="flex items-center gap-3 rounded-2xl bg-red-50 border border-red-100 p-4 text-xs font-bold text-red-600">
-              <Info class="h-4 w-4 shrink-0" />
-              {{ error }}
-            </div>
-          </Transition>
+          <div v-if="error" class="text-xs text-destructive font-medium text-center">
+            {{ error }}
+          </div>
 
-          <!-- Bouton de connexion -->
-          <button
-            type="submit"
-            :disabled="isLoading"
-            class="group relative flex w-full items-center justify-center rounded-3xl bg-primary py-4.5 text-base font-bold text-white shadow-soft-blue transition-all hover:scale-[1.02] hover:bg-blue-600 active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none min-h-[58px]"
-          >
-            <span v-if="!isLoading" class="flex items-center gap-2">
-              Se connecter
-              <ArrowRight class="h-5 w-5" />
-            </span>
-            <span v-else class="flex items-center gap-2">
-              <svg class="h-5 w-5 animate-spin" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              Chargement...
-            </span>
-          </button>
+          <Button type="submit" class="w-full h-11 text-base shadow-soft-blue" :disabled="isLoading">
+            <Loader2 v-if="isLoading" class="mr-2 h-4 w-4 animate-spin" />
+            {{ isLoading ? 'Connexion en cours...' : 'Se connecter' }}
+          </Button>
         </form>
-      </div>
 
-      <!-- Liens rapides -->
-      <div class="mt-12 flex justify-center gap-6 text-xs font-bold text-slate-400">
-          <a href="#" class="hover:text-primary transition-colors">Confidentialité</a>
-          <a href="#" class="hover:text-primary transition-colors">Support</a>
-          <a href="#" class="hover:text-primary transition-colors">Contact</a>
+        <div class="text-center text-xs text-muted-foreground">
+            En continuant, vous acceptez nos <a href="#" class="underline hover:text-primary">Conditions d'utilisation</a>.
+        </div>
       </div>
+    </div>
+
+    <!-- Right Side - Image/Art -->
+    <div class="hidden bg-muted lg:block relative overflow-hidden">
+       <!-- Artistic Background -->
+       <div class="absolute inset-0 bg-primary/90 mix-blend-multiply z-10"></div>
+       <img 
+          src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=2653&auto=format&fit=crop" 
+          alt="Modern Architecture" 
+          class="absolute inset-0 h-full w-full object-cover grayscale opacity-60"
+        />
+        <div class="relative z-20 flex h-full flex-col justify-between p-12 text-white">
+            <div class="font-bold text-lg flex items-center gap-2">
+                <div class="h-8 w-8 rounded-lg bg-white/20 backdrop-blur flex items-center justify-center font-bold">C</div>
+                CasaNayo
+            </div>
+            <div class="space-y-4 max-w-lg">
+                <blockquote class="text-2xl font-medium leading-snug">
+                &ldquo;CasaNayo centralise l’ensemble du parcours immobilier dans une seule application : recherche de biens, vente, location et services à domicile.&rdquo;
+                </blockquote>
+                <div class="flex items-center gap-4">
+                    <div class="font-semibold text-sm">L'équipe CasaNayo</div>
+                </div>
+            </div>
+        </div>
     </div>
   </div>
 </template>
 
-<style scoped>
-.slide-up-enter-active,
-.slide-up-leave-active {
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.slide-up-enter-from,
-.slide-up-leave-to {
-  opacity: 0;
-  transform: translateY(10px);
-}
-
-.py-4\.5 {
-  padding-top: 1.125rem;
-  padding-bottom: 1.125rem;
-}
-</style>
-
-<style scoped>
-.slide-up-enter-active,
-.slide-up-leave-active {
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.slide-up-enter-from,
-.slide-up-leave-to {
-  opacity: 0;
-  transform: translateY(10px);
-}
-
-@keyframes shine {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
-
-.animate-shine {
-  animation: shine 1.5s infinite;
-}
-
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-6px); }
-  75% { transform: translateX(6px); }
-}
-
-.animate-shake {
-  animation: shake 0.4s ease-in-out;
-}
-</style>
 
