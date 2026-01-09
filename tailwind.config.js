@@ -21,11 +21,11 @@ module.exports = {
             colors: {
                 border: "hsl(var(--border))",
                 input: "hsl(var(--input))",
-                ring: "hsl(var(--ring))",
+                ring: "#64B5F6",
                 background: "hsl(var(--background))",
                 foreground: "hsl(var(--foreground))",
                 primary: {
-                    DEFAULT: "hsl(var(--primary))",
+                    DEFAULT: "#64B5F6", // Hardcoded for debug
                     foreground: "hsl(var(--primary-foreground))",
                 },
                 secondary: {
@@ -57,6 +57,9 @@ module.exports = {
                 lg: "var(--radius)",
                 md: "calc(var(--radius) - 2px)",
                 sm: "calc(var(--radius) - 4px)",
+            },
+            fontFamily: {
+                sans: ["Outfit", "sans-serif"],
             },
             keyframes: {
                 "accordion-down": {

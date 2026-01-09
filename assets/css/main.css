@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --background: 210 50% 98%;
+    --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
 
     --card: 0 0% 100%;
@@ -13,7 +13,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 211 79% 46%;
+    --primary: 207, 86%, 68%;
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 40% 96.1%;
@@ -30,9 +30,9 @@
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 211 79% 46%;
+    --ring: 207, 86%, 68%;
 
-    --radius: 2.5rem;
+    --radius: 1rem;
   }
 
   .dark {
@@ -45,8 +45,8 @@
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 211 79% 46%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 207, 86%, 68%;
+    --primary-foreground: 222.2 47.4% 11.2%;
 
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
@@ -62,42 +62,85 @@
 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
-  }
-}
-
-@layer utilities {
-  .shadow-soft {
-    box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05), 0 5px 15px -3px rgba(0, 0, 0, 0.02);
-  }
-
-  .shadow-soft-blue {
-    box-shadow: 0 20px 40px -10px rgba(25, 118, 210, 0.15), 0 10px 20px -5px rgba(25, 118, 210, 0.1);
-  }
-
-  .shadow-soft-xl {
-    box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.1), 0 15px 30px -8px rgba(0, 0, 0, 0.05);
-  }
-
-  .bg-soft-gradient {
-    @apply bg-gradient-to-br from-white to-blue-50/30;
-  }
-
-  .bg-soft-blue-gradient {
-    @apply bg-gradient-to-br from-blue-500 to-blue-700;
-  }
-
-  .sidebar-item-active {
-    @apply bg-primary text-white shadow-soft-blue;
+    --ring: 207, 86%, 68%;
   }
 }
 
 @layer base {
   * {
-    @apply border-border transition-all duration-300;
+    @apply border-border;
   }
 
   body {
-    @apply bg-background text-foreground antialiased selection:bg-primary/20 selection:text-primary overflow-x-hidden;
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Outfit', sans-serif;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer utilities {
+  .animate-in {
+    animation: fadeInUp 0.6s ease-out forwards;
+  }
+
+  .slide-in-from-left {
+    animation: slideInLeft 0.8s ease-out forwards;
+  }
+
+  .slide-in-from-right {
+    animation: slideInRight 0.8s ease-out forwards;
+  }
+
+  .fade-in {
+    animation: fadeIn 0.6s ease-out forwards;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-50px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(50px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
   }
 }
