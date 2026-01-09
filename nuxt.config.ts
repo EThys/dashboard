@@ -1,7 +1,8 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   compatibilityDate: '2024-04-03',
-  devtools: { enabled: true },
+  // Configuration du projet - Refreshed at 11:32
+  devtools: { enabled: false },
   modules: [
     '@nuxtjs/tailwindcss',
     '@pinia/nuxt',
@@ -31,14 +32,42 @@ export default defineNuxtConfig({
   ],
   // Shadcn-vue setup often requires some alias and postcss setup
   alias: {
-    "components": "d:/myproject/casaNayoDashboard/components",
-    "utils": "d:/myproject/casaNayoDashboard/lib/utils",
-    "ui": "d:/myproject/casaNayoDashboard/components/ui",
-    "lib": "d:/myproject/casaNayoDashboard/lib",
-    "hooks": "d:/myproject/casaNayoDashboard/hooks"
-    // Using absolute paths or relative to root
+    "components": "~/components",
+    "utils": "~/lib/utils",
+    "ui": "~/components/ui",
+    "lib": "~/lib",
+    "hooks": "~/hooks"
+  },
+  app: {
+    head: {
+      link: [
+        { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
+        { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
+        { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap' }
+      ]
+    }
   },
   typescript: {
     strict: true
+  },
+
+  // Proxy configuration for development to bypass CORS
+  nitro: {
+    devProxy: {
+      '/api': {
+        target: 'https://server.casanayo.com/api',
+        changeOrigin: true,
+        prependPath: true,
+      }
+    }
+  },
+
+  // Runtime config for API base URL
+  runtimeConfig: {
+    public: {
+      apiBase: process.env.NODE_ENV === 'production'
+        ? 'https://server.casanayo.com/api'
+        : '/api'
+    }
   }
 })
