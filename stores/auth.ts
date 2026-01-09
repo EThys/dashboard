@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 
 export const useAuthStore = defineStore('auth', {
     state: () => ({
-        user: null as { name: string; email: string; role: string } | null,
+        user: null as { id: number; name: string; email: string; role: string } | null,
         isAuthenticated: false,
     }),
     actions: {
@@ -10,6 +10,7 @@ export const useAuthStore = defineStore('auth', {
             // Mock login
             if (email && password) {
                 this.user = {
+                    id: 1,
                     name: 'Admin User',
                     email: email,
                     role: 'admin',
