@@ -40,7 +40,7 @@ export function getCurrencyInfo(code: string): CurrencyInfo {
         'USD': {
             symbol: '$',
             label: 'Dollars américains',
-            position: 'before'
+            position: 'after'
         },
         'FC': {
             symbol: 'FC',
@@ -67,7 +67,7 @@ export function formatCurrency(amount: number | string | null | undefined, curre
     // Handle null/undefined
     if (amount === null || amount === undefined || amount === '') {
         const info = getCurrencyInfo(currencyCode)
-        return info.position === 'before' ? `${info.symbol}0` : `0 ${info.symbol}`
+        return info.position === 'before' ? `${info.symbol}0` : `0${info.symbol}`
     }
 
     const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount
@@ -75,7 +75,7 @@ export function formatCurrency(amount: number | string | null | undefined, curre
     // Handle NaN
     if (isNaN(numAmount)) {
         const info = getCurrencyInfo(currencyCode)
-        return info.position === 'before' ? `${info.symbol}0` : `0 ${info.symbol}`
+        return info.position === 'before' ? `${info.symbol}0` : `0${info.symbol}`
     }
 
     const formattedAmount = numAmount.toLocaleString('fr-FR')
@@ -84,7 +84,7 @@ export function formatCurrency(amount: number | string | null | undefined, curre
     if (info.position === 'before') {
         return `${info.symbol}${formattedAmount}`
     } else {
-        return `${formattedAmount} ${info.symbol}`
+        return `${formattedAmount}${info.symbol}`
     }
 }
 

@@ -118,6 +118,21 @@ function extractImages(item: AnyPropertyResponse): string[] {
 }
 
 /**
+ * Format price with currency
+ */
+export function formatPrice(price: number, currencyCode: string, devise?: any): { display: string; symbol: string; code: string } {
+    const symbol = currencyCode === 'USD' ? '$' : 'FC'
+    const formattedPrice = price.toLocaleString('fr-FR')
+    const display = currencyCode === 'USD' ? `${formattedPrice}${symbol}` : `${formattedPrice}${symbol}`
+    
+    return {
+        display,
+        symbol,
+        code: currencyCode
+    }
+}
+
+/**
  * Normalize Bureau to standard format
  */
 export function normalizeBureau(item: BureauResponse): NormalizedProperty {
@@ -126,7 +141,7 @@ export function normalizeBureau(item: BureauResponse): NormalizedProperty {
     const currencyCode = item.devise.code
     const symbol = currencyCode === 'USD' ? '$' : 'FC'
     const formattedPrice = item.bureau.price.toLocaleString('fr-FR')
-    const priceDisplay = currencyCode === 'USD' ? `${symbol}${formattedPrice}` : `${formattedPrice} ${symbol}`
+    const priceDisplay = currencyCode === 'USD' ? `${formattedPrice}${symbol}` : `${formattedPrice}${symbol}`
 
     const features = item.feature.map(f => f.name)
     if (item.bureau.equip) features.push('Équipé')
@@ -138,6 +153,9 @@ export function normalizeBureau(item: BureauResponse): NormalizedProperty {
         fullAddress: `${item.address.address}, ${location}`,
         price: priceDisplay,
         frequency: item.bureau.transactionType === 'location' ? '/mois' : '',
+        currencyCode: currencyCode,
+        currencySymbol: symbol,
+        currencyLabel: currencyCode === 'USD' ? 'Dollars américains' : 'Franc congolais',
 
         isBureau: true,
         isFestive: false,
@@ -179,8 +197,10 @@ export function normalizeBureau(item: BureauResponse): NormalizedProperty {
             name: item.postBy.replace('@@', '@') || 'Agent CasaNayo',
             phone: '+243 81 234 56 78',
             email: 'contact@casanayo.com',
-            avatar: 'https://i.pravatar.cc/150?img=5'
+            avatar: 'https://i.pravatar.cc/150?img=5',
+            profileImage: item.image
         },
+        publisherImage: item.image,
         createdAt: new Date(item.bureau.createdAt).toLocaleDateString('fr-FR', {
             day: 'numeric',
             month: 'long',
@@ -198,7 +218,7 @@ export function normalizeFestive(item: FestiveResponse): NormalizedProperty {
     const currencyCode = item.devise.code
     const symbol = currencyCode === 'USD' ? '$' : 'FC'
     const formattedPrice = item.festive.price.toLocaleString('fr-FR')
-    const priceDisplay = currencyCode === 'USD' ? `${symbol}${formattedPrice}` : `${formattedPrice} ${symbol}`
+    const priceDisplay = currencyCode === 'USD' ? `${formattedPrice}${symbol}` : `${formattedPrice}${symbol}`
 
     const features = item.feature.map(f => f.name)
     if (item.festive.pisteDanse) features.push('Piste de danse')
@@ -211,6 +231,9 @@ export function normalizeFestive(item: FestiveResponse): NormalizedProperty {
         fullAddress: `${item.address.address}, ${location}`,
         price: priceDisplay,
         frequency: item.festive.transactionType === 'location' ? '/mois' : '',
+        currencyCode: currencyCode,
+        currencySymbol: symbol,
+        currencyLabel: currencyCode === 'USD' ? 'Dollars américains' : 'Franc congolais',
 
         isBureau: false,
         isFestive: true,
@@ -251,8 +274,10 @@ export function normalizeFestive(item: FestiveResponse): NormalizedProperty {
             name: item.postBy.replace('@@', '@') || 'Agent CasaNayo',
             phone: '+243 81 234 56 78',
             email: 'contact@casanayo.com',
-            avatar: 'https://i.pravatar.cc/150?img=5'
+            avatar: 'https://i.pravatar.cc/150?img=5',
+            profileImage: item.image
         },
+        publisherImage: item.image,
         createdAt: new Date(item.festive.createdAt).toLocaleDateString('fr-FR', {
             day: 'numeric',
             month: 'long',
@@ -270,7 +295,7 @@ export function normalizeFuneraire(item: FuneraireResponse): NormalizedProperty 
     const currencyCode = item.devise.code
     const symbol = currencyCode === 'USD' ? '$' : 'FC'
     const formattedPrice = item.funeraire.price.toLocaleString('fr-FR')
-    const priceDisplay = currencyCode === 'USD' ? `${symbol}${formattedPrice}` : `${formattedPrice} ${symbol}`
+    const priceDisplay = currencyCode === 'USD' ? `${formattedPrice}${symbol}` : `${formattedPrice}${symbol}`
 
     const features = item.feature.map(f => f.name)
 
@@ -286,6 +311,9 @@ export function normalizeFuneraire(item: FuneraireResponse): NormalizedProperty 
         fullAddress: `${item.address.address}, ${location}`,
         price: priceDisplay,
         frequency: item.funeraire.transactionType === 'location' ? '/mois' : '',
+        currencyCode: currencyCode,
+        currencySymbol: symbol,
+        currencyLabel: currencyCode === 'USD' ? 'Dollars américains' : 'Franc congolais',
 
         isBureau: false,
         isFestive: false,
@@ -326,8 +354,10 @@ export function normalizeFuneraire(item: FuneraireResponse): NormalizedProperty 
             name: item.postBy.replace('@@', '@') || 'Agent CasaNayo',
             phone: '+243 81 234 56 78',
             email: 'contact@casanayo.com',
-            avatar: 'https://i.pravatar.cc/150?img=5'
+            avatar: 'https://i.pravatar.cc/150?img=5',
+            profileImage: item.image
         },
+        publisherImage: item.image,
         createdAt: new Date(item.funeraire.createdAt).toLocaleDateString('fr-FR', {
             day: 'numeric',
             month: 'long',
@@ -345,7 +375,7 @@ export function normalizeTerrain(item: TerrainResponse): NormalizedProperty {
     const currencyCode = item.devise.code
     const symbol = currencyCode === 'USD' ? '$' : 'FC'
     const formattedPrice = item.terrain.price.toLocaleString('fr-FR')
-    const priceDisplay = currencyCode === 'USD' ? `${symbol}${formattedPrice}` : `${formattedPrice} ${symbol}`
+    const priceDisplay = currencyCode === 'USD' ? `${formattedPrice}${symbol}` : `${formattedPrice}${symbol}`
 
     const features = item.feature?.map(f => f.name) || []
 
@@ -356,6 +386,9 @@ export function normalizeTerrain(item: TerrainResponse): NormalizedProperty {
         fullAddress: `${item.address.address}, ${location}`,
         price: priceDisplay,
         frequency: item.terrain.transactionType === 'location' ? '/mois' : '',
+        currencyCode: currencyCode,
+        currencySymbol: symbol,
+        currencyLabel: currencyCode === 'USD' ? 'Dollars américains' : 'Franc congolais',
 
         isBureau: false,
         isFestive: false,
@@ -396,8 +429,10 @@ export function normalizeTerrain(item: TerrainResponse): NormalizedProperty {
             name: item.postBy.replace('@@', '@') || 'Agent CasaNayo',
             phone: '+243 81 234 56 78',
             email: 'contact@casanayo.com',
-            avatar: 'https://i.pravatar.cc/150?img=5'
+            avatar: 'https://i.pravatar.cc/150?img=5',
+            profileImage: item.image
         },
+        publisherImage: item.image,
         createdAt: new Date(item.terrain.createdAt).toLocaleDateString('fr-FR', {
             day: 'numeric',
             month: 'long',
@@ -415,7 +450,7 @@ export function normalizeHotel(item: HotelResponse): NormalizedProperty {
     const currencyCode = item.devise.code
     const symbol = currencyCode === 'USD' ? '$' : 'FC'
     const formattedPrice = item.hotel.price.toLocaleString('fr-FR')
-    const priceDisplay = currencyCode === 'USD' ? `${symbol}${formattedPrice}` : `${formattedPrice} ${symbol}`
+    const priceDisplay = currencyCode === 'USD' ? `${formattedPrice}${symbol}` : `${formattedPrice}${symbol}`
 
     const features = item.feature?.map(f => f.name) || []
 
@@ -426,6 +461,9 @@ export function normalizeHotel(item: HotelResponse): NormalizedProperty {
         fullAddress: `${item.hotel.address || item.address?.address || ''}, ${location}`,
         price: priceDisplay,
         frequency: item.hotel.transactionType === 'location' ? '/mois' : '',
+        currencyCode: currencyCode,
+        currencySymbol: symbol,
+        currencyLabel: currencyCode === 'USD' ? 'Dollars américains' : 'Franc congolais',
 
         isBureau: false,
         isFestive: false,
@@ -466,8 +504,10 @@ export function normalizeHotel(item: HotelResponse): NormalizedProperty {
             name: item.postBy.replace('@@', '@') || 'Agent CasaNayo',
             phone: '+243 81 234 56 78',
             email: 'contact@casanayo.com',
-            avatar: 'https://i.pravatar.cc/150?img=5'
+            avatar: 'https://i.pravatar.cc/150?img=5',
+            profileImage: item.image
         },
+        publisherImage: item.image,
         createdAt: new Date(item.hotel.createdAt).toLocaleDateString('fr-FR', {
             day: 'numeric',
             month: 'long',
@@ -485,7 +525,7 @@ export function normalizeStandardProperty(item: PropertyResponse): NormalizedPro
     const currencyCode = item.devise.code
     const symbol = currencyCode === 'USD' ? '$' : 'FC'
     const formattedPrice = item.property.price.toLocaleString('fr-FR')
-    const priceDisplay = currencyCode === 'USD' ? `${symbol}${formattedPrice}` : `${formattedPrice} ${symbol}`
+    const priceDisplay = currencyCode === 'USD' ? `${formattedPrice}${symbol}` : `${formattedPrice}${symbol}`
 
     const features = item.features?.map(f => f.name) || []
 
@@ -496,6 +536,9 @@ export function normalizeStandardProperty(item: PropertyResponse): NormalizedPro
         fullAddress: `${item.address.address}, ${location}`,
         price: priceDisplay,
         frequency: item.property.transactionType === 'location' ? '/mois' : '',
+        currencyCode: currencyCode,
+        currencySymbol: symbol,
+        currencyLabel: currencyCode === 'USD' ? 'Dollars américains' : 'Franc congolais',
 
         isBureau: false,
         isFestive: false,
@@ -514,7 +557,7 @@ export function normalizeStandardProperty(item: PropertyResponse): NormalizedPro
         roomMeet: 0,
         numberPiece: 0,
 
-        area: `${item.property.surface || 0} m²`,
+        area: item.property.surface && item.property.surface > 0 ? `${item.property.surface} m²` : (item.property.livingRoom ? `${item.property.livingRoom} salon(s)` : ''),
         type: item.typeProperty?.name || 'Propriété',
         status: item.property.transactionType === 'location' ? 'À Louer' : 'À Vendre',
         description: item.property.description,
@@ -536,8 +579,10 @@ export function normalizeStandardProperty(item: PropertyResponse): NormalizedPro
             name: item.postBy.replace('@@', '@') || 'Agent CasaNayo',
             phone: '+243 81 234 56 78',
             email: 'contact@casanayo.com',
-            avatar: 'https://i.pravatar.cc/150?img=5'
+            avatar: 'https://i.pravatar.cc/150?img=5',
+            profileImage: item.image
         },
+        publisherImage: item.image,
         createdAt: new Date(item.property.createdAt).toLocaleDateString('fr-FR', {
             day: 'numeric',
             month: 'long',

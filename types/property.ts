@@ -84,6 +84,7 @@ export interface BureauResponse {
     images: PropertyImage[]
     feature: Feature[]
     typeProperty: TypeProperty
+    image?: string
 }
 
 // ============================================================================
@@ -124,6 +125,7 @@ export interface FestiveResponse {
     geoZone: GeoZone
     localAddress: LocalAddress
     typeProperty: TypeProperty
+    image?: string
 }
 
 // ============================================================================
@@ -169,6 +171,7 @@ export interface FuneraireResponse {
     geoZone: GeoZone
     localAddress: LocalAddress
     typeProperty: TypeProperty
+    image?: string
 }
 
 // ============================================================================
@@ -200,6 +203,7 @@ export interface TerrainResponse {
     images: PropertyImage[]
     feature?: Feature[]
     typeProperty: TypeProperty
+    image?: string
 }
 
 // ============================================================================
@@ -232,6 +236,7 @@ export interface HotelResponse {
     images?: PropertyImage[]
     feature?: Feature[]
     typeProperty: TypeProperty
+    image?: string
 }
 
 // ============================================================================
@@ -274,6 +279,7 @@ export interface PropertyResponse {
     images: PropertyImages
     features: Feature[]
     typeProperty: TypeProperty
+    image?: string
 }
 
 // ============================================================================
@@ -307,6 +313,9 @@ export interface NormalizedProperty {
     fullAddress: string
     price: string
     frequency: string
+    currencyCode?: string
+    currencySymbol?: string
+    currencyLabel?: string
 
     // Category flags
     isBureau: boolean
@@ -353,7 +362,9 @@ export interface NormalizedProperty {
         phone: string
         email: string
         avatar: string
+        profileImage?: string
     }
+    publisherImage?: string
     createdAt: string
 }
 
