@@ -81,7 +81,7 @@ export const usePropertyStore = defineStore('properties', {
             if (this.types.length > 0) return
 
             try {
-                const data = await $fetch<any>(`${apiBase}/property/types`)
+                const data = await $fetch<any>(`${apiBase}/property/types`, { timeout: 10000 })
 
                 if (data && data.data) {
                     this.setTypes(data.data)
@@ -93,7 +93,7 @@ export const usePropertyStore = defineStore('properties', {
 
         async fetchTerrains(apiBase: string) {
             try {
-                const data = await $fetch<{ terrain: TerrainResponse[] }>(`${apiBase}/property/terrains`)
+                const data = await $fetch<{ terrain: TerrainResponse[] }>(`${apiBase}/property/terrains`, { timeout: 10000 })
                 if (data && data.terrain) {
                     this.terrains = data.terrain
                 }
@@ -104,7 +104,7 @@ export const usePropertyStore = defineStore('properties', {
 
         async fetchFuneraires(apiBase: string) {
             try {
-                const data = await $fetch<{ funeraires: FuneraireResponse[] }>(`${apiBase}/property/funeraires`)
+                const data = await $fetch<{ funeraires: FuneraireResponse[] }>(`${apiBase}/property/funeraires`, { timeout: 10000 })
                 if (data && data.funeraires) {
                     this.funeraires = data.funeraires
                 }
@@ -115,7 +115,7 @@ export const usePropertyStore = defineStore('properties', {
 
         async fetchFestives(apiBase: string) {
             try {
-                const data = await $fetch<{ festives: FestiveResponse[] }>(`${apiBase}/property/festives`)
+                const data = await $fetch<{ festives: FestiveResponse[] }>(`${apiBase}/property/festives`, { timeout: 10000 })
                 if (data && data.festives) {
                     this.festives = data.festives
                 }
@@ -126,7 +126,7 @@ export const usePropertyStore = defineStore('properties', {
 
         async fetchBureaux(apiBase: string) {
             try {
-                const data = await $fetch<{ bureaux: BureauResponse[] }>(`${apiBase}/property/bureaux`)
+                const data = await $fetch<{ bureaux: BureauResponse[] }>(`${apiBase}/property/bureaux`, { timeout: 10000 })
                 if (data && data.bureaux) {
                     this.bureaux = data.bureaux
                 }
@@ -137,7 +137,7 @@ export const usePropertyStore = defineStore('properties', {
 
         async fetchHotels(apiBase: string) {
             try {
-                const data = await $fetch<{ data: HotelResponse[] }>(`${apiBase}/property/hotels`)
+                const data = await $fetch<{ data: HotelResponse[] }>(`${apiBase}/property/hotels`, { timeout: 10000 })
                 if (data && data.data) {
                     this.hotels = data.data
                 }
@@ -148,7 +148,7 @@ export const usePropertyStore = defineStore('properties', {
 
         async fetchProperties(apiBase: string) {
             try {
-                const data = await $fetch<{ properties: PropertyResponse[] }>(`${apiBase}/property`)
+                const data = await $fetch<{ properties: PropertyResponse[] }>(`${apiBase}/property`, { timeout: 15000 })
                 if (data && data.properties) {
                     this.properties = data.properties
                     this.lastFetch = new Date()
@@ -156,6 +156,72 @@ export const usePropertyStore = defineStore('properties', {
             } catch (e) {
                 console.error("Failed fetch properties", e)
             }
+        },
+        async updateProperty(id: number, type: string, updates: any, apiBase: string) {
+            try {
+                // Determine which array to update and which endpoint to call
+                let targetArray: any[] | null = null
+                let endpoint = ''
+
+                const normalizedType = type?.toLowerCase()
+
+                if (normalizedType === 'résidentiel' || normalizedType === 'standard' || !type) {
+                    targetArray = this.properties
+                    endpoint = `${apiBase}/property/${id}`
+                } else if (normalizedType === 'terrain') {
+                    targetArray = this.terrains
+                    endpoint = `${apiBase}/property/terrains/${id}`
+                } else if (normalizedType === 'bureau') {
+                    targetArray = this.bureaux
+                    endpoint = `${apiBase}/property/bureaux/${id}`
+                } else if (normalizedType === 'espace festif') {
+                    targetArray = this.festives
+                    endpoint = `${apiBase}/property/festives/${id}`
+                } else if (normalizedType === 'espace funéraire') {
+                    targetArray = this.funeraires
+                    endpoint = `${apiBase}/property/funeraires/${id}`
+                } else if (normalizedType === 'hôtel') {
+                    targetArray = this.hotels
+                    endpoint = `${apiBase}/property/hotels/${id}`
+                }
+
+                // Optimistic Update
+                if (targetArray) {
+                    const item = targetArray.find(i => {
+                        const p = i.property || i.terrain || i.bureau || i.festive || i.funeraire || i.hotel
+                        return String(p?.id || p?.propertyId) === String(id)
+                    })
+                    if (item) {
+                        const pKey = (item as any).property ? 'property' : (item as any).terrain ? 'terrain' : (item as any).bureau ? 'bureau' : (item as any).festive ? 'festive' : (item as any).funeraire ? 'funeraire' : 'hotel'
+                        item[pKey] = { ...item[pKey], ...updates }
+                    }
+                }
+
+                // API Call
+                if (endpoint) {
+                    await $fetch(endpoint, {
+                        method: 'PATCH',
+                        body: updates,
+                        timeout: 10000
+                    })
+                }
+
+                return { success: true }
+            } catch (e) {
+                console.error("Failed to update property", e)
+                return { success: false, error: e }
+            }
+        },
+        reset() {
+            this.properties = []
+            this.types = []
+            this.terrains = []
+            this.funeraires = []
+            this.festives = []
+            this.bureaux = []
+            this.hotels = []
+            this.lastFetch = null
+            this.typesLastFetch = null
         }
     }
 })

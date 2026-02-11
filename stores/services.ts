@@ -44,7 +44,7 @@ export const useServiceStore = defineStore('services', {
 
             try {
                 // Use $fetch for direct API call
-                const data = await $fetch<any>(`${apiBase}/accounts`)
+                const data = await $fetch<any>(`${apiBase}/accounts`, { timeout: 10000 })
 
                 if (data && data.accounts) {
                     const serviceProviders = data.accounts.filter((acc: any) => acc.typeAccount?.name === 'Prestataire de service')
@@ -63,7 +63,8 @@ export const useServiceStore = defineStore('services', {
             try {
                 // Use $fetch for direct API call
                 const data = await $fetch<any>(`${apiBase}/prestations`, {
-                    query: { serviceId: categoryId }
+                    query: { serviceId: categoryId },
+                    timeout: 10000
                 })
 
                 if (data && data.prestations) {
@@ -73,6 +74,51 @@ export const useServiceStore = defineStore('services', {
             } catch (e) {
                 console.error("Failed to fetch background services", e)
             }
+        },
+
+        async updateService(id: number, updates: any, apiBase: string) {
+            try {
+                // Optimistic Update
+                const index = this.services.findIndex(s => s.prestation.id === id)
+                if (index !== -1) {
+                    this.services[index].prestation = {
+                        ...this.services[index].prestation,
+                        ...updates
+                    }
+                }
+
+                // API Call (Assuming PATCH /prestations/:id)
+                await $fetch(`${apiBase}/prestations/${id}`, {
+                    method: 'PATCH',
+                    body: updates,
+                    timeout: 10000
+                })
+
+            } catch (e) {
+                console.error("Failed to update service", e)
+                // Optional: Revert changes on error
+            }
+        },
+
+        async fetchServices(apiBase: string) {
+            // Fetch all services
+            if (this.services.length > 0) return
+
+            try {
+                const data = await $fetch<any>(`${apiBase}/prestations`, { timeout: 15000 })
+                if (data && data.prestations) {
+                    this.setServices(data.prestations)
+                }
+            } catch (e) {
+                console.error("Failed to fetch all services", e)
+            }
+        },
+        reset() {
+            this.services = []
+            this.categories = []
+            this.lastFetch = null
+            this.categoriesLastFetch = null
+            this.loadedCategories.clear()
         }
     }
 })
