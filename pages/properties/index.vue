@@ -2,6 +2,7 @@
 import { MapPin, BedDouble, Bath, Maximize, Heart, Share2, Calendar, CheckCircle2, Phone, Mail, User, ArrowLeft, Zap, Droplets, ChefHat, Sofa, Home, Briefcase, DoorOpen, Users, Search, Filter, ArrowRight, SlidersHorizontal, ChevronDown, Check } from 'lucide-vue-next'
 import { Button } from '@/components/ui'
 import { usePropertyStore } from '@/stores/properties'
+import { formatCurrency, getCurrencyLabel } from '@/utils/currency'
 import CasaLoader from '@/components/ui/CasaLoader.vue'
 
 definePageMeta({
@@ -111,10 +112,13 @@ const properties = computed(() => {
     
     // Price
     const currencyCode = item.devise?.code || 'USD'
-    const symbol = currencyCode === 'USD' ? '$' : 'FC'
     const priceVal = p.price || 0
-    const formattedPrice = priceVal.toLocaleString('fr-FR')
-    const priceDisplay = currencyCode === 'USD' ? `${symbol}${formattedPrice}` : `${formattedPrice} ${symbol}`
+    const priceDisplay = formatCurrency(priceVal, currencyCode)
+
+    // Calculate Display Area
+    const displayArea = p.surface && p.surface > 0 
+       ? `${p.surface}m²` 
+       : (p.livingRoom ? `${p.livingRoom} salon(s)` : '')
 
     return {
        id: id,
@@ -123,11 +127,13 @@ const properties = computed(() => {
        price: priceDisplay,
        priceValue: priceVal,
        currencyCode: currencyCode,
+       currencyLabel: getCurrencyLabel(currencyCode),
        type: typeName,
        image: img,
+       publisherImage: item.image || '',
        beds: p.bedrooms || 0,
        baths: p.bathroom || 0,
-       area: p.surface ? `${p.surface} m²` : '',
+       area: displayArea,
        transaction: p.transactionType || 'vente',
        category: item._category,
        date: p.createdAt ? new Date(p.createdAt) : new Date()
@@ -214,6 +220,12 @@ const paginatedProperties = computed(() => {
   const end = start + itemsPerPage
   return filteredProperties.value.slice(start, end)
 })
+
+const scrollToTop = () => {
+  if (import.meta.client) {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+}
 
 // Reset pagination when filters change
 watch([searchQuery, selectedType, selectedTransaction, showAdvancedFilters, minPrice, maxPrice, selectedCurrency, roomCount], () => {
@@ -424,6 +436,10 @@ watch([searchQuery, selectedType, selectedTransaction, showAdvancedFilters, minP
                     {{ property.transaction === 'location' ? 'À Louer' : 'À Vendre' }}
                   </span>
               </div>
+              <!-- Publisher Profile Image -->
+              <div v-if="property.publisherImage" class="absolute bottom-3 right-3 rounded-full border-2 border-white overflow-hidden h-10 w-10 bg-white/10 backdrop-blur-sm flex items-center justify-center">
+                <img :src="property.publisherImage" :alt="property.title" class="w-full h-full object-cover" />
+              </div>
             </div>
 
             <!-- Content -->
@@ -470,6 +486,7 @@ watch([searchQuery, selectedType, selectedTransaction, showAdvancedFilters, minP
               <div class="mt-auto flex items-center justify-between">
                 <div class="text-xl font-black text-primary">
                   {{ property.price }}
+                  <div class="text-xs text-muted-foreground font-normal">{{ property.currencyLabel }}</div>
                 </div>
                 <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
                    <ArrowRight class="h-4 w-4" />
@@ -486,7 +503,7 @@ watch([searchQuery, selectedType, selectedTransaction, showAdvancedFilters, minP
                 :key="p"
                 :variant="currentPage === p ? 'default' : 'outline'"
                 class="w-10 h-10 p-0 rounded-full font-bold"
-                @click="currentPage = p; window.scrollTo({ top: 0, behavior: 'smooth' })"
+                @click="currentPage = p; scrollToTop()"
             >
                 {{ p }}
             </Button>

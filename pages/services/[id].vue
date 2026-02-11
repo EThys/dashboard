@@ -4,6 +4,7 @@ import { Button } from '@/components/ui'
 import VueEasyLightbox from 'vue-easy-lightbox'
 import CasaLoader from '@/components/ui/CasaLoader.vue'
 import ServiceSolicitationModal from '@/components/modals/ServiceSolicitationModal.vue'
+import { formatCurrency, getCurrencyLabel } from '@/utils/currency'
 
 definePageMeta({
   layout: 'default'
@@ -18,28 +19,36 @@ const serviceStore = useServiceStore()
 // Try to get service from store
 const storeService = computed(() => serviceStore.getServiceById(serviceId))
 
-// If no service in store, fetch all services to populate it (fallback for direct access/refresh)
-const { data: servicesData, pending: isLoading } = await useFetch<any>(`${config.public.apiBase}/prestations`, {
-    key: 'services-list-detail',
-    lazy: true,
-    immediate: !storeService.value // Only fetch if not already in store
-})
+// Convert deviseId to currency code (1=CDF, 2=USD)
+const getCurrencyCode = (deviseId: number): 'CDF' | 'USD' => {
+    return deviseId === 1 ? 'CDF' : 'USD'
+}
 
-// Update store when data arrives if we needed to fetch
-watch(servicesData, (newData) => {
-    if (newData?.prestations) {
-        serviceStore.setServices(newData.prestations)
+// Fetch all services to populate store (same logic as properties)
+const { data: fetchComplete, pending: isLoading } = await useAsyncData(
+  `service-${serviceId}`,
+  async () => {
+    // Fetch services if store is empty
+    if (serviceStore.services.length === 0) {
+        await serviceStore.fetchServices(config.public.apiBase)
     }
-})
+    return true
+  },
+  {
+    lazy: true,
+    server: false
+  }
+)
 
 // Compute the specific service from store (reactive to store updates)
 const service = computed(() => {
-    const raw = storeService.value || (servicesData.value?.prestations?.find((item: any) => item.prestation.id === serviceId))
+    const raw = storeService.value
     
     if (!raw) return null
 
     const p = raw.prestation
     const images = raw.image || []
+    const currencyCode = getCurrencyCode(p.deviseId)
 
     return {
         id: p.id,
@@ -47,10 +56,11 @@ const service = computed(() => {
         description: p.description,
         location: `${p.communeValue}, ${p.cityValue}`,
         fullAddress: `${p.address}, ${p.communeValue}, ${p.cityValue}`,
-        price: `${p.minPrice} ${p.deviseId === 1 ? '$' : 'FC'}`,
+        price: formatCurrency(p.minPrice, currencyCode),
         minPrice: p.minPrice,
         maxPrice: p.maxPrice,
-        currencySymbol: p.deviseId === 1 ? '$' : 'FC',
+        currencyCode: currencyCode,
+        currencyLabel: getCurrencyLabel(currencyCode),
         deviseId: p.deviseId,
         experience: p.experience,
         availabilityDays: p.plageJourPrestation,
@@ -235,8 +245,9 @@ const contactProvider = () => {
                             <div class="text-right text-white mb-2">
                                 <div class="text-sm opacity-80 mb-1">À partir de</div>
                                 <div class="text-3xl font-black text-primary drop-shadow-sm filter brightness-110">
-                                    {{ service.minPrice }} {{ service.currencySymbol }}
+                                    {{ service.price }}
                                 </div>
+                                <div class="text-xs text-white/70 mt-1">{{ service.currencyLabel }}</div>
                             </div>
                             <div class="flex gap-3 justify-end">
                                 <Button @click="toggleFavorite" size="icon" variant="secondary" class="rounded-full h-12 w-12 bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-md">
@@ -254,7 +265,7 @@ const contactProvider = () => {
         </div>
 
         <!-- Main Content Layout -->
-        <section class="py-16 -mt-8 relative z-30">
+        <section class="py-16 relative z-40 bg-background">
             <div class="container mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
                     
@@ -307,10 +318,10 @@ const contactProvider = () => {
                                 
                                 <div class="space-y-4">
                                     <div class="flex items-center gap-3 p-3 bg-muted/40 rounded-xl">
-                                        <Calendar class="h-5 w-5 text-primary" />
-                                        <div>
+                                        <Calendar class="h-5 w-5 text-primary flex-shrink-0" />
+                                        <div class="flex-1">
                                             <p class="text-xs font-medium text-muted-foreground">Jours</p>
-                                            <p class="text-sm font-semibold truncate max-w-[200px]">{{ service.availabilityDays }}</p>
+                                            <p class="text-sm font-semibold break-words whitespace-normal">{{ service.availabilityDays }}</p>
                                         </div>
                                     </div>
                                     <div class="flex items-center gap-3 p-3 bg-muted/40 rounded-xl">

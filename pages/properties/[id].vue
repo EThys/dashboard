@@ -3,12 +3,15 @@
 import { MapPin, BedDouble, Bath, Maximize, Heart, Share2, Calendar, CheckCircle2, Phone, Mail, User, ArrowLeft, Zap, Droplets, ChefHat, Sofa, Home, Briefcase, DoorOpen, Users, Star, XCircle } from 'lucide-vue-next'
 import { Button } from '@/components/ui'
 import { usePropertyStore } from '@/stores/properties'
+import { useAuthStore } from '@/stores/auth'
+import { useReservationStore } from '@/stores/reservations'
 import VueEasyLightbox from 'vue-easy-lightbox'
 import { normalizeBureau, normalizeFestive, normalizeFuneraire, normalizeTerrain, normalizeHotel, normalizeStandardProperty } from '@/utils/propertyNormalizer'
 import type { AnyPropertyResponse, NormalizedProperty } from '@/types/property'
 import Vue3Shimmer from 'vue3-shimmer'
 import CasaLoader from '@/components/ui/CasaLoader.vue'
 import PropertyVisitModal from '@/components/modals/PropertyVisitModal.vue'
+import { ShieldCheck, Calendar as CalendarIcon, Loader2 } from 'lucide-vue-next'
 
 definePageMeta({
   layout: 'default'
@@ -18,6 +21,8 @@ const route = useRoute()
 const router = useRouter()
 const config = useRuntimeConfig()
 const propertyStore = usePropertyStore()
+const authStore = useAuthStore()
+const resStore = useReservationStore()
 const propertyId = Number(route.params.id)
 
 // Try to get from store first
@@ -100,10 +105,20 @@ onUnmounted(stopAutoScroll)
 // Lightbox
 const lightboxVisible = ref(false)
 const lightboxIndex = ref(0)
+const lightboxImgs = ref<string[]>([])
 
 const showLightbox = (index: number) => {
+  lightboxImgs.value = property.value?.images || []
   lightboxIndex.value = index
   lightboxVisible.value = true
+}
+
+const showProfileImage = () => {
+  if (property.value?.agent?.profileImage) {
+    lightboxImgs.value = [property.value.agent.profileImage]
+    lightboxIndex.value = 0
+    lightboxVisible.value = true
+  }
 }
 
 const goBack = () => {
@@ -130,6 +145,9 @@ const shareProperty = async () => {
 }
 
 const contactAgent = () => {
+    if (!authStore.isAuthenticated) {
+        return navigateTo(`/login?reason=reservation&redirect=${route.fullPath}`)
+    }
     isVisitModalOpen.value = true
 }
 
@@ -155,6 +173,11 @@ const isVisitModalOpen = ref(false)
             <!-- Back Button -->
             <button @click="goBack" class="absolute top-4 md:top-8 left-4 md:left-8 z-30 p-2.5 rounded-full bg-black/40 backdrop-blur-md border border-white/20 text-white hover:bg-black/60 transition-all group/back">
                 <ArrowLeft class="h-6 w-6 group-hover/back:-translate-x-1 transition-transform" />
+            </button>
+
+            <!-- Zoom Button -->
+            <button @click="() => showLightbox(currentImageIndex)" class="absolute top-4 md:top-8 right-4 md:right-8 z-30 p-2.5 rounded-full bg-black/40 backdrop-blur-md border border-white/20 text-white hover:bg-black/60 transition-all group/zoom">
+                <Maximize class="h-6 w-6 group-hover/zoom:scale-110 transition-transform" />
             </button>
 
             <!-- Image Slider -->
@@ -220,6 +243,7 @@ const isVisitModalOpen = ref(false)
                                     {{ property.price }}
                                     <span class="text-lg text-white/80 font-normal">{{ property.frequency }}</span>
                                 </div>
+                                <div class="text-xs opacity-70 mt-1">{{ property.currencyLabel }}</div>
                             </div>
                             <div class="flex gap-3 justify-end">
                                 <Button @click="toggleFavorite" size="icon" variant="secondary" class="rounded-full h-12 w-12 bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-md">
@@ -399,10 +423,10 @@ const isVisitModalOpen = ref(false)
                          <!-- Agent Card -->
                          <div class="bg-card rounded-3xl p-6 border border-border/50 shadow-lg">
                              <div class="text-center mb-6">
-                                 <div class="w-24 h-24 mx-auto rounded-full p-1 border-2 border-primary mb-3 relative cursor-pointer hover:scale-105 transition-transform group/profile">
-                                     <img :src="property.agent.avatar" class="w-full h-full rounded-full object-cover" />
+                                 <div @click="showProfileImage" class="w-24 h-24 mx-auto rounded-full p-1 border-2 border-primary mb-3 relative cursor-pointer hover:scale-105 transition-transform group/profile">
+                                     <img :src="property.agent.profileImage || property.agent.avatar" class="w-full h-full rounded-full object-cover" />
                                      <div class="absolute inset-0 rounded-full bg-black/10 opacity-0 group-hover/profile:opacity-100 transition-opacity flex items-center justify-center">
-                                          <User class="h-6 w-6 text-white drop-shadow-md" />
+                                          <Maximize class="h-6 w-6 text-white drop-shadow-md" />
                                      </div>
                                      <div class="absolute bottom-1 right-1 bg-green-500 rounded-full p-1 border-2 border-card text-white">
                                          <CheckCircle2 class="h-3 w-3" />
@@ -440,7 +464,7 @@ const isVisitModalOpen = ref(false)
       <VueEasyLightbox
         v-if="property"
         :visible="lightboxVisible"
-        :imgs="property.images"
+        :imgs="lightboxImgs"
         :index="lightboxIndex"
         @hide="lightboxVisible = false"
       />
@@ -449,6 +473,7 @@ const isVisitModalOpen = ref(false)
         :isOpen="isVisitModalOpen"
         :propertyId="propertyId"
         :propertyTitle="property?.title || ''"
+        :propertyType="property?.type || ''"
         @close="isVisitModalOpen = false"
       />
   </div>
