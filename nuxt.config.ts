@@ -58,6 +58,11 @@ export default defineNuxtConfig({
         target: 'https://server.casanayo.com/api',
         changeOrigin: true,
         prependPath: true,
+      },
+      '/auth': {
+        target: 'https://server.casanayo.com/auth',
+        changeOrigin: true,
+        prependPath: true,
       }
     }
   },
@@ -67,7 +72,10 @@ export default defineNuxtConfig({
     public: {
       apiBase: process.env.NODE_ENV === 'production'
         ? 'https://server.casanayo.com/api'
-        : '/api'
+        : '/api',
+      authBase: process.env.NODE_ENV === 'production'
+        ? 'https://server.casanayo.com' // Endpoints like /auth/login will be appended
+        : '' // In dev, we use /auth request directly via proxy
     }
   }
 })
