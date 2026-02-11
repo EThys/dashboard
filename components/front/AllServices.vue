@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Wrench, Paintbrush, Hammer, Zap, Home as HomeIcon, Users, ArrowRight, Star } from 'lucide-vue-next'
 import { Button } from '@/components/ui'
+import { formatCurrency, getCurrencyLabel } from '@/utils/currency'
 import type { ServiceResponse } from '@/types/service'
 
 // Store
@@ -8,6 +9,11 @@ import { useServiceStore } from '@/stores/services'
 
 const serviceStore = useServiceStore()
 const config = useRuntimeConfig()
+
+// Convert deviseId to currency code (1=FC, 2=USD)
+const getCurrencyCode = (deviseId: number): 'CDF' | 'USD' => {
+    return deviseId === 1 ? 'CDF' : 'USD'
+}
 
 // Validated Data Fetching
 // Using useAsyncData with NO server-side execution to avoid hydration mismatch
@@ -98,8 +104,9 @@ const displayedServices = computed(() => {
             <div class="absolute bottom-4 left-4 text-white">
                 <span class="text-xs opacity-90">À partir de</span>
                 <div class="text-xl font-black">
-                    {{ item.prestation.minPrice }} {{ item.deviseId === 1 ? '$' : 'FC' }}
+                    {{ formatCurrency(item.prestation.minPrice, getCurrencyCode(item.prestation.deviseId)) }}
                 </div>
+                <div class="text-xs opacity-80">{{ getCurrencyLabel(getCurrencyCode(item.prestation.deviseId)) }}</div>
             </div>
           </div>
 

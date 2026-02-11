@@ -26,6 +26,9 @@ const properties = computed(() => {
     const img = item.images?.main?.[0]?.publicPath || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&q=80&w=800'
     const currencyCode = item.devise?.code || 'USD'
     
+    // Use livingRoom if surface is 0 or missing
+    const displayArea = p.surface && p.surface > 0 ? `${p.surface}m²` : (p.livingRoom ? `${p.livingRoom} salon(s)` : '')
+    
     return {
       id: p.propertyId,
       title: p.title || 'Sans titre',
@@ -37,8 +40,9 @@ const properties = computed(() => {
       frequency: p.transactionType === 'location' ? '/mois' : '',
       beds: p.bedrooms || 0,
       baths: p.bathroom || 0,
-      area: `${p.surface || 0}m²`,
+      area: displayArea,
       image: img,
+      publisherImage: item.image || '',
       tag: p.transactionType === 'location' ? 'À Louer' : 'À Vendre'
     }
   })
@@ -83,6 +87,10 @@ const properties = computed(() => {
                         class="h-full w-full object-cover group-hover:scale-110 transition-transform duration-700" 
                     />
                     <div class="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors"></div>
+                    <!-- Publisher Profile Image -->
+                    <div v-if="property.publisherImage" class="absolute top-4 right-4 rounded-full border-2 border-white overflow-hidden h-12 w-12 bg-white/10 backdrop-blur-sm flex items-center justify-center">
+                        <img :src="property.publisherImage" :alt="property.title" class="w-full h-full object-cover" />
+                    </div>
                 </div>
 
                 <!-- Content -->
@@ -97,6 +105,7 @@ const properties = computed(() => {
                         </div>
                         <div class="text-right">
                              <div class="text-primary font-black text-lg">{{ property.price }}</div>
+                             <div class="text-xs text-muted-foreground" v-if="property.currency">{{ property.currency }}</div>
                              <div class="text-xs text-muted-foreground" v-if="property.frequency">{{ property.frequency }}</div>
                         </div>
                     </div>

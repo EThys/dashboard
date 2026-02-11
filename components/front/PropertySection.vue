@@ -65,13 +65,20 @@ const normalizeItem = (item: any) => {
     // Price handling with safety
     const priceVal = p?.price ?? 0
     currencyCode = item.devise?.code || 'USD'
+    const symbol = currencyCode === 'USD' ? '$' : 'FC'
+    const currencyLabel = getCurrencyLabel(currencyCode)
     
     return {
         id: p?.id || p?.propertyId || 0,
         title: p?.title || 'Sans titre',
         location: locationStr,
         price: formatCurrency(priceVal, currencyCode),
+        currencyCode: currencyCode,
+        currencySymbol: symbol,
+        currencyLabel: currencyLabel,
         image: img,
+        publisherImage: item.image || '',
+        postBy: item.postBy || '',
         tag: props.title
     }
 }
@@ -111,9 +118,14 @@ const displayItems = computed(() => {
                     <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
                     <div class="absolute bottom-4 left-4 text-white">
                         <div class="font-bold text-lg">{{ item.price }}</div>
-                        <div class="flex items-center gap-1 text-sm opacity-90">
+                        <div class="text-xs opacity-80">{{ item.currencyLabel }}</div>
+                        <div class="flex items-center gap-1 text-sm opacity-90 mt-1">
                             <MapPin class="h-3 w-3" /> {{ item.location }}
                         </div>
+                    </div>
+                    <!-- Publisher Profile Image -->
+                    <div v-if="item.publisherImage" class="absolute top-3 right-3 rounded-full border-2 border-white overflow-hidden h-12 w-12 bg-white/10 backdrop-blur-sm flex items-center justify-center">
+                        <img :src="item.publisherImage" :alt="item.postBy" class="w-full h-full object-cover" />
                     </div>
                 </div>
                 <div class="p-5">

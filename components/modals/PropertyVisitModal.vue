@@ -1,17 +1,21 @@
 <script setup lang="ts">
-import { X, Loader2 } from 'lucide-vue-next'
+import { X, Loader2, CheckCircle } from 'lucide-vue-next'
 import { Button, Input, Label } from '@/components/ui'
 import { useAuthStore } from '@/stores/auth'
+import { useReservationStore } from '@/stores/reservations'
+import { toast } from 'vue-sonner'
+import { h } from 'vue'
 
 const props = defineProps<{
     isOpen: boolean
     propertyId: number
     propertyTitle: string
+    propertyType?: string
 }>()
 
 const emit = defineEmits(['close', 'success'])
 
-const config = useRuntimeConfig()
+const resStore = useReservationStore()
 const authStore = useAuthStore()
 
 const isLoading = ref(false)
@@ -27,36 +31,43 @@ const form = reactive({
 })
 
 const handleSubmit = async () => {
-    if (!authStore.isAuthenticated || !authStore.user) {
-        alert("Veuillez vous connecter pour programmer une visite.")
+    if (!authStore.isAuthenticated) {
         return
     }
 
     isLoading.value = true
     try {
-        const payload = {
-            userId: authStore.user.id,
-            propertyId: props.propertyId,
-            startDate: form.date,
-            endDate: form.date,
-            message: form.message || "Je souhaite visiter ce bien.",
-            createdAt: new Date().toISOString(),
-            status: "PENDING",
-            type: "VIP",
-            reservationHeure: form.time
+        const result = await resStore.createReservation(
+            props.propertyType || 'Standard',
+            props.propertyId,
+            {
+                startDate: form.date,
+                endDate: form.date,
+                message: form.message || "Je souhaite visiter ce bien.",
+                type: 'VIP',
+                reservationHeure: form.time
+            }
+        )
+
+        if (result.success) {
+            emit('success')
+            emit('close')
+            
+            toast.success('Demande envoyée !', {
+                description: 'Votre demande de réservation/visite a été envoyée avec succès !',
+                icon: h(CheckCircle, { class: 'size-5 text-green-500' }),
+                duration: 5000,
+            })
+        } else {
+            toast.error('Échec de la demande', {
+                description: result.message || "Une erreur est survenue.",
+            })
         }
-
-        await $fetch(`${config.public.apiBase}/reservations`, {
-            method: 'POST',
-            body: payload
-        })
-
-        emit('success')
-        emit('close')
-        alert("Visite programmée avec succès !")
     } catch (e) {
         console.error(e)
-        alert("Erreur lors de la programmation.")
+        toast.error('Erreur technique', {
+            description: "Une erreur est survenue lors de la programmation.",
+        })
     } finally {
         isLoading.value = false
     }

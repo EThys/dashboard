@@ -75,12 +75,3 @@ onUnmounted(() => {
   </div>
 </template>
 
-<style scoped>
-:global(body) {
-  cursor: none;
-}
-
-:global(a), :global(button), :global(input), :global(select), :global(textarea) {
-  cursor: none;
-}
-</style>

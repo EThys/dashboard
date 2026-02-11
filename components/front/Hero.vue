@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { Button } from '@/components/ui'
-import { Search, ChevronDown, Smartphone } from 'lucide-vue-next'
+import { Search, ChevronDown, Smartphone, Apple, Play } from 'lucide-vue-next'
 
 const activeTab = ref<'properties' | 'services'>('properties')
 const location = ref('')
@@ -9,10 +9,29 @@ const propertyType = ref('')
 const priceRange = ref('')
 const serviceCategory = ref('')
 const serviceSearch = ref('')
+
+const router = useRouter()
+
+const handleSearch = () => {
+  if (activeTab.value === 'properties') {
+    const query: any = {}
+    if (location.value) query.city = location.value
+    if (propertyType.value) query.type = propertyType.value
+    if (priceRange.value) query.price = priceRange.value
+    
+    router.push({ path: '/properties', query })
+  } else {
+    const query: any = {}
+    if (serviceCategory.value) query.category = serviceCategory.value
+    if (serviceSearch.value) query.q = serviceSearch.value
+    
+    router.push({ path: '/services', query })
+  }
+}
 </script>
 
 <template>
-  <section class="relative min-h-screen flex flex-col pt-12 sm:pt-16 lg:pt-20 overflow-hidden bg-slate-900">
+  <section class="relative min-h-screen flex flex-col pt-12 sm:pt-16 lg:pt-20 pb-12 overflow-hidden bg-slate-900">
     <!-- Background Image with Parallax-like effect -->
     <div class="absolute inset-0 z-0 select-none">
       <div class="absolute inset-0 bg-gradient-to-b from-slate-900/60 via-slate-900/20 to-slate-900/90 z-10"></div>
@@ -146,7 +165,10 @@ const serviceSearch = ref('')
                 </div>
               </div>
 
-              <Button class="w-full h-14 mt-2 font-bold text-base bg-white text-slate-900 hover:bg-sky-50 rounded-xl shadow-lg transition-all transform active:scale-[0.98]">
+              <Button 
+                class="w-full h-14 mt-2 font-bold text-base bg-white text-slate-900 hover:bg-sky-50 rounded-xl shadow-lg transition-all transform active:scale-[0.98]"
+                @click="handleSearch"
+              >
                 <Search class="h-5 w-5 mr-2" />
                 Rechercher 
               </Button>
@@ -180,7 +202,10 @@ const serviceSearch = ref('')
                 </div>
               </div>
 
-              <Button class="w-full h-14 mt-2 font-bold text-base bg-white text-slate-900 hover:bg-sky-50 rounded-xl shadow-lg transition-all transform active:scale-[0.98]">
+              <Button 
+                class="w-full h-14 mt-2 font-bold text-base bg-white text-slate-900 hover:bg-sky-50 rounded-xl shadow-lg transition-all transform active:scale-[0.98]"
+                @click="handleSearch"
+              >
                 <Search class="h-5 w-5 mr-2" />
                 Trouver un pro
               </Button>
@@ -191,35 +216,35 @@ const serviceSearch = ref('')
     </div>
     
     <!-- Mobile App Download Section -->
-    <div class="absolute bottom-8 left-0 w-full z-20 opacity-0 animate-fade-in-up animation-delay-600 px-6">
+    <div class="relative lg:absolute lg:bottom-8 left-0 w-full z-20 opacity-0 animate-fade-in-up animation-delay-1000 px-4 sm:px-6 mt-12 lg:mt-0">
       <div class="container mx-auto">
-        <div class="flex flex-col sm:flex-row items-center justify-between gap-6 p-4 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 max-w-7xl mx-auto hover:bg-white/10 transition-colors duration-300">
-          <div class="flex items-center gap-4">
-            <div class="p-3 bg-primary/20 rounded-xl">
+        <div class="flex flex-col lg:flex-row items-center justify-between gap-4 p-4 sm:p-5 rounded-3xl bg-slate-900/40 backdrop-blur-xl border border-white/10 max-w-7xl mx-auto hover:bg-slate-900/60 transition-all duration-300 shadow-2xl">
+          <div class="flex items-center gap-4 text-center sm:text-left">
+            <div class="p-3 bg-primary/20 rounded-2xl shrink-0 hidden sm:flex">
               <Smartphone class="w-6 h-6 text-white" />
             </div>
-            <div class="text-left">
-              <p class="text-white font-bold text-lg">Disponible sur mobile</p>
-              <p class="text-white/60 text-sm">Téléchargez l'application CasaNayo pour une meilleure expérience</p>
+            <div class="flex flex-col">
+              <p class="text-white font-black text-sm sm:text-lg leading-tight uppercase tracking-widest sm:normal-case sm:tracking-normal">Disponible sur mobile</p>
+              <p class="text-white/60 text-[10px] sm:text-sm mt-1 hidden xs:block">Téléchargez l'application CasaNayo pour une expérience sans limite</p>
             </div>
           </div>
           
-          <div class="flex items-center gap-4">
+          <div class="flex items-center gap-3 sm:gap-4 w-full sm:w-auto justify-center">
             <!-- App Store Button -->
-            <button class="flex items-center gap-3 px-5 py-2.5 bg-white text-slate-900 rounded-xl hover:bg-slate-100 transition-all transform hover:scale-105 shadow-lg group">
-              <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.5 1.55-.03 3 .9 3.82.9 1.09 0 2.67-1.29 4.36-1.1 1.03.06 2.53.53 3.53 2.01-.2 1.34 2.89 2.16 3 2.22 0 .02.04.1.04.14-.3.97-1.14 3.01-1.99 4.27-.47.69-1.12 1.69-1.87 2.19l-.02.02c-.37.52-.76.99-1.18 1.45h-.2l.2.02zM13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.54-2.95 1.5-.15-1.3.36-2.45 1.05-3.19z"/></svg>
+            <button class="flex items-center gap-2 sm:gap-3 px-4 sm:px-6 py-2 sm:py-3 bg-white text-slate-900 rounded-2xl hover:bg-sky-50 transition-all transform hover:scale-105 active:scale-95 shadow-xl group border-none outline-none">
+              <Apple class="w-5 h-5 sm:w-6 sm:h-6 fill-current" />
               <div class="text-left">
-                <div class="text-[0.6rem] uppercase font-bold tracking-wider opacity-60 leading-none">Télécharger sur</div>
-                <div class="text-sm font-bold leading-tight">App Store</div>
+                <div class="text-[0.5rem] sm:text-[0.6rem] uppercase font-black tracking-widest opacity-40 leading-none">App Store</div>
+                <div class="text-[10px] sm:text-sm font-black leading-tight">iOS</div>
               </div>
             </button>
 
             <!-- Play Store Button -->
-            <button class="flex items-center gap-3 px-5 py-2.5 bg-transparent border border-white/20 text-white rounded-xl hover:bg-white/10 transition-all transform hover:scale-105 backdrop-blur-md group">
-              <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.16,10.81C20.5,11.08 20.75,11.5 20.75,12C20.75,12.5 20.54,12.92 20.16,13.19L17.89,14.5L15.39,12L17.89,9.5L20.16,10.81M6.05,2.66L16.81,8.88L14.54,11.15L6.05,2.66Z"/></svg>
+            <button class="flex items-center gap-2 sm:gap-3 px-4 sm:px-6 py-2 sm:py-3 bg-white/10 border border-white/20 text-white rounded-2xl hover:bg-white/20 transition-all transform hover:scale-105 active:scale-95 backdrop-blur-md shadow-xl group outline-none">
+              <Play class="w-5 h-5 sm:w-6 sm:h-6 fill-current text-primary" />
               <div class="text-left">
-                <div class="text-[0.6rem] uppercase font-bold tracking-wider opacity-60 leading-none">Désormais sur</div>
-                <div class="text-sm font-bold leading-tight">Google Play</div>
+                <div class="text-[0.5rem] sm:text-[0.6rem] uppercase font-black tracking-widest opacity-40 leading-none">Play Store</div>
+                <div class="text-[10px] sm:text-sm font-black leading-tight">Android</div>
               </div>
             </button>
           </div>
