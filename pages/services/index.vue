@@ -171,8 +171,14 @@ const toggleCertification = async (service: ServiceDetail) => {
   <div class="min-h-screen">
     <!-- Hero Section -->
     <section class="relative py-20 bg-slate-900 overflow-hidden">
-      <div class="absolute inset-0 bg-gradient-to-r from-primary/20 to-blue-600/20"></div>
-      <div class="absolute top-0 right-0 w-96 h-96 bg-primary/20 rounded-full blur-3xl opacity-50"></div>
+      <!-- Background Image -->
+      <div class="absolute inset-0 z-0">
+        <img src="@/assets/people.jpg" class="w-full h-full object-cover opacity-40" alt="Services background" />
+        <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent"></div>
+      </div>
+
+      <div class="absolute inset-0 bg-gradient-to-r from-primary/20 to-blue-600/20 z-0"></div>
+      <div class="absolute top-0 right-0 w-96 h-96 bg-primary/20 rounded-full blur-3xl opacity-50 z-0"></div>
       
       <div class="container mx-auto px-4 relative z-10 text-center">
         <h1 class="text-4xl md:text-5xl font-black text-white mb-6">

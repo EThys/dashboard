@@ -26,8 +26,7 @@ const navLinks = [
   { name: 'Accueil', path: '/' },
   { name: 'Propriétés', path: '/properties' },
   { name: 'Services', path: '/services' },
-  { name: 'Notre équipe', path: '/team' },
-  { name: 'Contact', path: '/#contact' },
+  { name: 'Contact', path: '/contact' },
 ]
 </script>
 

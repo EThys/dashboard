@@ -55,7 +55,7 @@ import { Button } from '@/components/ui'
             <li><NuxtLink to="/" class="text-slate-500 hover:text-primary hover:translate-x-1 flex items-center gap-2 transition-all group font-bold"> Accueil</NuxtLink></li>
             <li><NuxtLink to="/properties" class="text-slate-500 hover:text-primary hover:translate-x-1 flex items-center gap-2 transition-all group font-bold"> Propriétés</NuxtLink></li>
             <li><NuxtLink to="/services" class="text-slate-500 hover:text-primary hover:translate-x-1 flex items-center gap-2 transition-all group font-bold"> Services</NuxtLink></li>
-            <li><NuxtLink to="/team" class="text-slate-500 hover:text-primary hover:translate-x-1 flex items-center gap-2 transition-all group font-bold"> Notre équipe</NuxtLink></li>
+            <li><NuxtLink to="/contact" class="text-slate-500 hover:text-primary hover:translate-x-1 flex items-center gap-2 transition-all group font-bold"> Contact</NuxtLink></li>
           </ul>
         </div>
 
@@ -106,8 +106,11 @@ import { Button } from '@/components/ui'
                 <MapPin class="size-5 text-primary group-hover:text-white transition-colors" />
             </div>
             <div>
-                <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Adresse</p>
-                <p class="text-sm font-bold text-slate-700">123 Avenue Immo, Kinshasa RDC</p>
+                <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Siège Social</p>
+                <p class="text-sm font-bold text-slate-800 leading-snug">
+                  Av. Sénégalais, Gare Centrale<br>
+                  Kinshasa Gombe, RDC
+                </p>
             </div>
         </div>
         <div class="flex items-center gap-4 group">
@@ -115,8 +118,8 @@ import { Button } from '@/components/ui'
                 <Phone class="size-5 text-blue-500 group-hover:text-white transition-colors" />
             </div>
             <div>
-                <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Contact</p>
-                <p class="text-sm font-bold text-slate-700">+243 81 234 56 78</p>
+                <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Contact</p>
+                <p class="text-sm font-bold text-slate-800">+243 836 323 805</p>
             </div>
         </div>
         <div class="flex items-center gap-4 group">
@@ -124,8 +127,8 @@ import { Button } from '@/components/ui'
                 <Mail class="size-5 text-sky-400 group-hover:text-white transition-colors" />
             </div>
             <div>
-                <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Support</p>
-                <p class="text-sm font-bold text-slate-700">contact@casanayo.com</p>
+                <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Support</p>
+                <p class="text-sm font-bold text-slate-800">contact@casanayo.com</p>
             </div>
         </div>
       </div>
