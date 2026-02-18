@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
-import { LayoutDashboard, Users, FileText, Settings, LogOut, Bell, Search, Menu, X, AlertOctagon, Calendar } from 'lucide-vue-next'
+import { 
+    LayoutDashboard, Users, FileText, Settings, LogOut, 
+    Bell, Search, Menu, X, AlertOctagon, Calendar,
+    Plus, Home, Briefcase, ChevronRight, User as UserIcon
+} from 'lucide-vue-next'
 import { Button, Sheet } from '@/components/ui'
 import { useAuthStore } from '~/stores/auth'
 import { onClickOutside } from '@vueuse/core'
@@ -10,6 +14,7 @@ const router = useRouter()
 const auth = useAuthStore()
 
 const isMobileMenuOpen = ref(false)
+const isSidebarCollapsed = ref(false)
 const openDropdown = ref('')
 const isUserMenuOpen = ref(false)
 const sidebarRef = ref(null)
@@ -24,20 +29,59 @@ watch(() => route.path, () => {
     }
 })
 
-const sidebarItems = [
-  { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-  {
-    name: 'Publications',
-    icon: FileText,
-    children: [
-      { name: 'Propriétés', path: '/dashboard/publications?tab=properties' },
-      { name: 'Services', path: '/dashboard/publications?tab=services' }
-    ]
-  },
-  { name: 'Mes Réservations', path: '/dashboard/my-reservations', icon: Calendar },
-  { name: 'Utilisateurs', path: '/dashboard/users', icon: Users },
-  { name: 'Paramètres', path: '/dashboard/settings', icon: Settings },
-]
+type RailTab = 'main' | 'pubs' | 'admin'
+const selectedRailTab = ref<RailTab>('main')
+
+// User Data from Auth Store
+const userProfile = computed(() => ({
+    name: auth.profile?.fullName || auth.user?.username || 'Utilisateur',
+    firstName: (auth.profile?.fullName || auth.user?.username || 'Utilisateur').split(' ')[0],
+    role: auth.user?.premium ? 'Membre Premium' : 'Administrateur',
+    avatar: auth.profile?.images || `https://ui-avatars.com/api/?name=${auth.user?.username || 'U'}&background=0F172A&color=fff`
+}))
+
+interface RailItem {
+  id: RailTab
+  label: string
+  icon: any
+  color: string
+  bg: string
+}
+
+const railItems = computed<RailItem[]>(() => [
+  { id: 'main', label: 'Dashboard', icon: Home, color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
+  { id: 'pubs', label: 'Publications', icon: LayoutDashboard, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+  { id: 'admin', label: 'Utilisateurs', icon: Users, color: 'text-orange-500', bg: 'bg-orange-500/10' },
+])
+
+// Mapping current items to the new groups
+const menuGroups = computed(() => ({
+  main: [
+    { name: 'Home', path: '/dashboard', icon: Home },
+    { name: 'Mes Réservations', path: '/dashboard/my-reservations', icon: Calendar },
+  ],
+  pubs: [
+    { name: 'Propriétés', path: '/dashboard/publications?tab=properties', icon: Briefcase },
+    { name: 'Services', path: '/dashboard/publications?tab=services', icon: Settings },
+  ],
+  admin: [
+    { name: 'Utilisateurs', path: '/dashboard/users', icon: Users },
+    { name: 'Paramètres', path: '/dashboard/settings', icon: Settings },
+  ]
+}))
+
+// Auto-select rail tab based on path
+watch(() => route.path, (newPath) => {
+    if (newPath.includes('/publications')) selectedRailTab.value = 'pubs'
+    else if (newPath === '/dashboard/users') selectedRailTab.value = 'admin'
+    else if (newPath === '/dashboard/settings') selectedRailTab.value = 'admin'
+    else selectedRailTab.value = 'main'
+}, { immediate: true })
+
+const currentMenuTitle = computed(() => {
+    const item = railItems.value.find(i => i.id === selectedRailTab.value)
+    return item ? item.label : 'Menu'
+})
 
 function toggleDropdown(name: string) {
   openDropdown.value = openDropdown.value === name ? '' : name
@@ -70,13 +114,6 @@ const updateTime = () => {
     })
 }
 
-// User Data from Auth Store
-const userProfile = computed(() => ({
-    name: auth.profile?.fullName || auth.user?.username || 'Utilisateur',
-    role: auth.user?.premium ? 'Membre Premium' : 'Administrateur',
-    avatar: auth.profile?.images || `https://ui-avatars.com/api/?name=${auth.user?.username || 'U'}&background=0F172A&color=fff`
-}))
-
 const handleLogout = () => {
     auth.logout()
 }
@@ -91,76 +128,153 @@ onUnmounted(() => {
 })
 </script>
 
+<style scoped>
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #E2E8F0;
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #CBD5E1;
+}
+
+.rail-transition-enter-active,
+.rail-transition-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.rail-transition-enter-from {
+  opacity: 0;
+  transform: translateX(-10px);
+}
+.rail-transition-leave-to {
+  opacity: 0;
+  transform: translateX(10px);
+}
+</style>
+
 <template>
   <div class="flex h-screen bg-background font-sans overflow-hidden">
-    <!-- Sidebar -->
-    <aside ref="sidebarRef" class="w-64 min-h-screen bg-gradient-to-b from-white via-slate-50 to-slate-100 border-r border-border shadow-xl hidden md:flex flex-col z-30 transition-all duration-300">
-      <div 
-        class="p-6 flex items-center gap-3 border-b border-border h-20 bg-white/80 backdrop-blur-md shadow-sm cursor-pointer hover:bg-slate-50/80 transition-colors"
-        @click="router.push('/login')"
-      >
-        <div class="size-10 rounded-xl bg-primary/10 flex items-center justify-center shadow">
-            <span class="text-primary font-black text-xl text-center flex items-center justify-center">C</span>
-        </div>
-        <div class="flex flex-col">
-            <span class="font-bold text-lg tracking-tight leading-none">CasaNayo</span>
-            <span class="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Dashboard</span>
-        </div>
-      </div>
-
-      <nav class="flex-1 overflow-y-auto py-6 px-4 space-y-2">
-        <template v-for="item in sidebarItems" :key="item.name">
-          <div v-if="item.children" class="relative">
-            <button
-              class="flex items-center gap-3 px-4 py-3 mx-2 rounded-xl text-sm font-bold transition-all duration-200 group w-full text-left shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/30"
-              :class="openDropdown === item.name ? 'bg-primary/10 text-primary ring-2 ring-primary/30' : 'text-muted-foreground hover:bg-primary/5 hover:text-primary'"
-              @click="toggleDropdown(item.name)"
-              @keydown.enter.space="toggleDropdown(item.name)"
-              :aria-expanded="openDropdown === item.name"
-            >
-              <component :is="item.icon" :class="['size-5', openDropdown === item.name ? 'text-primary' : 'text-muted-foreground group-hover:text-primary']" />
-              {{ item.name }}
-              <svg :class="['ml-auto transition-transform', openDropdown === item.name ? 'rotate-90' : '']" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
-            </button>
-            <transition name="fade">
-              <div v-if="openDropdown === item.name" class="ml-2 mt-1 space-y-1 bg-white/90 rounded-xl shadow-lg border border-border py-2 animate-in fade-in slide-in-from-left-2">
-                <NuxtLink
-                  v-for="child in item.children"
-                  :key="child.path"
-                  :to="child.path"
-                  class="block px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-primary/10 hover:text-primary"
-                  :class="isItemActive(child.path) ? 'bg-primary/10 text-primary font-bold' : 'text-muted-foreground'"
-                  @click="openDropdown = ''"
-                >
-                  {{ child.name }}
-                </NuxtLink>
-              </div>
-            </transition>
-          </div>
-          <NuxtLink
-            v-else
-            :to="item.path"
-            @click="openDropdown = ''"
-            :class="[
-              'flex items-center gap-3 px-4 py-3 mx-2 rounded-xl text-sm font-bold transition-all duration-200 group relative shadow-sm hover:shadow-md',
-              isItemActive(item.path)
-                ? 'bg-primary/10 text-primary ring-2 ring-primary/30' : 'text-muted-foreground hover:bg-primary/5 hover:text-primary'
-            ]"
+    <!-- Dual Sidebar -->
+    <div class="hidden md:flex flex-row h-screen antialiased transition-all duration-500">
+       <!-- 1. Narrow Icon Rail (Modernized) -->
+       <aside class="w-24 bg-[#F8FAFC] flex flex-col items-center py-8 border-r border-slate-200/60 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.05)] z-40 relative">
+          <!-- Official Logo -->
+          <div 
+             @click="router.push('/')"
+             class="mb-12 cursor-pointer hover:scale-110 active:scale-95 transition-all duration-500"
           >
-            <div v-if="isItemActive(item.path)" class="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-r-md"></div>
-            <component :is="item.icon" :class="['size-5', isItemActive(item.path) ? 'text-primary' : 'text-muted-foreground group-hover:text-primary']" />
-            {{ item.name }}
-          </NuxtLink>
-        </template>
-      </nav>
+             <img src="~/assets/logoCasa.png" alt="CasaNayo" class="w-14 h-auto drop-shadow-md" />
+          </div>
 
-      <div class="p-4 border-t border-border bg-muted/10 mt-auto">
-        <Button @click="showLogoutModal = true" variant="ghost" class="w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-12 rounded-xl font-bold">
-          <LogOut class="size-5" />
-          Déconnexion
-        </Button>
-      </div>
-    </aside>
+          <!-- Rail Items -->
+          <div class="flex-1 flex flex-col gap-8 w-full px-3">
+             <button 
+                v-for="rail in railItems" 
+                :key="rail.id"
+                @click="selectedRailTab = rail.id; isSidebarCollapsed = false"
+                class="flex flex-col items-center gap-1.5 group relative py-1"
+             >
+                <div 
+                   class="size-12 rounded-2xl flex items-center justify-center transition-all duration-500 relative z-10"
+                   :class="selectedRailTab === rail.id ? 'bg-white shadow-md scale-105 ring-1 ring-slate-100' : 'hover:bg-white/80 hover:scale-105'"
+                >
+                   <component :is="rail.icon" :class="['size-5.5 transition-all duration-300', selectedRailTab === rail.id ? rail.color : 'text-slate-400 group-hover:text-slate-600']" />
+                </div>
+                
+                <!-- Active Indicator (pill cut - more refined) -->
+                <div 
+                   v-if="selectedRailTab === rail.id && !isSidebarCollapsed" 
+                   class="absolute -right-[13.5px] top-1/2 -translate-y-1/2 w-4 h-[72px] bg-white rounded-l-3xl z-20 border-y border-l border-slate-200/60"
+                ></div>
+
+                <span 
+                   class="text-[11px] font-bold tracking-tight transition-colors duration-300 text-center px-1 truncate max-w-full"
+                   :class="selectedRailTab === rail.id ? 'text-slate-900' : 'text-slate-400 group-hover:text-slate-600'"
+                >
+                   {{ rail.label }}
+                </span>
+             </button>
+          </div>
+
+          <!-- Collapse Toggle at bottom -->
+          <div class="mt-auto flex flex-col items-center gap-6">
+             <button 
+                @click="isSidebarCollapsed = !isSidebarCollapsed"
+                class="flex items-center justify-center size-10 rounded-xl bg-white border border-slate-200 shadow-sm text-slate-400 hover:text-primary hover:border-primary/30 transition-all duration-300"
+                :title="isSidebarCollapsed ? 'Déplier' : 'Plier'"
+             >
+                <ChevronRight class="size-5 transition-transform duration-500" :class="{ 'rotate-180': !isSidebarCollapsed }" />
+             </button>
+
+             <!-- Logout -->
+             <button 
+                @click="showLogoutModal = true"
+                class="group flex flex-col items-center gap-2 p-4 text-slate-400 hover:text-red-500 transition-all duration-300"
+             >
+                <div class="size-10 rounded-xl flex items-center justify-center group-hover:bg-red-50 transition-colors">
+                   <LogOut class="size-5 group-hover:-translate-x-0.5 transition-transform" />
+                </div>
+             </button>
+          </div>
+       </aside>
+
+       <!-- 2. Wider Menu Panel (Collapsible) -->
+       <aside 
+          class="bg-white flex flex-col border-r border-slate-200/60 transition-all duration-500 ease-in-out relative z-30"
+          :class="isSidebarCollapsed ? 'w-0 opacity-0 -translate-x-4 pointer-events-none' : 'w-64 opacity-100 translate-x-0'"
+       >
+          <!-- Header with Avatar Integration -->
+          <div class="px-6 h-20 flex items-center gap-4 border-b border-slate-50">
+             <div 
+                class="size-10 rounded-xl flex items-center justify-center overflow-hidden ring-4 ring-slate-50 shadow-sm transition-all duration-500 hover:rotate-3"
+                :class="railItems.find(i => i.id === selectedRailTab)?.bg"
+             >
+                 <img v-if="selectedRailTab === 'admin'" :src="userProfile.avatar" class="size-full object-cover" />
+                 <component v-else :is="railItems.find(i => i.id === selectedRailTab)?.icon" :class="['size-6', railItems.find(i => i.id === selectedRailTab)?.color]" />
+             </div>
+             <div class="flex flex-col">
+                <Transition name="rail-transition" mode="out-in">
+                   <h2 :key="currentMenuTitle" class="font-black text-xl text-slate-900 leading-tight tracking-tight">{{ currentMenuTitle }}</h2>
+                </Transition>
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-0.5">CasaNayo</span>
+             </div>
+          </div>
+
+          <!-- Secondary Menu Links -->
+          <div class="flex-1 overflow-hidden relative">
+            <Transition name="rail-transition" mode="out-in">
+               <nav :key="selectedRailTab" class="h-full px-4 py-6 space-y-1.5 overflow-y-auto custom-scrollbar">
+                  <NuxtLink 
+                     v-for="item in menuGroups[selectedRailTab]" 
+                     :key="item.name"
+                     :to="item.path"
+                     class="flex items-center gap-4 px-4 py-3 rounded-2xl text-[13px] font-bold transition-all duration-300 group overflow-hidden relative"
+                     :class="isItemActive(item.path) 
+                        ? 'bg-blue-50 text-blue-600 shadow-sm shadow-blue-500/5' 
+                        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 group-hover:translate-x-1'"
+                  >
+                     <div v-if="isItemActive(item.path)" class="absolute left-0 top-0 bottom-0 w-1 bg-blue-500 rounded-r-full"></div>
+                     <component :is="item.icon" :class="['size-5 transition-all duration-300 group-hover:scale-110', isItemActive(item.path) ? 'text-blue-600' : 'text-slate-400 group-hover:text-slate-600']" />
+                     <span class="relative z-10">{{ item.name }}</span>
+                     <ChevronRight v-if="isItemActive(item.path)" class="ml-auto size-4" />
+                  </NuxtLink>
+                  
+                  <div class="pt-8 mt-4 border-t border-slate-50/50 px-2">
+                     <button class="flex items-center gap-3 text-slate-400 hover:text-slate-600 text-[11px] font-bold uppercase tracking-wider transition-all group">
+                        <span class="size-1.5 rounded-full bg-slate-200 group-hover:bg-blue-400 group-hover:scale-125 transition-all"></span>
+                        Plus d'options
+                     </button>
+                  </div>
+               </nav>
+            </Transition>
+          </div>
+       </aside>
+    </div>
 
     <!-- Main Content -->
     <div class="flex-1 flex flex-col min-w-0 bg-muted/20">
@@ -174,28 +288,25 @@ onUnmounted(() => {
                 <template #content>
                     <div class="flex flex-col h-full">
                         <div class="flex items-center gap-3 mb-8">
-                            <div class="size-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                                <span class="text-primary font-black text-xl">C</span>
-                            </div>
-                            <span class="font-bold text-lg tracking-tight">CasaNayo</span>
+                            <img src="~/assets/logoCasa.png" alt="CasaNayo" class="h-10 w-auto" />
+                            <span class="font-black text-xl tracking-tighter text-slate-900 border-l-2 border-slate-100 pl-3">CasaNayo</span>
                         </div>
                         <nav class="flex-1 space-y-2">
-                             <template v-for="item in sidebarItems" :key="item.name">
-                                 <NuxtLink
-                                    v-if="!item.children && item.path"
-                                    :to="item.path"
-                                    @click="isMobileMenuOpen = false"
-                                    :class="[
-                                        'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all duration-200',
-                                        isItemActive(item.path)
-                                        ? 'bg-primary/10 text-primary'
-                                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                                    ]"
-                                    >
-                                    <component :is="item.icon" class="size-5" />
-                                    {{ item.name }}
-                                </NuxtLink>
-                             </template>
+                             <NuxtLink
+                                v-for="item in [...menuGroups.main, ...menuGroups.pubs, ...menuGroups.admin]"
+                                :key="item.path"
+                                :to="item.path"
+                                @click="isMobileMenuOpen = false"
+                                :class="[
+                                    'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all duration-200',
+                                    isItemActive(item.path)
+                                    ? 'bg-primary/10 text-primary'
+                                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                                ]"
+                                >
+                                <component :is="item.icon" class="size-5" />
+                                {{ item.name }}
+                            </NuxtLink>
                         </nav>
                          <div class="mt-auto pt-4 border-t border-border">
                             <Button @click="handleLogout" variant="ghost" class="w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-12 rounded-xl font-bold">
@@ -291,9 +402,9 @@ onUnmounted(() => {
                     </div>
                 </div>
 
-                <h3 class="text-4xl font-black text-slate-900 dark:text-white mb-4 tracking-tighter italic">Quitter déjà ?</h3>
-                <p class="text-slate-500 dark:text-slate-400 font-bold text-base leading-relaxed mb-12">
-                    Votre session CasaNayo est précieuse. Souhaitez-vous vraiment vous déconnecter maintenant ?
+                <h3 class="text-2xl font-bold text-slate-900 dark:text-white mb-2">Voulez-vous vous déconnecter ?</h3>
+                <p class="text-muted-foreground text-sm mb-8">
+                    Vous devrez vous reconnecter pour accéder à votre compte.
                 </p>
 
                 <div class="grid grid-cols-2 gap-4">
