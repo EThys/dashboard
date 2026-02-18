@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Toaster } from 'vue-sonner'
+import ScrollToTop from '@/components/ui/ScrollToTop.vue'
 </script>
 
 <template>
@@ -7,13 +8,16 @@ import { Toaster } from 'vue-sonner'
     <NuxtLayout>
       <NuxtPage />
     </NuxtLayout>
-    <Toaster 
-      position="top-right" 
-      richColors 
-      :toastOptions="{
-        style: { zIndex: 9999 },
-        duration: 4000,
-      }"
-    />
+    <ClientOnly>
+      <Toaster 
+        position="top-right" 
+        richColors 
+        :toastOptions="{
+          style: { zIndex: 9999 },
+          duration: 4000,
+        }"
+      />
+      <ScrollToTop />
+    </ClientOnly>
   </div>
 </template>
