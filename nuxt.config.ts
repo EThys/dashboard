@@ -6,18 +6,17 @@ export default defineNuxtConfig({
   modules: [
     '@nuxtjs/tailwindcss',
     '@pinia/nuxt',
-    '@nuxtjs/color-mode',
-    // '@tanstack/vue-query' removed as it is not a Nuxt module
-    // 'shadcn-nuxt', (manual setup)
-    // Actually user asked for shadcn, usually it's manual setup. Let's stick to manual or simple module integration.
-    // Given the prompt, I'll stick to standard manual integration which is most robust for shadcn-vue.
-    // But I will register modules I installed.
+    '@nuxtjs/color-mode'
   ],
   colorMode: {
     classSuffix: '',
     preference: 'light',
     fallback: 'light',
   },
+  css: [
+    '~/assets/css/main.css',
+    'vue-sonner/style.css'
+  ],
   // Configure component auto-import
   components: [
     {
@@ -36,14 +35,15 @@ export default defineNuxtConfig({
     "utils": "~/lib/utils",
     "ui": "~/components/ui",
     "lib": "~/lib",
-    "hooks": "~/hooks"
+    "hooks": "~/hooks",
   },
   app: {
     head: {
       link: [
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
-        { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap' }
+        { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap' },
+        { rel: 'icon', type: 'image/png', href: '/logoCasa.png' }
       ]
     }
   },
@@ -77,5 +77,8 @@ export default defineNuxtConfig({
         ? 'https://server.casanayo.com' // Endpoints like /auth/login will be appended
         : '' // In dev, we use /auth request directly via proxy
     }
+  },
+  build: {
+    transpile: ['vue-sonner']
   }
 })
