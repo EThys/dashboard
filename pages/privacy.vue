@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronRight, Home, ShieldCheck, Clock, CheckCircle2, Lock } from 'lucide-vue-next'
+import { ChevronRight, Home, ShieldCheck, Clock, CheckCircle2, Lock, FileSearch } from 'lucide-vue-next'
 
 useHead({
   title: 'Politique de Confidentialité | CasaNayo',
@@ -24,9 +24,6 @@ useHead({
 
       <!-- Header -->
       <div class="bg-white rounded-3xl p-8 sm:p-12 shadow-sm border border-slate-100 mb-10 relative overflow-hidden">
-        <div class="absolute top-0 right-0 p-12 opacity-[0.03] pointer-events-none">
-          <Lock class="size-64" />
-        </div>
         
         <div class="relative z-10 space-y-4">
           <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-600/10 text-blue-600 text-xs font-bold uppercase tracking-widest">
@@ -46,7 +43,7 @@ useHead({
       <!-- Content -->
       <div class="bg-white rounded-3xl p-8 sm:p-12 shadow-sm border border-slate-100 prose prose-slate max-w-none">
         <section class="mb-12">
-          <h2 class="text-2xl font-black text-slate-900 mb-6 flex items-center gap-3 tracking-tighter italic">
+          <h2 class="text-2xl font-black text-slate-900 mb-6 flex items-center gap-3 tracking-tighter">
             <span class="flex items-center justify-center size-8 rounded-lg bg-blue-600 text-white text-sm">1</span>
             Données collectées
           </h2>
@@ -71,7 +68,7 @@ useHead({
         </section>
 
         <section class="mb-12">
-          <h2 class="text-2xl font-black text-slate-900 mb-6 flex items-center gap-3 tracking-tighter italic">
+          <h2 class="text-2xl font-black text-slate-900 mb-6 flex items-center gap-3 tracking-tighter">
             <span class="flex items-center justify-center size-8 rounded-lg bg-blue-600 text-white text-sm">2</span>
             Utilisation des données
           </h2>
@@ -95,7 +92,7 @@ useHead({
         </section>
 
         <section class="mb-12">
-          <h2 class="text-2xl font-black text-slate-900 mb-6 flex items-center gap-3 tracking-tighter italic">
+          <h2 class="text-2xl font-black text-slate-900 mb-6 flex items-center gap-3 tracking-tighter">
             <span class="flex items-center justify-center size-8 rounded-lg bg-blue-600 text-white text-sm">3</span>
             Partage des données
           </h2>
@@ -110,30 +107,36 @@ useHead({
                  <p class="text-sm">Les autorités administratives si la loi l’exige</p>
              </div>
           </div>
-          <div class="mt-8 p-6 bg-green-50 rounded-2xl border border-green-100 text-green-800 font-black text-center text-lg italic">
+          <div class="mt-8 p-6 bg-green-50 rounded-2xl border border-green-100 text-green-800 font-black text-center text-lg">
             "CasaNayo ne vend jamais vos données personnelles."
           </div>
         </section>
 
         <section class="mb-12">
-          <h2 class="text-2xl font-black text-slate-900 mb-6 flex items-center gap-3 tracking-tighter italic">
+          <h2 class="text-2xl font-black text-slate-900 mb-6 flex items-center gap-3 tracking-tighter">
             <span class="flex items-center justify-center size-8 rounded-lg bg-blue-600 text-white text-sm">4</span>
             Sécurité des données
           </h2>
           <p class="text-slate-600 text-lg mb-6">CasaNayo met en œuvre des mesures techniques appropriées :</p>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div class="p-6 text-center border border-slate-100 rounded-3xl bg-slate-50">
-                  <span class="block text-2xl mb-2">🔐</span>
+                  <div class="flex justify-center mb-2">
+                    <Lock class="size-8 text-blue-600" />
+                  </div>
                   <span class="text-[10px] font-black uppercase text-slate-500 tracking-tighter">Chiffrement</span>
                   <p class="text-sm font-bold mt-1">AES-256</p>
               </div>
               <div class="p-6 text-center border border-slate-100 rounded-3xl bg-slate-50">
-                  <span class="block text-2xl mb-2">🛡️</span>
+                   <div class="flex justify-center mb-2">
+                    <ShieldCheck class="size-8 text-blue-600" />
+                  </div>
                   <span class="text-[10px] font-black uppercase text-slate-500 tracking-tighter">Accès</span>
                   <p class="text-sm font-bold mt-1">Restreint</p>
               </div>
               <div class="p-6 text-center border border-slate-100 rounded-3xl bg-slate-50">
-                  <span class="block text-2xl mb-2">🔎</span>
+                   <div class="flex justify-center mb-2">
+                    <FileSearch class="size-8 text-blue-600" />
+                  </div>
                   <span class="text-[10px] font-black uppercase text-slate-500 tracking-tighter">Audit</span>
                   <p class="text-sm font-bold mt-1">Régulier</p>
               </div>
@@ -141,7 +144,7 @@ useHead({
         </section>
 
         <section>
-          <h2 class="text-2xl font-black text-slate-900 mb-6 flex items-center gap-3 tracking-tighter italic">
+          <h2 class="text-2xl font-black text-slate-900 mb-6 flex items-center gap-3 tracking-tighter">
             <span class="flex items-center justify-center size-8 rounded-lg bg-blue-600 text-white text-sm">5</span>
             Vos droits (RDC)
           </h2>

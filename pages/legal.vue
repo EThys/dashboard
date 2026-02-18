@@ -47,7 +47,7 @@ useHead({
       <div class="bg-white rounded-[2.5rem] p-8 sm:p-16 shadow-sm border border-slate-100 space-y-16">
         <!-- Editeur -->
         <section>
-          <h2 class="text-2xl font-black text-slate-900 mb-8 flex items-center gap-4 italic tracking-tighter">
+          <h2 class="text-2xl font-black text-slate-900 mb-8 flex items-center gap-4 tracking-tighter">
             L'Éditeur
           </h2>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -63,7 +63,7 @@ useHead({
                     <MapPin class="size-6 text-primary shrink-0" />
                     <div>
                         <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Siège Social</p>
-                        <p class="font-bold text-slate-900 text-lg">Gombe, Kinshasa,<br>République Démocratique du Congo</p>
+                        <p class="font-bold text-slate-900 text-lg">Av. Sénégalais, Gare Centrale,<br>Kinshasa Gombe, RDC</p>
                     </div>
                 </div>
             </div>
@@ -72,14 +72,14 @@ useHead({
                     <Phone class="size-6 text-primary shrink-0" />
                     <div>
                         <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Téléphone</p>
-                        <p class="font-bold text-slate-900 text-lg">+243 810 000 000</p>
+                        <p class="font-bold text-slate-900 text-lg">+243 836 323 805</p>
                     </div>
                 </div>
                 <div class="flex items-start gap-4">
                     <Mail class="size-6 text-primary shrink-0" />
                     <div>
                         <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Email</p>
-                        <p class="font-bold text-slate-900 text-lg">contact@casanayo.cd</p>
+                        <p class="font-bold text-slate-900 text-lg">contact@casanayo.com</p>
                     </div>
                 </div>
             </div>
@@ -88,7 +88,7 @@ useHead({
 
         <!-- Responsable -->
         <section class="pt-8 border-t border-slate-100">
-           <h2 class="text-2xl font-black text-slate-900 mb-8 italic tracking-tighter">
+           <h2 class="text-2xl font-black text-slate-900 mb-8 tracking-tighter">
             Direction
           </h2>
           <div class="bg-slate-50 rounded-3xl p-8 border border-slate-100">
@@ -99,7 +99,7 @@ useHead({
 
         <!-- Hebergement -->
         <section class="pt-8 border-t border-slate-100">
-          <h2 class="text-2xl font-black text-slate-900 mb-8 italic tracking-tighter">
+          <h2 class="text-2xl font-black text-slate-900 mb-8 tracking-tighter">
             Hébergement
           </h2>
           <p class="text-slate-600 text-lg leading-relaxed mb-6 font-bold">
@@ -115,15 +115,15 @@ useHead({
         </section>
 
         <section class="pt-8 border-t border-slate-100">
-          <h2 class="text-2xl font-black text-slate-900 mb-8 italic tracking-tighter">
+          <h2 class="text-2xl font-black text-slate-900 mb-8 tracking-tighter">
            Protection des Données (DPD)
           </h2>
           <p class="text-slate-600 text-lg leading-relaxed mb-6">
             Pour toute demande relative à vos données personnelles, vous pouvez contacter notre délégué à la protection des données :
           </p>
-          <a href="mailto:dpd@casanayo.cd" class="inline-flex items-center gap-3 px-6 py-4 bg-primary text-white rounded-2xl font-black hover:bg-primary/90 transition-all shadow-xl shadow-primary/20">
+          <a href="mailto:dpd@casanayo.com" class="inline-flex items-center gap-3 px-6 py-4 bg-primary text-white rounded-2xl font-black hover:bg-primary/90 transition-all shadow-xl shadow-primary/20">
               <Mail class="size-5" />
-              dpd@casanayo.cd
+              dpd@casanayo.com
           </a>
         </section>
       </div>

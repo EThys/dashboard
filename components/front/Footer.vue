@@ -16,9 +16,7 @@ import { Button } from '@/components/ui'
         <!-- Brand & About -->
         <div class="lg:col-span-4 space-y-8">
           <NuxtLink to="/" class="flex items-center gap-3">
-            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-blue-600 shadow-xl shadow-primary/20">
-              <span class="text-2xl font-black text-white">C</span>
-            </div>
+            <img src="/logoCasa.png" alt="CasaNayo" class="h-12 w-12 object-contain rounded-2xl transition-transform group-hover:scale-105" />
             <div class="flex flex-col">
               <span class="text-2xl font-black tracking-tight leading-none text-slate-900">CasaNayo</span>
               <span class="text-[10px] font-bold text-primary uppercase tracking-[0.2em] mt-1">Immobilier & Services</span>
@@ -30,7 +28,7 @@ import { Button } from '@/components/ui'
           </p>
           
           <div class="flex gap-4">
-            <a href="#" class="group size-10 flex items-center justify-center rounded-xl bg-slate-50 border border-slate-100 hover:bg-primary hover:border-primary transition-all duration-300">
+            <a href="https://www.facebook.com/profile.php?id=61583613054158&mibextid=rS40aB7S9Ucbxw6v" target="_blank" class="group size-10 flex items-center justify-center rounded-xl bg-slate-50 border border-slate-100 hover:bg-primary hover:border-primary transition-all duration-300">
               <Facebook class="size-5 text-slate-400 group-hover:text-white transition-colors" />
             </a>
             <a href="#" class="group size-10 flex items-center justify-center rounded-xl bg-slate-50 border border-slate-100 hover:bg-primary hover:border-primary transition-all duration-300">
@@ -80,20 +78,22 @@ import { Button } from '@/components/ui'
             <span class="absolute -bottom-2 left-0 w-8 h-1 bg-sky-400 rounded-full"></span>
           </h3>
           <div class="flex flex-col sm:flex-row gap-4">
-            <button class="flex items-center gap-3 px-5 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl group">
-              <Apple class="size-6 fill-current" />
+            <!-- App Store Button -->
+            <a href="https://apps.apple.com/fr/app/casanayo/id6757759953?l=en-GB" target="_blank" class="flex items-center gap-3 px-4 py-2 bg-slate-900 border border-slate-800 text-white rounded-xl hover:bg-slate-800 transition-all shadow-md group">
+              <img src="~/assets/appStore.jpg" alt="App Store" class="h-6 w-auto" />
               <div class="text-left">
-                <div class="text-[0.6rem] uppercase font-bold tracking-wider opacity-60 leading-none">App Store</div>
-                <div class="text-sm font-black leading-tight">iOS App</div>
+                <div class="text-[0.6rem] font-medium opacity-60 leading-none">Télécharger sur</div>
+                <div class="text-xs font-bold leading-tight">App Store</div>
               </div>
-            </button>
-            <button class="flex items-center gap-3 px-5 py-2.5 bg-white border border-slate-200 text-slate-900 rounded-xl hover:bg-slate-50 hover:border-slate-300 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl group">
-              <Smartphone class="size-6 text-primary" />
+            </a>
+            <!-- Play Store Button -->
+            <a href="https://play.google.com/store/apps/details?id=com.casa.casa.casa&pcampaignid=web_share" target="_blank" class="flex items-center gap-3 px-4 py-2 bg-white border border-slate-200 text-slate-900 rounded-xl hover:bg-slate-50 transition-all shadow-md group">
+              <img src="~/assets/playStore.jpeg" alt="Play Store" class="h-6 w-auto" />
               <div class="text-left">
-                <div class="text-[0.6rem] uppercase font-bold tracking-wider opacity-60 leading-none">Play Store</div>
-                <div class="text-sm font-black leading-tight">Android</div>
+                <div class="text-[0.6rem] font-medium opacity-60 leading-none">DISPONIBLE SUR</div>
+                <div class="text-xs font-bold leading-tight">Google Play</div>
               </div>
-            </button>
+            </a>
           </div>
 
         </div>

@@ -24,9 +24,6 @@ useHead({
 
       <!-- Header -->
       <div class="bg-white rounded-3xl p-8 sm:p-12 shadow-sm border border-slate-100 mb-10 relative overflow-hidden">
-        <div class="absolute top-0 right-0 p-12 opacity-[0.03] pointer-events-none">
-          <Cookie class="size-64" />
-        </div>
         
         <div class="relative z-10 space-y-4">
           <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-600/10 text-amber-600 text-xs font-bold uppercase tracking-widest">
@@ -46,7 +43,7 @@ useHead({
       <!-- Content -->
       <div class="bg-white rounded-3xl p-8 sm:p-12 shadow-sm border border-slate-100 prose prose-slate max-w-none">
         <section class="mb-12">
-          <h2 class="text-2xl font-black text-slate-900 mb-6 flex items-center gap-3 italic">
+          <h2 class="text-2xl font-black text-slate-900 mb-6 flex items-center gap-3">
             <Cookie class="size-6 text-amber-600" />
             Qu'est-ce qu'un cookie ?
           </h2>
@@ -56,7 +53,7 @@ useHead({
         </section>
 
         <section class="mb-12">
-          <h2 class="text-2xl font-black text-slate-900 mb-6 italic">Pourquoi utilisons-nous des cookies ?</h2>
+          <h2 class="text-2xl font-black text-slate-900 mb-6">Pourquoi utilisons-nous des cookies ?</h2>
           <div class="space-y-4">
               <div class="p-6 rounded-2xl bg-amber-50/30 border border-amber-100/50">
                   <h4 class="font-bold text-slate-900 mb-2">Cookies Essentiels</h4>
@@ -74,7 +71,7 @@ useHead({
         </section>
 
         <section>
-          <h2 class="text-2xl font-black text-slate-900 mb-6 italic">Gestion de vos choix</h2>
+          <h2 class="text-2xl font-black text-slate-900 mb-6">Gestion de vos choix</h2>
           <p class="text-slate-600 text-lg mb-6">
             Vous pouvez à tout moment configurer votre navigateur pour bloquer les cookies ou être informé de leur installation. Notez cependant que la désactivation de certains cookies peut altérer votre expérience sur CasaNayo.
           </p>

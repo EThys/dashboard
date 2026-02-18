@@ -33,7 +33,7 @@ const steps = [
     <div class="absolute -bottom-24 -left-24 w-96 h-96 bg-blue-400/5 rounded-full blur-3xl pointer-events-none"></div>
     
     <div class="container mx-auto px-6 lg:px-12 relative z-10">
-      <div class="text-left max-w-3xl mb-20 animate-fade-in-up">
+      <div class="text-left max-w-3xl mb-20 reveal-left">
         <span class="px-4 py-1.5 rounded-full bg-primary/10 text-primary font-bold text-sm uppercase tracking-wider mb-6 inline-block">
           Simple & Efficace
         </span>
@@ -53,7 +53,8 @@ const steps = [
         <div 
           v-for="(step, index) in steps" 
           :key="index"
-          class="relative z-10 group"
+          class="relative z-10 group reveal"
+          :class="`reveal-delay-${(index + 1) * 100}`"
         >
           <div class="bg-white rounded-3xl p-8 shadow-xl shadow-slate-200/50 border border-slate-100 h-full flex flex-col items-center text-center transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:border-primary/20">
             <!-- Icon Wrapper -->

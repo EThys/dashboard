@@ -92,7 +92,7 @@ const displayItems = computed(() => {
   <section class="py-16 border-b border-border/40">
     <div class="container mx-auto px-6 sm:px-8 lg:px-12 xl:px-16">
         <div class="flex items-center justify-between mb-8">
-            <div>
+            <div class="reveal-left">
                 <span class="text-primary font-bold text-sm tracking-wider uppercase">{{ subtitle || 'Découvrez' }}</span>
                 <h2 class="text-3xl font-bold text-foreground mt-1">{{ title }}</h2>
             </div>
@@ -105,10 +105,11 @@ const displayItems = computed(() => {
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
             <NuxtLink 
-                v-for="item in displayItems" 
+                v-for="(item, index) in displayItems" 
                 :key="item.id"
                 :to="`/properties/${item.id}`"
-                class="group bg-card rounded-3xl overflow-hidden border border-border hover:shadow-lg transition-all duration-300"
+                class="group bg-card rounded-3xl overflow-hidden border border-border hover:shadow-lg transition-all duration-300 reveal"
+                :class="(index as number) % 3 === 0 ? 'reveal-delay-100' : (index as number) % 3 === 1 ? 'reveal-delay-200' : 'reveal-delay-300'"
             >
                 <div class="relative h-56 overflow-hidden">
                     <img 

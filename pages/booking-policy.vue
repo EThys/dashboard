@@ -76,7 +76,7 @@ useHead({
 
         <!-- Conditions Générales -->
         <section class="pt-8 border-t border-slate-100">
-          <h2 class="text-2xl font-black text-slate-900 mb-8 italic tracking-tighter">Conditions Générales</h2>
+          <h2 class="text-2xl font-black text-slate-900 mb-8 tracking-tighter">Conditions Générales</h2>
           <div class="grid grid-cols-1 gap-4">
             <div class="flex items-start gap-4 p-6 bg-slate-50 rounded-2xl border border-slate-100">
                 <ShieldCheck class="size-6 text-primary shrink-0" />
@@ -95,7 +95,7 @@ useHead({
 
         <!-- Procédure -->
         <section class="pt-8 border-t border-slate-100">
-          <h2 class="text-2xl font-black text-slate-900 mb-8 italic tracking-tighter">Description de la Procédure</h2>
+          <h2 class="text-2xl font-black text-slate-900 mb-8 tracking-tighter">Description de la Procédure</h2>
           <div class="space-y-12 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 before:to-transparent">
             
             <!-- Step 1 -->
@@ -136,7 +136,7 @@ useHead({
 
         <!-- Responsabilité -->
         <section class="pt-8 border-t border-slate-100">
-          <h2 class="text-2xl font-black text-slate-900 mb-8 italic tracking-tighter">Responsabilité du Marchand</h2>
+          <h2 class="text-2xl font-black text-slate-900 mb-8 tracking-tighter">Responsabilité du Marchand</h2>
           <div class="bg-blue-600 rounded-3xl p-8 text-white space-y-6">
             <p class="font-medium text-blue-100 leading-relaxed">Le marchand s'engage à :</p>
             <ul class="space-y-4">
