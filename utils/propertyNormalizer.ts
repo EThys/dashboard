@@ -583,6 +583,7 @@ export function normalizeStandardProperty(item: PropertyResponse): NormalizedPro
             profileImage: item.image
         },
         publisherImage: item.image,
+        guarantee: item.property.guarantee,
         createdAt: new Date(item.property.createdAt).toLocaleDateString('fr-FR', {
             day: 'numeric',
             month: 'long',
