@@ -12,18 +12,17 @@ definePageMeta({
 import { useServiceStore } from '@/stores/services'
 
 import { useAuthStore } from '@/stores/auth'
+import { encodeId } from '@/utils/urlObfuscator'
+import ServiceCardShimmer from '~/components/front/ServiceCardShimmer.vue'
 
 const config = useRuntimeConfig()
 const route = useRoute()
-const searchQuery = ref('')
+const searchQuery = ref(route.query.q?.toString() || '')
 const selectedDay = ref('all')
 const serviceStore = useServiceStore()
 const authStore = useAuthStore()
 
-const isAdmin = computed(() => {
-    // Check if user is logged in and has admin role
-    return authStore.isAuthenticated && authStore.user?.role === 'admin'
-})
+const isAdmin = computed(() => authStore.isAdmin)
 
 // Advanced Filters state
 const showAdvancedFilters = ref(false)
@@ -53,6 +52,8 @@ const { data: servicesData, pending: isLoading, error } = await useFetch<Service
     key: 'services-list',
     lazy: true
 })
+
+const isStoreEmpty = computed(() => serviceStore.services.length === 0)
 
 // Sync initial full fetch to store
 watch(servicesData, (newData) => {
@@ -150,8 +151,17 @@ const paginatedServices = computed(() => {
   return filteredServices.value.slice(start, end)
 })
 
-watch(currentPage, () => window.scrollTo({ top: 0, behavior: 'smooth' }))
-watch([searchQuery, selectedDay, selectedCategory, minPrice, maxPrice, selectedCurrency, startDate, endDate, selectedExperience, selectedStatus], () => currentPage.value = 1)
+const scrollToTop = () => {
+  if (import.meta.client) {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+}
+
+watch(currentPage, () => scrollToTop())
+watch([searchQuery, selectedDay, selectedCategory, minPrice, maxPrice, selectedCurrency, startDate, endDate, selectedExperience, selectedStatus], () => {
+    currentPage.value = 1
+    scrollToTop()
+})
 
 
 // Admin Actions
@@ -374,13 +384,9 @@ const toggleCertification = async (service: ServiceDetail) => {
     <section class="py-16 bg-muted/30">
       <div class="container mx-auto px-4">
         
-        <!-- Loading State -->
-        <div v-if="isLoading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-          <div v-for="i in 8" :key="i" class="bg-card rounded-3xl p-4 space-y-4 border h-96 animate-pulse">
-            <div class="h-48 bg-muted rounded-2xl w-full"></div>
-            <div class="h-6 bg-muted rounded w-3/4"></div>
-            <div class="h-4 bg-muted rounded w-1/2"></div>
-          </div>
+        <!-- Loading State (Shimmer Grid) -->
+        <div v-if="isLoading && isStoreEmpty" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+             <ServiceCardShimmer v-for="i in 8" :key="i" />
         </div>
 
         <!-- Empty State -->
@@ -409,7 +415,7 @@ const toggleCertification = async (service: ServiceDetail) => {
                 </div>
              </div>
 
-            <NuxtLink :to="`/services/${item.prestation.id}`" class="block h-full flex flex-col">
+            <NuxtLink :to="`/services/${encodeId(item.prestation.id)}`" class="block h-full flex flex-col">
                 <!-- Image & Badge -->
                 <div class="relative h-56 overflow-hidden">
                 <img 

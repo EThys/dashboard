@@ -2,9 +2,11 @@
 import { MapPin, Clock, Calendar, ShieldCheck, Star, ArrowLeft, Phone, Mail, Share2, CheckCircle2, Heart, Maximize } from 'lucide-vue-next'
 import { Button } from '@/components/ui'
 import VueEasyLightbox from 'vue-easy-lightbox'
-import CasaLoader from '@/components/ui/CasaLoader.vue'
-import ServiceSolicitationModal from '@/components/modals/ServiceSolicitationModal.vue'
 import { formatCurrency, getCurrencyLabel } from '@/utils/currency'
+import { encodeId, decodeId } from '@/utils/urlObfuscator'
+import { useServiceStore } from '@/stores/services'
+import DetailShimmer from '@/components/front/DetailShimmer.vue'
+import ServiceSolicitationModal from '@/components/modals/ServiceSolicitationModal.vue'
 
 definePageMeta({
   layout: 'default'
@@ -13,22 +15,36 @@ definePageMeta({
 const route = useRoute()
 const router = useRouter()
 const config = useRuntimeConfig()
-const serviceId = Number(route.params.id)
+const serviceId = computed(() => decodeId(route.params.id as string))
 const serviceStore = useServiceStore()
 
-// Try to get service from store
-const storeService = computed(() => serviceStore.getServiceById(serviceId))
+// Local fallback for direct ID fetch
+const fetchedService = ref<any>(null)
+
+// Computed for the specific service from store or local fetch
+const storeService = computed(() => fetchedService.value || serviceStore.getServiceById(serviceId.value))
 
 // Convert deviseId to currency code (1=CDF, 2=USD)
 const getCurrencyCode = (deviseId: number): 'CDF' | 'USD' => {
     return deviseId === 1 ? 'CDF' : 'USD'
 }
 
-// Fetch all services to populate store (same logic as properties)
-const { data: fetchComplete, pending: isLoading } = await useAsyncData(
-  `service-${serviceId}`,
+// Fetch logic
+const { pending: isLoading } = await useAsyncData(
+  `service-${serviceId.value}`,
   async () => {
-    // Fetch services if store is empty
+    // 1. Try to fetch specific service first
+    try {
+        const data = await $fetch<any>(`${config.public.apiBase}/prestations/${serviceId.value}`)
+        if (data && data.prestations) {
+            fetchedService.value = data
+            return true
+        }
+    } catch (e) {
+        console.warn('Direct service fetch failed, falling back to collection')
+    }
+
+    // 2. Fallback: Fetch all services if store is empty
     if (serviceStore.services.length === 0) {
         await serviceStore.fetchServices(config.public.apiBase)
     }
@@ -163,8 +179,8 @@ const contactProvider = () => {
   <div class="min-h-screen">
     <Transition name="fade" mode="out-in">
         <!-- Loading State -->
-        <div v-if="isLoading || !service" class="min-h-screen flex items-center justify-center">
-            <CasaLoader size="lg" />
+        <div v-if="isLoading || !service">
+            <DetailShimmer type="service" />
         </div>
 
         <!-- Error State -->
@@ -320,7 +336,7 @@ const contactProvider = () => {
                                     <div class="flex items-center gap-3 p-3 bg-muted/40 rounded-xl">
                                         <Calendar class="h-5 w-5 text-primary flex-shrink-0" />
                                         <div class="flex-1">
-                                            <p class="text-xs font-medium text-muted-foreground">Jours</p>
+                                            <p class="text-xs font-medium text-muted-foreground">Disponible</p>
                                             <p class="text-sm font-semibold break-words whitespace-normal">{{ service.availabilityDays }}</p>
                                         </div>
                                     </div>
@@ -359,10 +375,10 @@ const contactProvider = () => {
         <!-- Solicitation Modal -->
         <ServiceSolicitationModal 
             :isOpen="isModalOpen"
-            :serviceId="service?.id || 0"
+            :serviceId="serviceId"
             :serviceTitle="service?.title || ''"
             :minPrice="service?.minPrice"
-            :currencyCode="service?.currencySymbol"
+            :currencyCode="service?.currencyCode"
             :deviseId="service?.deviseId"
             @close="isModalOpen = false"
         />
