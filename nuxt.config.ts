@@ -80,6 +80,8 @@ export default defineNuxtConfig({
 
   // Désactiver le SSR sur les pages publiques pour éviter la désync Pinia SSR/client
   routeRules: {
+    '/api/**': { proxy: 'https://server.casanayo.com/api/**' },
+    '/auth/**': { proxy: 'https://server.casanayo.com/auth/**' },
     '/': { ssr: false },
     '/properties': { ssr: false },
     '/services': { ssr: false },
