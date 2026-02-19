@@ -4,11 +4,20 @@ import { Menu, X, LayoutDashboard, LogOut, Calendar, User, ChevronDown } from 'l
 import { Button } from '@/components/ui'
 import { useAuthStore } from '~/stores/auth'
 import { onClickOutside } from '@vueuse/core'
+import { useRoute } from 'vue-router'
 
+const route = useRoute()
 const isMobileMenuOpen = ref(false)
 const isDropdownOpen = ref(false)
 const dropdownRef = ref(null)
 const auth = useAuthStore()
+
+const handleLogoClick = (e: Event) => {
+  if (route.path === '/') {
+    e.preventDefault()
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+}
 
 onClickOutside(dropdownRef, () => isDropdownOpen.value = false)
 
@@ -34,16 +43,18 @@ const navLinks = [
   <header class="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-xl border-b border-gray-100">
     <!-- Main Navbar -->
     <div class="container mx-auto flex h-20 items-center justify-between px-4 sm:px-6 lg:px-8">
-      <!-- Logo -->
-      <NuxtLink to="/" class="flex items-center gap-2 group">
-        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-blue-600 shadow-md transition-transform group-hover:scale-105">
-          <span class="text-2xl font-black text-white italic">C</span>
-        </div>
-        <div class="hidden sm:block">
-          <span class="text-xl font-black tracking-tight text-slate-800">Casa</span>
-          <span class="text-xl font-black tracking-tight text-primary">Nayo</span>
-        </div>
-      </NuxtLink>
+      <!-- Logo & Store Icons (Mobile + Desktop) -->
+      <div class="flex items-center gap-4">
+        <NuxtLink to="/" @click="handleLogoClick" class="flex items-center gap-2 group shrink-0">
+          <img src="/logoCasa.png" alt="CasaNayo" class="h-10 w-10 object-contain transition-transform group-hover:scale-105" />
+          <div class="hidden sm:block">
+            <span class="text-xl font-black tracking-tight text-slate-800">Casa</span>
+            <span class="text-xl font-black tracking-tight text-primary">Nayo</span>
+          </div>
+        </NuxtLink>
+
+
+      </div>
 
       <!-- Desktop Navigation -->
       <nav class="hidden lg:flex items-center gap-1 bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
@@ -111,6 +122,17 @@ const navLinks = [
              </div>
         </div>
 
+        <!-- App Store Download Buttons (Desktop only) -->
+        <div class="hidden lg:flex items-center gap-4 border-r border-slate-200 pr-6 mr-2">
+            <span class="text-xs font-black uppercase tracking-wider text-slate-500">Télécharger sur</span>
+            <a href="https://apps.apple.com/fr/app/casanayo/id6757759953?l=en-GB" target="_blank" class="hover:opacity-80 transition-opacity" title="App Store">
+                <img src="~/assets/appStore.jpg" alt="App Store" class="h-8 w-auto" />
+            </a>
+            <a href="https://play.google.com/store/apps/details?id=com.casa.casa.casa&pcampaignid=web_share" target="_blank" class="hover:opacity-80 transition-opacity" title="Play Store">
+                <img src="~/assets/playStore.jpeg" alt="Play Store" class="h-8 w-auto" />
+            </a>
+        </div>
+
         <!-- Login CTA for Guests -->
         <NuxtLink v-if="!isAuthenticated" to="/login" class="hidden md:block">
           <Button class="h-11 px-8 font-black text-sm bg-primary hover:bg-primary/90 text-white rounded-xl shadow-xl shadow-primary/20 transition-all active:scale-95">
@@ -118,66 +140,125 @@ const navLinks = [
           </Button>
         </NuxtLink>
 
+        <!-- Compact Store Icons for Mobile (Right) -->
+        <div class="flex lg:hidden flex-col items-end gap-0.5 mr-2">
+           <span class="text-[8px] font-black uppercase tracking-tighter text-slate-400 leading-none">Télécharger</span>
+           <div class="flex items-center gap-1">
+             <a href="https://apps.apple.com/fr/app/casanayo/id6757759953?l=en-GB" target="_blank" class="hover:opacity-80 transition-opacity">
+               <img src="~/assets/appStore.jpg" alt="App Store" class="h-6 w-auto rounded-md shadow-sm" />
+             </a>
+             <a href="https://play.google.com/store/apps/details?id=com.casa.casa.casa&pcampaignid=web_share" target="_blank" class="hover:opacity-80 transition-opacity">
+               <img src="~/assets/playStore.jpeg" alt="Play Store" class="h-6 w-auto rounded-md shadow-sm" />
+             </a>
+           </div>
+        </div>
+
         <!-- Mobile Menu Toggle -->
         <button 
-          @click="isMobileMenuOpen = !isMobileMenuOpen" 
+          @click="isMobileMenuOpen = true" 
           class="lg:hidden h-10 w-10 flex items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
         >
-          <Menu v-if="!isMobileMenuOpen" class="h-6 w-6" />
-          <X v-else class="h-6 w-6" />
+          <Menu class="h-6 w-6" />
         </button>
       </div>
     </div>
 
-    <!-- Mobile Menu -->
-    <div 
-      v-if="isMobileMenuOpen" 
-      class="lg:hidden border-t border-slate-100 bg-white shadow-2xl animate-in slide-in-from-top w-full"
-    >
-      <nav class="flex flex-col p-4 gap-2">
-        <NuxtLink 
-          v-for="link in navLinks" 
-          :key="link.name" 
-          :to="link.path"
-          @click="isMobileMenuOpen = false"
-          class="block text-base font-bold text-slate-700 hover:text-primary hover:bg-slate-50 py-3 px-5 rounded-2xl transition-all"
+    <!-- Mobile Menu Full Screen -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transform transition duration-300 ease-out"
+        enter-from-class="translate-x-full"
+        enter-to-class="translate-x-0"
+        leave-active-class="transform transition duration-200 ease-in"
+        leave-from-class="translate-x-0"
+        leave-to-class="translate-x-full"
+      >
+        <div 
+          v-if="isMobileMenuOpen" 
+          class="fixed inset-0 z-[100] bg-white flex flex-col overflow-y-auto"
         >
-          {{ link.name }}
-        </NuxtLink>
-        
-        <div class="pt-4 mt-2 border-t border-slate-100 space-y-2">
-            <!-- Mobile Admin Link -->
-            <NuxtLink v-if="isAuthenticated && isAdmin" to="/dashboard" @click="isMobileMenuOpen = false">
-                <Button class="w-full h-12 font-black bg-blue-600 hover:bg-blue-700 text-white rounded-2xl flex items-center justify-center gap-2 transition-all">
-                    <LayoutDashboard class="size-5" />
-                    Dashboard Admin
-                </Button>
+          <!-- Header (Logo + Close) -->
+          <div class="flex items-center justify-between p-6">
+             <div class="flex items-center gap-2">
+                <img src="/logoCasa.png" alt="CasaNayo" class="h-10 w-10 object-contain" />
+                <span class="text-xl font-black tracking-tight text-slate-800">Casa<span class="text-primary">Nayo</span></span>
+             </div>
+             <button @click="isMobileMenuOpen = false" class="p-2 bg-slate-50 rounded-full hover:bg-slate-100 transition-colors">
+                <X class="h-6 w-6 text-slate-600" />
+             </button>
+          </div>
+
+          <!-- Main Navigation -->
+          <div class="flex-1 flex flex-col px-8 pt-4 gap-6">
+            <NuxtLink 
+              v-for="link in navLinks" 
+              :key="link.name" 
+              :to="link.path"
+              @click="isMobileMenuOpen = false"
+              class="text-3xl font-black text-slate-800 hover:text-primary transition-colors flex items-center justify-between group"
+            >
+              {{ link.name }}
+              <span class="opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 text-primary">→</span>
             </NuxtLink>
 
-            <!-- Mobile User Links -->
-            <template v-if="isAuthenticated && !isAdmin">
-                <NuxtLink to="/dashboard/my-reservations" @click="isMobileMenuOpen = false" class="flex items-center gap-3 px-5 py-3 text-base font-bold text-slate-600 rounded-2xl">
-                    <Calendar class="size-5" />
-                    Mes Réservations
-                </NuxtLink>
-                <NuxtLink to="/profile" @click="isMobileMenuOpen = false" class="flex items-center gap-3 px-5 py-3 text-base font-bold text-slate-600 rounded-2xl">
-                    <User class="size-5" />
-                    Mon Profil
-                </NuxtLink>
-                <Button @click="handleLogout" variant="ghost" class="w-full h-12 font-black text-red-500 rounded-2xl bg-red-50 flex items-center justify-center gap-2">
-                    <LogOut class="size-5" />
-                    Déconnexion
-                </Button>
-            </template>
+            <div class="border-t border-slate-100 my-4 w-10"></div>
 
-            <!-- Mobile Login Link -->
-            <NuxtLink v-if="!isAuthenticated" to="/login" @click="isMobileMenuOpen = false">
-                <Button class="w-full h-12 font-black bg-primary text-white rounded-2xl shadow-xl shadow-primary/20 flex items-center justify-center gap-2">
+            <!-- Authenticated Actions -->
+            <template v-if="isAuthenticated">
+               <div v-if="isAdmin" class="space-y-4">
+                  <NuxtLink to="/dashboard" @click="isMobileMenuOpen = false" class="bg-blue-600 text-white rounded-2xl h-14 flex items-center justify-center gap-3 font-bold shadow-lg shadow-blue-600/20 w-full block"> <!-- Corrected to allow full width button -->
+                     <div class="flex items-center justify-center gap-2 w-full h-full">
+                        <LayoutDashboard class="w-5 h-5" />
+                        Dashboard Admin
+                     </div>
+                  </NuxtLink>
+               </div>
+               
+               <div v-else class="space-y-4">
+                  <NuxtLink to="/dashboard/my-reservations" @click="isMobileMenuOpen = false" class="flex items-center gap-4 text-lg font-bold text-slate-600">
+                     <div class="size-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center">
+                        <Calendar class="w-5 h-5" />
+                     </div>
+                     Mes Réservations
+                  </NuxtLink>
+                  <NuxtLink to="/profile" @click="isMobileMenuOpen = false" class="flex items-center gap-4 text-lg font-bold text-slate-600">
+                     <div class="size-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                        <User class="w-5 h-5" />
+                     </div>
+                     Mon Profil
+                  </NuxtLink>
+               </div>
+               
+               <button @click="handleLogout" class="flex items-center gap-4 text-lg font-bold text-red-500 mt-2">
+                  <div class="size-10 rounded-xl bg-red-50 text-red-500 flex items-center justify-center">
+                     <LogOut class="w-5 h-5" />
+                  </div>
+                  Se déconnecter
+               </button>
+            </template>
+            
+            <!-- Guest Actions -->
+            <NuxtLink v-else to="/login" @click="isMobileMenuOpen = false">
+                <Button class="w-full h-14 font-black bg-primary text-white rounded-2xl shadow-xl shadow-primary/20 text-lg">
                     Se connecter
                 </Button>
             </NuxtLink>
+          </div>
+
+          <!-- Footer Download -->
+          <div class="p-8 bg-slate-50 mt-auto">
+             <p class="text-xs font-black uppercase tracking-widest text-slate-400 mb-4 text-center">Télécharger l'application</p>
+             <div class="grid grid-cols-2 gap-4">
+                 <a href="https://apps.apple.com/fr/app/casanayo/id6757759953?l=en-GB" target="_blank" class="flex items-center justify-center gap-2 py-4 bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-md transition-all">
+                    <img src="~/assets/appStore.jpg" alt="App Store" class="h-6 w-auto" />
+                 </a>
+                 <a href="https://play.google.com/store/apps/details?id=com.casa.casa.casa&pcampaignid=web_share" target="_blank" class="flex items-center justify-center gap-2 py-4 bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-md transition-all">
+                    <img src="~/assets/playStore.jpeg" alt="Play Store" class="h-6 w-auto" />
+                 </a>
+             </div>
+          </div>
         </div>
-      </nav>
-    </div>
+      </Transition>
+    </Teleport>
   </header>
 </template>
