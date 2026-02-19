@@ -68,15 +68,21 @@ export default defineNuxtConfig({
   },
 
   // Runtime config for API base URL
+  // → En prod Vercel : définir NUXT_PUBLIC_API_BASE=https://server.casanayo.com/api
+  //                    et NUXT_PUBLIC_AUTH_BASE=https://server.casanayo.com
+  // → En dev : le proxy Nitro redirige /api et /auth automatiquement
   runtimeConfig: {
     public: {
-      apiBase: process.env.NODE_ENV === 'production'
-        ? 'https://server.casanayo.com/api'
-        : '/api',
-      authBase: process.env.NODE_ENV === 'production'
-        ? 'https://server.casanayo.com' // Endpoints like /auth/login will be appended
-        : '' // In dev, we use /auth request directly via proxy
+      apiBase: '/api',       // overridé par NUXT_PUBLIC_API_BASE sur Vercel
+      authBase: '',          // overridé par NUXT_PUBLIC_AUTH_BASE sur Vercel
     }
+  },
+
+  // Désactiver le SSR sur les pages publiques pour éviter la désync Pinia SSR/client
+  routeRules: {
+    '/': { ssr: false },
+    '/properties': { ssr: false },
+    '/services': { ssr: false },
   },
   build: {
     transpile: ['vue-sonner']
