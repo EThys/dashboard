@@ -25,7 +25,7 @@ useHead({
       <!-- Header -->
       <div class="bg-white rounded-3xl p-8 sm:p-12 shadow-sm border border-slate-100 mb-10 relative overflow-hidden">
         <div class="absolute top-0 right-0 p-12 opacity-[0.03] pointer-events-none">
-          <ShieldAlert class="size-64 text-red-600" />
+          <img src="/logoCasa.png" alt="Sécurité CasaNayo" class="size-64 object-contain opacity-10" />
         </div>
         
         <div class="relative z-10 space-y-4">
@@ -46,14 +46,14 @@ useHead({
       <!-- Content -->
       <div class="bg-white rounded-3xl p-8 sm:p-12 shadow-sm border border-slate-100 prose prose-slate max-w-none">
         <section class="mb-12">
-          <h2 class="text-2xl font-black text-slate-900 mb-6 italic">Notre Engagement</h2>
+          <h2 class="text-2xl font-black text-slate-900 mb-6">Notre Engagement</h2>
           <p class="text-slate-600 text-lg leading-relaxed">
             La protection de vos informations est notre priorité absolue. CasaNayo utilise des technologies de pointe pour garantir que chaque donnée stockée et chaque transaction effectuée sur notre plateforme est protégée contre tout accès non autorisé.
           </p>
         </section>
 
         <section class="mb-12">
-          <h2 class="text-2xl font-black text-slate-900 mb-6 italic">Mesures de protection</h2>
+          <h2 class="text-2xl font-black text-slate-900 mb-6">Mesures de protection</h2>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div class="p-8 rounded-[2rem] bg-slate-50 border border-slate-100 space-y-4 transition-all hover:bg-white hover:shadow-xl hover:shadow-slate-100 group text-left">
                   <div class="size-14 rounded-2xl bg-slate-900 flex items-center justify-center text-white transition-transform group-hover:scale-110">
@@ -91,13 +91,13 @@ useHead({
         </section>
 
         <section class="mb-12">
-          <h2 class="text-2xl font-black text-slate-900 mb-6 italic">Culture de l'Audit</h2>
+          <h2 class="text-2xl font-black text-slate-900 mb-6">Culture de l'Audit</h2>
           <p class="text-slate-600 text-lg leading-relaxed mb-6 font-bold">
             Nous réalisons des tests de pénétration et des audits de sécurité réguliers pour identifier et corriger proactivement toute vulnérabilité potentielle.
           </p>
           <div class="p-6 bg-red-50 rounded-2xl border border-red-100 text-red-900 text-sm">
               <p class="font-black uppercase tracking-widest text-xs mb-2">Signaler une faille</p>
-              <p>Si vous pensez avoir identifié un problème de sécurité, veuillez contacter notre équipe dédiée immédiatement à : <span class="font-bold">security@casanayo.cd</span></p>
+              <p>Si vous pensez avoir identifié un problème de sécurité, veuillez contacter notre équipe dédiée immédiatement à : <span class="font-bold">security@casanayo.com</span></p>
           </div>
         </section>
       </div>

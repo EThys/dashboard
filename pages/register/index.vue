@@ -3,7 +3,8 @@ import { ref, computed } from 'vue'
 import { 
     Loader2, User, Key, Mail, Phone, MapPin, Lock,
     ChevronRight, ChevronLeft, CheckCircle2,
-    Briefcase, Building2, Hammer, Zap, Car, Truck, Grid, Paintbrush, Ruler, PenTool
+    Briefcase, Building2, Hammer, Zap, Car, Truck, Grid, Paintbrush, Ruler, PenTool,
+    Eye, EyeOff
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui'
 import { Input } from '@/components/ui'
@@ -16,7 +17,7 @@ definePageMeta({
 // --- State ---
 const currentStep = ref(1) // 1: Info, 2: Role
 const isLoading = ref(false)
-const error = ref('')
+const showPassword = ref(false)
 
 // User Info
 const form = ref({
@@ -131,6 +132,13 @@ const hideSuggestions = () => {
 // Initialize default suggestions
 filteredCities.value = allCities.slice(0, 20)
 
+// Phone number watcher to strip leading zero
+watch(() => form.value.phoneNumber, (newVal) => {
+    if (newVal && newVal.startsWith('0')) {
+        form.value.phoneNumber = newVal.substring(1)
+    }
+})
+
 
 // Account Selection logic (existing...)
 const isLocataire = ref(false)
@@ -165,9 +173,59 @@ const prestataires = [
 // --- Logic ---
 
 const nextStep = () => {
-    // Concatenate phone before validation/next step if needed, or just validate fields
-    // Logic: First validate
-    if (currentStep.value === 1 && isInfoValid.value) {
+    // Basic presence check
+    if (!form.value.firstName || !form.value.lastName) {
+        toast.error('Champs manquants', { description: 'Veuillez entrer votre nom et prénom.' })
+        return
+    }
+
+    if (!form.value.city) {
+        toast.error('Ville manquante', { description: 'Veuillez sélectionner votre ville.' })
+        return
+    }
+
+    // Contact validation: At least one must be present
+    if (!form.value.email && !form.value.phoneNumber) {
+        toast.error('Moyen de contact requis', { 
+            description: 'Veuillez renseigner au moins une adresse email ou un numéro de téléphone.' 
+        })
+        return
+    }
+
+    // Email validation (if provided)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (form.value.email && !emailRegex.test(form.value.email)) {
+        toast.error('Email invalide', { description: 'Veuillez entrer une adresse email valide.' })
+        return
+    }
+
+    // Phone validation (specifically for RDC +243, if provided)
+    if (selectedCallingCode.value === '+243' && form.value.phoneNumber) {
+        const phone = form.value.phoneNumber.replace(/\D/g, '')
+        const validPrefixes = ['85', '84', '80', '83', '86', '81', '82', '89', '99', '98', '97']
+        const prefix = phone.substring(0, 2)
+
+        if (phone.length !== 9) {
+            toast.error('Numéro invalide', { description: 'Le numéro doit contenir exactement 9 chiffres (ex: 81...) ' })
+            return
+        }
+
+        if (!validPrefixes.includes(prefix)) {
+            toast.error('Opérateur inconnu', { description: 'Ce numéro existe-t-il vraiment en RDC ? Vérifiez le préfixe.' })
+            return
+        }
+    }
+
+    // Password validation
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$/
+    if (!passwordRegex.test(form.value.password)) {
+        toast.error('Mot de passe trop faible', { 
+            description: 'Il doit contenir au moins 6 caractères, une majuscule, une minuscule et un chiffre.' 
+        })
+        return
+    }
+
+    if (currentStep.value === 1) {
         currentStep.value = 2
     }
 }
@@ -206,7 +264,8 @@ const selectPrestataire = (id: number) => {
 const isInfoValid = computed(() => {
     const hasBasicInfo = form.value.firstName && form.value.lastName && form.value.city
     const hasContact = form.value.email || form.value.phoneNumber
-    return hasBasicInfo && hasContact && form.value.password
+    const hasPassword = form.value.password && form.value.password.length >= 6
+    return !!(hasBasicInfo && hasContact && hasPassword)
 })
 
 const isRoleValid = computed(() => {
@@ -224,7 +283,6 @@ const router = useRouter()
 const handleRegister = async () => {
     if (!isRoleValid.value) return
     isLoading.value = true
-    error.value = ''
 
     // Concatenate phone if exists
     const fullPhone = form.value.phoneNumber ? `${selectedCallingCode.value}${form.value.phoneNumber}` : ""
@@ -283,14 +341,25 @@ const handleRegister = async () => {
     } catch (e: any) {
         console.error('Erreur inscription:', e)
         
-        const errorMessage = e.data?.message || e.message || 'Une erreur est survenue lors de l\'inscription.'
-        error.value = errorMessage
-        
-        console.log('Affichage du toast d\'erreur:', errorMessage)
-        
-        toast.error('Erreur d\'inscription', {
-            description: errorMessage,
-            duration: 4000,
+        const rawMessage = e.data?.message || e.message || ''
+        let userMessage = 'Une erreur est survenue lors de l\'inscription.'
+
+        // Map common errors to friendly French
+        if (rawMessage.includes('email') && rawMessage.includes('exists')) {
+            userMessage = "Cette adresse email est déjà utilisée."
+        } else if (rawMessage.includes('phone') && rawMessage.includes('exists')) {
+            userMessage = "Ce numéro de téléphone est déjà utilisé."
+        } else if (rawMessage) {
+            userMessage = rawMessage
+        }
+
+        toast.error('Échec de l\'inscription', {
+            description: userMessage,
+            duration: 5000,
+            action: {
+                label: 'Réessayer',
+                onClick: () => {}
+            }
         })
     } finally {
         isLoading.value = false
@@ -307,12 +376,10 @@ const handleRegister = async () => {
         
         <!-- Top Nav -->
         <div class="flex items-center justify-between p-6">
-            <div class="flex items-center gap-2">
-                 <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-                    <span class="text-primary font-bold text-lg">C</span>
-                </div>
+            <NuxtLink to="/" class="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                 <img src="/logoCasa.png" alt="CasaNayo" class="h-10 w-10 object-contain" />
                 <span class="font-bold text-xl tracking-tight">CasaNayo</span>
-            </div>
+            </NuxtLink>
             <div class="text-sm text-muted-foreground">
                 Déjà membre ? <a href="/login" class="font-semibold text-primary hover:underline">Connexion</a>
             </div>
@@ -358,7 +425,7 @@ const handleRegister = async () => {
                     </div>
 
                     <div class="space-y-2">
-                        <Label>Email professionnel</Label>
+                        <Label>Email </Label>
                          <div class="relative">
                             <Mail class="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
                             <Input v-model="form.email" type="email" class="pl-9 h-11" placeholder="baka@example.com" />
@@ -369,7 +436,20 @@ const handleRegister = async () => {
                         <Label>Mot de passe</Label>
                          <div class="relative">
                             <Lock class="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
-                            <Input v-model="form.password" type="password" class="pl-9 h-11" placeholder="Votre mot de passe" />
+                            <Input 
+                                v-model="form.password" 
+                                :type="showPassword ? 'text' : 'password'" 
+                                class="pl-9 h-11 pr-10" 
+                                placeholder="Votre mot de passe" 
+                            />
+                            <button 
+                                type="button" 
+                                @click="showPassword = !showPassword"
+                                class="absolute right-3 top-3.5 text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                                <Eye v-if="!showPassword" class="h-4 w-4" />
+                                <EyeOff v-else class="h-4 w-4" />
+                            </button>
                          </div>
                     </div>
 
@@ -544,24 +624,34 @@ const handleRegister = async () => {
                      {{ isLoading ? 'Création...' : 'Terminer l\'inscription' }}
                  </Button>
              </div>
+             <div class="text-center text-xs text-muted-foreground mt-4">
+                En continuant, vous acceptez nos <a href="/terms" class="underline hover:text-primary">Conditions d'utilisation</a>.
+             </div>
          </div>
     </div>
 
-    <!-- Right Side - Hero (Unchanged) -->
-    <div class="hidden lg:block relative bg-muted overflow-hidden">
-        <div class="absolute inset-0 bg-primary/80 mix-blend-overlay z-10"></div>
-        <img 
-            src="https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&q=80" 
-            class="absolute inset-0 h-full w-full object-cover grayscale opacity-50"
+    <!-- Right Side - Hero -->
+    <div class="hidden bg-muted lg:block relative overflow-hidden">
+       <!-- Artistic Background -->
+       <div class="absolute inset-0 bg-primary/90 mix-blend-multiply z-10"></div>
+       <img 
+          src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=2653&auto=format&fit=crop" 
+          alt="Modern Architecture" 
+          class="absolute inset-0 h-full w-full object-cover grayscale opacity-60"
         />
-        <div class="relative z-20 flex h-full flex-col justify-end p-16 text-white/90">
-             <div class="max-w-xl space-y-6">
-                 <h2 class="text-3xl font-extrabold leading-tight">
-                    &ldquo;CasaNayo centralise l’ensemble du parcours immobilier dans une seule application : recherche de biens, vente, location et services à domicile.&rdquo;
-                 </h2>
-                 <p class="text-lg font-medium opacity-90 text-right">— L'équipe CasaNayo</p>
-           
-             </div>
+        <div class="relative z-20 flex h-full flex-col justify-between p-12 text-white">
+            <NuxtLink to="/" class="font-bold text-lg flex items-center gap-2 hover:opacity-80 transition-opacity">
+                 <img src="/logoCasa.png" alt="CasaNayo" class="h-8 w-8 object-contain" />
+                CasaNayo
+            </NuxtLink>
+            <div class="space-y-4 max-w-lg">
+                <blockquote class="text-2xl font-medium leading-snug">
+                &ldquo;CasaNayo centralise l’ensemble du parcours immobilier dans une seule application : recherche de biens, vente, location et services à domicile.&rdquo;
+                </blockquote>
+                <div class="flex items-center gap-4">
+                    <div class="font-semibold text-sm">L'équipe CasaNayo</div>
+                </div>
+            </div>
         </div>
     </div>
 
