@@ -260,6 +260,7 @@ export interface Property {
     water: number
     createdAt: string
     available: boolean
+    guarantee?: string
 }
 
 export interface PropertyImages {
@@ -366,6 +367,7 @@ export interface NormalizedProperty {
     }
     publisherImage?: string
     createdAt: string
+    guarantee?: string
 }
 
 // ============================================================================
