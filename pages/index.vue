@@ -10,6 +10,7 @@ import FeaturedProperties from '~/components/front/FeaturedProperties.vue'
 import AppDownload from '~/components/front/AppDownload.vue'
 import PropertySection from '~/components/front/PropertySection.vue'
 import { usePropertyStore } from '@/stores/properties'
+import SectionShimmer from '~/components/front/SectionShimmer.vue'
 import CasaLoader from '@/components/ui/CasaLoader.vue'
 
 definePageMeta({
@@ -34,65 +35,70 @@ const { pending: isLoadingProp } = await useAsyncData('home-properties', async (
 <template>
   <div>
     <Hero />
-    <HowItWorks />
+    <div class="reveal"><HowItWorks /></div>
     
-    <PropertyCategories />
-    <FeaturedProperties />
+    <div class="reveal"><PropertyCategories /></div>
+    <div class="reveal"><FeaturedProperties /></div>
     
-    <ServiceCategories />
-    <AllServices />
+    <div class="reveal"><ServiceCategories /></div>
+    <div class="reveal"><AllServices /></div>
 
     <!-- Loading State for Sections -->
     <Transition name="fade" mode="out-in">
-        <div v-if="isLoadingProp" class="py-24 flex items-center justify-center">
-            <CasaLoader />
+        <div v-if="isLoadingProp">
+            <SectionShimmer v-for="i in 2" :key="i" />
         </div>
 
         <div v-else>
         <!-- Property Sections -->
-        <PropertySection 
-            v-if="propertyStore.getTerrains && propertyStore.getTerrains.length"
-            title="Terrains" 
-            subtitle="Construisez votre rêve"
-            :items="propertyStore.getTerrains"
-            typeId="Terrain"
-        />
+        <div v-if="propertyStore.getTerrains && propertyStore.getTerrains.length" class="reveal">
+            <PropertySection 
+                title="Terrains" 
+                subtitle="Construisez votre rêve"
+                :items="propertyStore.getTerrains"
+                typeId="Terrain"
+            />
+        </div>
 
-        <PropertySection 
-            v-if="propertyStore.getBureaux && propertyStore.getBureaux.length"
-            title="Bureaux" 
-            subtitle="Espace de travail"
-            :items="propertyStore.getBureaux"
-            typeId="Bureau"
-        />
+        <div v-if="propertyStore.getBureaux && propertyStore.getBureaux.length" class="reveal">
+            <PropertySection 
+                title="Bureaux" 
+                subtitle="Espace de travail"
+                :items="propertyStore.getBureaux"
+                typeId="Bureau"
+            />
+        </div>
 
-        <PropertySection 
-            v-if="propertyStore.getHotels && propertyStore.getHotels.length"
-            title="Hôtels" 
-            subtitle="Séjour Inoubliable"
-            :items="propertyStore.getHotels"
-            typeId="Hotel"
-        />
+        <div v-if="propertyStore.getHotels && propertyStore.getHotels.length" class="reveal">
+            <PropertySection 
+                title="Hôtels" 
+                subtitle="Séjour Inoubliable"
+                :items="propertyStore.getHotels"
+                typeId="Hotel"
+            />
+        </div>
 
-        <PropertySection 
-            v-if="propertyStore.getFestives && propertyStore.getFestives.length"
-            title="Salles de Fête" 
-            subtitle="Célébrez en grand"
-            :items="propertyStore.getFestives"
-            typeId="Salle de fête"
-        />
+        <div v-if="propertyStore.getFestives && propertyStore.getFestives.length" class="reveal">
+            <PropertySection 
+                title="Salles de Fête" 
+                subtitle="Célébrez en grand"
+                :items="propertyStore.getFestives"
+                typeId="Salle de fête"
+            />
+        </div>
 
-        <PropertySection 
-            v-if="propertyStore.getFuneraires && propertyStore.getFuneraires.length"
-            title="Espaces Funéraires" 
-            subtitle="Services"
-            :items="propertyStore.getFuneraires"
-            typeId="Espace funéraire"
-        />
+        <div v-if="propertyStore.getFuneraires && propertyStore.getFuneraires.length" class="reveal">
+            <PropertySection 
+                title="Espaces Funéraires" 
+                subtitle="Services"
+                :items="propertyStore.getFuneraires"
+                typeId="Espace funéraire"
+            />
+        </div>
         </div>
     </Transition>
     
-    <AppDownload />
+    <div class="reveal"><AppDownload /></div>
   </div>
 </template>
 
