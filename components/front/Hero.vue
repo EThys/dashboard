@@ -1,7 +1,14 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { Button } from '@/components/ui'
 import { Search, ChevronDown, Smartphone, Apple, Play } from 'lucide-vue-next'
+import { usePropertyStore } from '@/stores/properties'
+import { useServiceStore } from '@/stores/services'
+
+const config = useRuntimeConfig()
+const router = useRouter()
+const propertyStore = usePropertyStore()
+const serviceStore = useServiceStore()
 
 const activeTab = ref<'properties' | 'services'>('properties')
 const location = ref('')
@@ -10,19 +17,34 @@ const priceRange = ref('')
 const serviceCategory = ref('')
 const serviceSearch = ref('')
 
-const router = useRouter()
+// Fetch dynamic data
+const { pending: isLoadingTypes } = useAsyncData('hero-types', () => propertyStore.fetchTypes(config.public.apiBase), { lazy: true })
+const { pending: isLoadingCats } = useAsyncData('hero-cats', () => serviceStore.fetchCategories(config.public.apiBase), { lazy: true })
+
+const propertyTypes = computed(() => propertyStore.getTypes)
+const serviceCategories = computed(() => serviceStore.getCategories)
 
 const handleSearch = () => {
   if (activeTab.value === 'properties') {
     const query: any = {}
-    if (location.value) query.city = location.value
-    if (propertyType.value) query.type = propertyType.value
-    if (priceRange.value) query.price = priceRange.value
+    if (location.value && location.value !== 'all') query.city = location.value
+    if (propertyType.value && propertyType.value !== 'all') query.type = propertyType.value
+    
+    // Simple budget mapping
+    if (priceRange.value) {
+      if (priceRange.value === '1') { query.minPrice = 10; query.maxPrice = 100 }
+      else if (priceRange.value === '2') { query.minPrice = 101; query.maxPrice = 200 }
+      else if (priceRange.value === '3') { query.minPrice = 201; query.maxPrice = 500 }
+      else if (priceRange.value === '4') { query.minPrice = 501; query.maxPrice = 1000 }
+      else if (priceRange.value === '5') { query.minPrice = 1000 }
+    }
     
     router.push({ path: '/properties', query })
   } else {
     const query: any = {}
-    if (serviceCategory.value) query.category = serviceCategory.value
+    if (serviceCategory.value && serviceCategory.value !== 'all') {
+        query.categoryId = serviceCategory.value
+    }
     if (serviceSearch.value) query.q = serviceSearch.value
     
     router.push({ path: '/services', query })
@@ -104,7 +126,7 @@ const handleSearch = () => {
 
         <!-- Right Column: Filter Card -->
         <div class="lg:col-span-5 relative z-30 mt-8 lg:mt-0 opacity-0 animate-fade-in-up animation-delay-600">
-          <div class="bg-slate-900/40 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 shadow-2xl transform transition-all hover:scale-[1.01] hover:shadow-primary/10">
+          <div class="bg-white/5 lg:bg-slate-900/40 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 shadow-2xl transform transition-all hover:scale-[1.01] hover:shadow-primary/10">
             <!-- Tabs -->
             <div class="flex p-1 bg-black/20 rounded-2xl mb-6">
               <button 
@@ -134,6 +156,16 @@ const handleSearch = () => {
                       <option class="text-slate-900">Kinshasa</option>
                       <option class="text-slate-900">Lubumbashi</option>
                       <option class="text-slate-900">Goma</option>
+                      <option class="text-slate-900">Bukavu</option>
+                      <option class="text-slate-900">Kisangani</option>
+                      <option class="text-slate-900">Matadi</option>
+                      <option class="text-slate-900">Kananga</option>
+                      <option class="text-slate-900">Mbuji-Mayi</option>
+                      <option class="text-slate-900">Kolwezi</option>
+                      <option class="text-slate-900">Likasi</option>
+                      <option class="text-slate-900">Mbandaka</option>
+                      <option class="text-slate-900">Kindu</option>
+                      <option class="text-slate-900">Boma</option>
                     </select>
                     <ChevronDown class="absolute right-3 top-4 h-4 w-4 text-white/50 pointer-events-none" />
                   </div>
@@ -142,10 +174,15 @@ const handleSearch = () => {
                   <label class="text-xs font-bold text-white/80 ml-1">Type</label>
                   <div class="relative group">
                     <select v-model="propertyType" class="w-full h-12 pl-4 pr-10 rounded-xl bg-white/10 border border-white/10 text-white focus:bg-white/20 focus:border-primary outline-none transition-all appearance-none cursor-pointer">
-                      <option value="" class="text-slate-900">Tout type</option>
-                      <option class="text-slate-900">Maison</option>
-                      <option class="text-slate-900">Appartement</option>
-                      <option class="text-slate-900">Villa</option>
+                      <option value="" class="text-slate-900 font-bold">Tout type</option>
+                      <option 
+                        v-for="type in propertyTypes" 
+                        :key="type.propertyTypeId" 
+                        :value="type.name"
+                        class="text-slate-900"
+                      >
+                        {{ type.name }}
+                      </option>
                     </select>
                     <ChevronDown class="absolute right-3 top-4 h-4 w-4 text-white/50 pointer-events-none" />
                   </div>
@@ -156,10 +193,12 @@ const handleSearch = () => {
                 <label class="text-xs font-bold text-white/80 ml-1">Budget</label>
                 <div class="relative group">
                   <select v-model="priceRange" class="w-full h-12 pl-4 pr-10 rounded-xl bg-white/10 border border-white/10 text-white focus:bg-white/20 focus:border-primary outline-none transition-all appearance-none cursor-pointer">
-                    <option value="" class="text-slate-900">Tout budget</option>
-                    <option class="text-slate-900">$500 - $1,000</option>
-                    <option class="text-slate-900">$1,000 - $5,000</option>
-                    <option class="text-slate-900">$5,000+</option>
+                    <option value="" class="text-slate-900 font-bold">Tout budget</option>
+                    <option value="1" class="text-slate-900">$10 - $100</option>
+                    <option value="2" class="text-slate-900">$101 - $200</option>
+                    <option value="3" class="text-slate-900">$201 - $500</option>
+                    <option value="4" class="text-slate-900">$501 - $1,000</option>
+                    <option value="5" class="text-slate-900">$1,000+</option>
                   </select>
                   <ChevronDown class="absolute right-3 top-4 h-4 w-4 text-white/50 pointer-events-none" />
                 </div>
@@ -180,11 +219,15 @@ const handleSearch = () => {
                 <label class="text-xs font-bold text-white/80 ml-1">Catégorie</label>
                 <div class="relative group">
                   <select v-model="serviceCategory" class="w-full h-12 pl-4 pr-10 rounded-xl bg-white/10 border border-white/10 text-white focus:bg-white/20 focus:border-primary outline-none transition-all appearance-none cursor-pointer">
-                    <option value="" class="text-slate-900">Toutes catégories</option>
-                    <option class="text-slate-900">Plomberie</option>
-                    <option class="text-slate-900">Électricité</option>
-                    <option class="text-slate-900">Ménage</option>
-                    <option class="text-slate-900">Autre</option>
+                    <option value="" class="text-slate-900 font-bold">Toutes catégories</option>
+                    <option 
+                        v-for="cat in serviceCategories" 
+                        :key="cat.id" 
+                        :value="cat.id"
+                        class="text-slate-900"
+                    >
+                        {{ cat.name }}
+                    </option>
                   </select>
                   <ChevronDown class="absolute right-3 top-4 h-4 w-4 text-white/50 pointer-events-none" />
                 </div>
@@ -215,38 +258,39 @@ const handleSearch = () => {
       </div>
     </div>
     
-    <!-- Mobile App Download Section -->
-    <div class="relative lg:absolute lg:bottom-8 left-0 w-full z-20 opacity-0 animate-fade-in-up animation-delay-1000 px-4 sm:px-6 mt-12 lg:mt-0">
+    <div class="hidden lg:block absolute lg:bottom-10 left-0 w-full z-20 opacity-0 animate-fade-in-up animation-delay-1000 px-4 sm:px-6">
       <div class="container mx-auto">
-        <div class="flex flex-col lg:flex-row items-center justify-between gap-4 p-4 sm:p-5 rounded-3xl bg-slate-900/40 backdrop-blur-xl border border-white/10 max-w-7xl mx-auto hover:bg-slate-900/60 transition-all duration-300 shadow-2xl">
-          <div class="flex items-center gap-4 text-center sm:text-left">
-            <div class="p-3 bg-primary/20 rounded-2xl shrink-0 hidden sm:flex">
-              <Smartphone class="w-6 h-6 text-white" />
+        <div class="flex flex-col lg:flex-row items-center justify-between gap-6 p-6 sm:p-5 rounded-[2rem] bg-white/5 lg:bg-slate-900/40 backdrop-blur-2xl border border-white/10 max-w-7xl mx-auto transition-all duration-300 shadow-2xl">
+          <div class="flex items-center gap-5 text-center sm:text-left">
+            <div class="p-4 bg-primary/20 rounded-2xl shrink-0 flex items-center justify-center">
+              <Smartphone class="w-6 h-6 text-primary" />
             </div>
-            <div class="flex flex-col">
-              <p class="text-white font-black text-sm sm:text-lg leading-tight uppercase tracking-widest sm:normal-case sm:tracking-normal">Disponible sur mobile</p>
-              <p class="text-white/60 text-[10px] sm:text-sm mt-1 hidden xs:block">Téléchargez l'application CasaNayo pour une expérience sans limite</p>
+            <div class="flex flex-col text-left">
+              <p class="text-white font-black text-base sm:text-lg leading-none tracking-tight">Disponible sur mobile</p>
+              <p class="text-white/50 text-xs sm:text-sm mt-1.5 font-medium text-left">L'expérience CasaNayo partout avec vous</p>
             </div>
           </div>
           
-          <div class="flex items-center gap-3 sm:gap-4 w-full sm:w-auto justify-center">
+          <div class="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
             <!-- App Store Button -->
-            <button class="flex items-center gap-2 sm:gap-3 px-4 sm:px-6 py-2 sm:py-3 bg-white text-slate-900 rounded-2xl hover:bg-sky-50 transition-all transform hover:scale-105 active:scale-95 shadow-xl group border-none outline-none">
-              <Apple class="w-5 h-5 sm:w-6 sm:h-6 fill-current" />
+            <a href="https://apps.apple.com/fr/app/casanayo/id6757759953?l=en-GB" target="_blank" class="flex items-center px-6 py-3.5 bg-white text-slate-900 rounded-2xl transition-all transform hover:scale-[1.02] active:scale-95 shadow-xl w-full sm:w-auto">
+              <img src="~/assets/appStore.jpg" alt="App Store" class="h-6 w-auto" />
+              <div class="w-px h-6 bg-slate-900/10 mx-4"></div>
               <div class="text-left">
-                <div class="text-[0.5rem] sm:text-[0.6rem] uppercase font-black tracking-widest opacity-40 leading-none">App Store</div>
-                <div class="text-[10px] sm:text-sm font-black leading-tight">iOS</div>
+                <div class="text-[0.55rem] font-bold uppercase tracking-widest opacity-60 leading-none mb-0.5">App Store</div>
+                <div class="text-sm font-black leading-tight">Télécharger</div>
               </div>
-            </button>
+            </a>
 
             <!-- Play Store Button -->
-            <button class="flex items-center gap-2 sm:gap-3 px-4 sm:px-6 py-2 sm:py-3 bg-white/10 border border-white/20 text-white rounded-2xl hover:bg-white/20 transition-all transform hover:scale-105 active:scale-95 backdrop-blur-md shadow-xl group outline-none">
-              <Play class="w-5 h-5 sm:w-6 sm:h-6 fill-current text-primary" />
+            <a href="https://play.google.com/store/apps/details?id=com.casa.casa.casa&pcampaignid=web_share" target="_blank" class="flex items-center px-6 py-3.5 bg-white/5 border border-white/20 text-white rounded-2xl transition-all transform hover:scale-[1.02] active:scale-95 backdrop-blur-md shadow-xl w-full sm:w-auto">
+              <img src="~/assets/playStore.jpeg" alt="Play Store" class="h-6 w-auto" />
+              <div class="w-px h-6 bg-white/20 mx-4"></div>
               <div class="text-left">
-                <div class="text-[0.5rem] sm:text-[0.6rem] uppercase font-black tracking-widest opacity-40 leading-none">Play Store</div>
-                <div class="text-[10px] sm:text-sm font-black leading-tight">Android</div>
+                <div class="text-[0.55rem] font-bold uppercase tracking-widest opacity-60 leading-none mb-0.5">Google Play</div>
+                <div class="text-sm font-black leading-tight">Disponible</div>
               </div>
-            </button>
+            </a>
           </div>
         </div>
       </div>
