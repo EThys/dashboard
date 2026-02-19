@@ -75,7 +75,7 @@ function createHead(options = {}) {
   return head;
 }
 
-const appHead = {"meta":[{"name":"viewport","content":"width=device-width, initial-scale=1"},{"charset":"utf-8"}],"link":[{"rel":"preconnect","href":"https://fonts.googleapis.com"},{"rel":"preconnect","href":"https://fonts.gstatic.com","crossorigin":""},{"rel":"stylesheet","href":"https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap"}],"style":[],"script":[],"noscript":[]};
+const appHead = {"meta":[{"name":"viewport","content":"width=device-width, initial-scale=1"},{"charset":"utf-8"}],"link":[{"rel":"preconnect","href":"https://fonts.googleapis.com"},{"rel":"preconnect","href":"https://fonts.gstatic.com","crossorigin":""},{"rel":"stylesheet","href":"https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap"},{"rel":"icon","type":"image/png","href":"/logoCasa.png"}],"style":[],"script":[],"noscript":[]};
 
 const appRootTag = "div";
 
@@ -415,5 +415,5 @@ const renderer$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty
   default: renderer
 }, Symbol.toStringTag, { value: 'Module' }));
 
-export { buildAssetsURL as a, baseURL as b, headSymbol as h, renderer$1 as r, useHead as u };
+export { buildAssetsURL as a, baseURL as b, headSymbol as h, publicAssetsURL as p, renderer$1 as r, useHead as u };
 //# sourceMappingURL=renderer.mjs.map

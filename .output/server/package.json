@@ -47,7 +47,6 @@
     "vue-bundle-renderer": "2.2.0",
     "vue-demi": "0.14.10",
     "vue-easy-lightbox": "1.19.0",
-    "vue-router": "4.6.4",
-    "vue-sonner": "2.0.9"
+    "vue-router": "4.6.4"
   }
 }

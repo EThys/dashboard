@@ -5,7 +5,6 @@ import { defineStore, setActivePinia, createPinia, shouldHydrate } from 'pinia';
 import { useRoute as useRoute$1, RouterView, createMemoryHistory, createRouter, START_LOCATION } from 'vue-router';
 import { VueQueryPlugin } from '@tanstack/vue-query';
 import { ssrRenderAttrs, ssrRenderComponent, ssrRenderSuspense, ssrRenderVNode } from 'vue/server-renderer';
-import { Toaster } from 'vue-sonner';
 import 'node:http';
 import 'node:https';
 import 'node:events';
@@ -524,60 +523,60 @@ const _routes = [
     name: "index",
     path: "/",
     meta: __nuxt_page_meta$f || {},
-    component: () => import('./index-BmVHqLa3.mjs')
+    component: () => import('./index-ZvV_7wpD.mjs')
   },
   {
     name: "legal",
     path: "/legal",
-    component: () => import('./legal-CSU0IG0y.mjs')
+    component: () => import('./legal-BfdL1jzn.mjs')
   },
   {
     name: "login",
     path: "/login",
     meta: __nuxt_page_meta$e || {},
-    component: () => import('./login-Cbkm-5Av.mjs')
+    component: () => import('./login-hcE_g2li.mjs')
   },
   {
     name: "terms",
     path: "/terms",
-    component: () => import('./terms-BshFiJJr.mjs')
+    component: () => import('./terms-D-SoBR6t.mjs')
   },
   {
     name: "contact",
     path: "/contact",
     meta: __nuxt_page_meta$d || {},
-    component: () => import('./contact-DfC_8phu.mjs')
+    component: () => import('./contact-DUP1_QHw.mjs')
   },
   {
     name: "cookies",
     path: "/cookies",
-    component: () => import('./cookies-CMuwEwck.mjs')
+    component: () => import('./cookies-D7Khstno.mjs')
   },
   {
     name: "privacy",
     path: "/privacy",
-    component: () => import('./privacy-DN4fkSD0.mjs')
+    component: () => import('./privacy-CCwVtrHa.mjs')
   },
   {
     name: "security",
     path: "/security",
-    component: () => import('./security-TOQTMDqy.mjs')
+    component: () => import('./security-CUfr9Or0.mjs')
   },
   {
     name: "test-toast",
     path: "/test-toast",
-    component: () => import('./test-toast-Cme3s8DS.mjs')
+    component: () => import('./test-toast-D_S7I9zS.mjs')
   },
   {
     name: "services-id",
     path: "/services/:id()",
     meta: __nuxt_page_meta$c || {},
-    component: () => import('./_id_-B3_IY75r.mjs')
+    component: () => import('./_id_-CWt6Ugmc.mjs')
   },
   {
     name: "booking-policy",
     path: "/booking-policy",
-    component: () => import('./booking-policy-Dv-UW7Ak.mjs')
+    component: () => import('./booking-policy-DmTTK37O.mjs')
   },
   {
     name: "register-admin",
@@ -589,67 +588,67 @@ const _routes = [
     name: "register",
     path: "/register",
     meta: __nuxt_page_meta$a || {},
-    component: () => import('./index-Djhqhrjg.mjs')
+    component: () => import('./index-Bl-HNOaG.mjs')
   },
   {
     name: "services",
     path: "/services",
     meta: __nuxt_page_meta$9 || {},
-    component: () => import('./index-Dc6AE0-3.mjs')
+    component: () => import('./index-Dku0lQ_W.mjs')
   },
   {
     name: "dashboard",
     path: "/dashboard",
     meta: __nuxt_page_meta$8 || {},
-    component: () => import('./index-B4HCaEZe.mjs')
+    component: () => import('./index-Bws0pGS3.mjs')
   },
   {
     name: "properties-id",
     path: "/properties/:id()",
     meta: __nuxt_page_meta$7 || {},
-    component: () => import('./_id_-BUOdoPk1.mjs')
+    component: () => import('./_id_-DkPwbfvb.mjs')
   },
   {
     name: "properties",
     path: "/properties",
     meta: __nuxt_page_meta$6 || {},
-    component: () => import('./index-5TUkEZUB.mjs')
+    component: () => import('./index-1RAYkFVl.mjs')
   },
   {
     name: "dashboard-users-id",
     path: "/dashboard/users/:id()",
     meta: __nuxt_page_meta$5 || {},
-    component: () => import('./_id_-BK0yZV3-.mjs')
+    component: () => import('./_id_-CW_dabnY.mjs')
   },
   {
     name: "dashboard-users",
     path: "/dashboard/users",
     meta: __nuxt_page_meta$4 || {},
-    component: () => import('./index-B46r0adY.mjs')
+    component: () => import('./index-BWFS7Bjy.mjs')
   },
   {
     name: "dashboard-my-reservations",
     path: "/dashboard/my-reservations",
     meta: __nuxt_page_meta$3 || {},
-    component: () => import('./my-reservations-ClpWozt-.mjs')
+    component: () => import('./my-reservations-Yrz0wCeI.mjs')
   },
   {
     name: "dashboard-publications",
     path: "/dashboard/publications",
     meta: __nuxt_page_meta$2 || {},
-    component: () => import('./index-mL2HAxVb.mjs')
+    component: () => import('./index-DpY6bl3w.mjs')
   },
   {
     name: "dashboard-publications-services-id",
     path: "/dashboard/publications/services/:id()",
     meta: __nuxt_page_meta$1 || {},
-    component: () => import('./_id_-DyqEkAAo.mjs')
+    component: () => import('./_id_-CxuQ0xwP.mjs')
   },
   {
     name: "dashboard-publications-properties-id",
     path: "/dashboard/publications/properties/:id()",
     meta: __nuxt_page_meta || {},
-    component: () => import('./_id_-C-4vop_N.mjs')
+    component: () => import('./_id_-NrCYnu0w.mjs')
   }
 ];
 const _wrapInTransition = (props, children) => {
@@ -1587,7 +1586,7 @@ defineComponent({
   }
 });
 const clientOnlySymbol = /* @__PURE__ */ Symbol.for("nuxt:client-only");
-defineComponent({
+const __nuxt_component_2 = defineComponent({
   name: "ClientOnly",
   inheritAttrs: false,
   props: ["fallback", "placeholder", "placeholderTag", "fallbackTag"],
@@ -1714,8 +1713,8 @@ const plugins = [
   vue_query_GNtWx11mSO94O_Ctd2OG8SaawZMBzi1ne17Edj_iIOc
 ];
 const layouts = {
-  dashboard: defineAsyncComponent(() => import('./dashboard-DFrBl5kA.mjs').then((m) => m.default || m)),
-  default: defineAsyncComponent(() => import('./default-CJEFtaft.mjs').then((m) => m.default || m)),
+  dashboard: defineAsyncComponent(() => import('./dashboard-vLlk1dVD.mjs').then((m) => m.default || m)),
+  default: defineAsyncComponent(() => import('./default-C9SMMmyT.mjs').then((m) => m.default || m)),
   empty: defineAsyncComponent(() => import('./empty-Cf3_VTIZ.mjs').then((m) => m.default || m))
 };
 const LayoutLoader = defineComponent({
@@ -1935,6 +1934,7 @@ const _sfc_main$2 = /* @__PURE__ */ defineComponent({
     return (_ctx, _push, _parent, _attrs) => {
       const _component_NuxtLayout = __nuxt_component_0;
       const _component_NuxtPage = __nuxt_component_1;
+      const _component_ClientOnly = __nuxt_component_2;
       _push(`<div${ssrRenderAttrs(_attrs)}>`);
       _push(ssrRenderComponent(_component_NuxtLayout, null, {
         default: withCtx((_, _push2, _parent2, _scopeId) => {
@@ -1948,14 +1948,7 @@ const _sfc_main$2 = /* @__PURE__ */ defineComponent({
         }),
         _: 1
       }, _parent));
-      _push(ssrRenderComponent(unref(Toaster), {
-        position: "top-right",
-        richColors: "",
-        toastOptions: {
-          style: { zIndex: 9999 },
-          duration: 4e3
-        }
-      }, null, _parent));
+      _push(ssrRenderComponent(_component_ClientOnly, null, {}, _parent));
       _push(`</div>`);
     };
   }
@@ -1980,8 +1973,8 @@ const _sfc_main$1 = {
     const statusMessage = _error.statusMessage ?? (is404 ? "Page Not Found" : "Internal Server Error");
     const description = _error.message || _error.toString();
     const stack = void 0;
-    const _Error404 = defineAsyncComponent(() => import('./error-404-BrnhDBYS.mjs'));
-    const _Error = defineAsyncComponent(() => import('./error-500-CCx-Pnfr.mjs'));
+    const _Error404 = defineAsyncComponent(() => import('./error-404-B99Nfh0S.mjs'));
+    const _Error = defineAsyncComponent(() => import('./error-500-dxzKh29_.mjs'));
     const ErrorTemplate = is404 ? _Error404 : _Error;
     return (_ctx, _push, _parent, _attrs) => {
       _push(ssrRenderComponent(unref(ErrorTemplate), mergeProps({ statusCode: unref(statusCode), statusMessage: unref(statusMessage), description: unref(description), stack: unref(stack) }, _attrs), null, _parent));
@@ -2062,5 +2055,5 @@ let entry;
 }
 const entry_default = (ssrContext) => entry(ssrContext);
 
-export { useRouter as a, usePropertyStore as b, useRuntimeConfig as c, useServiceStore as d, entry_default as default, useAuthStore as e, useRoute as f, fetchDefaults as g, useRequestFetch as h, useNuxtApp as i, nuxtLinkDefaults as j, asyncDataDefaults as k, createError as l, useMembersStore as m, navigateTo as n, resolveRouteObject as r, useHead as u };
+export { useRouter as a, usePropertyStore as b, useServiceStore as c, useRuntimeConfig as d, entry_default as default, useAuthStore as e, useRoute as f, useNuxtApp as g, nuxtLinkDefaults as h, asyncDataDefaults as i, createError as j, fetchDefaults as k, useRequestFetch as l, useMembersStore as m, navigateTo as n, resolveRouteObject as r, useHead as u };
 //# sourceMappingURL=server.mjs.map
