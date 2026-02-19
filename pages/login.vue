@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useAuthStore } from '~/stores/auth'
-import { Loader2, ShieldCheck } from 'lucide-vue-next'
+import { Loader2, ShieldCheck, Eye, EyeOff } from 'lucide-vue-next'
 import { Button } from '@/components/ui'
 import { Input } from '@/components/ui'
 import { toast } from 'vue-sonner'
@@ -13,7 +13,7 @@ const auth = useAuthStore()
 const route = useRoute()
 const identifier = ref('')
 const password = ref('')
-const error = ref('')
+const showPassword = ref(false)
 const isLoading = ref(false)
 const showPremiumModal = ref(false)
 
@@ -48,7 +48,6 @@ onMounted(() => {
 })
 
 const handleLogin = async () => {
-  error.value = ''
   isLoading.value = true
   
   // Format identifier: if phone, prepend calling code
@@ -56,18 +55,30 @@ const handleLogin = async () => {
     ? `${selectedCallingCode.value}${identifier.value}`
     : identifier.value
   
-  const res = await auth.login(finalIdentifiant, password.value)
+  const res: any = await auth.login(finalIdentifiant, password.value)
   
   if (res.success) {
     const redirectPath = route.query.redirect as string || '/dashboard'
     navigateTo(redirectPath)
   } else {
-    const errorMessage = res.message || 'Une erreur est survenue.'
-    error.value = errorMessage
+    // Pro handling: Map specific backend errors or default to user-friendly message
+    // If res.message suggests credentials issue, show "Identifiant ou mot de passe incorrect"
+    // Otherwise show the message from server
+    
+    let description = "Veuillez vérifier vos informations et réessayer."
+    if (res.message && (res.message.includes('credential') || res.message.includes('found') || res.status === 401 || res.status === 400)) {
+       description = "Identifiant ou mot de passe incorrect."
+    } else if (res.message) {
+       description = res.message
+    }
     
     toast.error('Connexion échouée', {
-      description: errorMessage,
-      duration: 4000,
+      description: description,
+      duration: 5000,
+      action: {
+        label: 'Réessayer',
+        onClick: () => console.log('Retry clicked')
+      },
     })
   }
   
@@ -81,9 +92,11 @@ const handleLogin = async () => {
     <div class="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-background relative z-10 border-r-4 border-primary/20">
       <div class="mx-auto grid w-[350px] gap-6">
         <div class="grid gap-2 text-center">
-             <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10">
-                <span class="text-primary font-bold text-2xl">C</span>
-            </div>
+        <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center">
+             <NuxtLink to="/">
+                 <img src="/logoCasa.png" alt="CasaNayo" class="h-full w-full object-contain" />
+             </NuxtLink>
+        </div>
           <h1 class="text-3xl font-bold tracking-tight text-foreground">Bon retour !</h1>
           <p class="text-muted-foreground text-sm">Entrez vos coordonnées pour accéder à votre espace</p>
         </div>
@@ -122,22 +135,28 @@ const handleLogin = async () => {
           <div class="grid gap-2">
             <div class="flex items-center">
               <Label for="password" class="sr-only">Mot de passe</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Mot de passe"
-                v-model="password"
-                required
-                class="h-11 shadow-sm"
-              />
+              <div class="relative w-full">
+                  <Input
+                    id="password"
+                    :type="showPassword ? 'text' : 'password'"
+                    placeholder="Mot de passe"
+                    v-model="password"
+                    required
+                    class="h-11 shadow-sm pr-10"
+                  />
+                  <button 
+                    type="button" 
+                    @click="showPassword = !showPassword"
+                    class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <Eye v-if="!showPassword" class="h-5 w-5" />
+                    <EyeOff v-else class="h-5 w-5" />
+                  </button>
+              </div>
             </div>
             <a href="#" class="ml-auto inline-block text-xs font-medium text-primary hover:underline">
                 Mot de passe oublié ?
             </a>
-          </div>
-
-          <div v-if="error" class="text-xs text-destructive font-medium text-center">
-            {{ error }}
           </div>
 
           <Button type="submit" class="w-full h-11 text-base shadow-soft-blue" :disabled="isLoading">
@@ -153,7 +172,7 @@ const handleLogin = async () => {
         </div>
 
         <div class="text-center text-xs text-muted-foreground mt-4">
-            En continuant, vous acceptez nos <a href="#" class="underline hover:text-primary">Conditions d'utilisation</a>.
+            En continuant, vous acceptez nos <a href="/terms" class="underline hover:text-primary">Conditions d'utilisation</a>.
         </div>
       </div>
     </div>
@@ -168,10 +187,10 @@ const handleLogin = async () => {
           class="absolute inset-0 h-full w-full object-cover grayscale opacity-60"
         />
         <div class="relative z-20 flex h-full flex-col justify-between p-12 text-white">
-            <div class="font-bold text-lg flex items-center gap-2">
-                <div class="h-8 w-8 rounded-lg bg-white/20 backdrop-blur flex items-center justify-center font-bold">C</div>
+            <NuxtLink to="/" class="font-bold text-lg flex items-center gap-2 hover:opacity-80 transition-opacity">
+                 <img src="/logoCasa.png" alt="CasaNayo" class="h-8 w-8 object-contain" />
                 CasaNayo
-            </div>
+            </NuxtLink>
             <div class="space-y-4 max-w-lg">
                 <blockquote class="text-2xl font-medium leading-snug">
                 &ldquo;CasaNayo centralise l’ensemble du parcours immobilier dans une seule application : recherche de biens, vente, location et services à domicile.&rdquo;
