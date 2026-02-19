@@ -3,7 +3,9 @@ import { MapPin, BedDouble, Bath, Maximize } from 'lucide-vue-next'
 import { Button } from '@/components/ui'
 import { useQuery } from '@tanstack/vue-query'
 import { formatCurrency, getCurrencyLabel } from '@/utils/currency'
+import PropertyCardShimmer from '@/components/front/PropertyCardShimmer.vue'
 import CasaLoader from '@/components/ui/CasaLoader.vue'
+import { encodeId } from '@/utils/urlObfuscator'
 
 const config = useRuntimeConfig()
 
@@ -53,7 +55,7 @@ const properties = computed(() => {
   <section id="properties" class="py-24 bg-muted/30">
     <div class="container mx-auto px-6 sm:px-8 lg:px-12 xl:px-16">
        <div class="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
-           <div class="space-y-4 max-w-2xl">
+           <div class="space-y-4 max-w-2xl reveal-left">
                <span class="text-primary font-bold tracking-wider uppercase text-sm">Nos Propriétés</span>
                <h2 class="text-3xl lg:text-4xl font-black text-foreground">Découvrez nos dernières pépites</h2>
                <p class="text-muted-foreground text-lg">
@@ -65,16 +67,18 @@ const properties = computed(() => {
            </NuxtLink>
        </div>
 
-       <div v-if="isLoading" class="flex items-center justify-center min-h-[400px]">
-         <CasaLoader />
+       <!-- Loading State (Shimmer Grid) -->
+       <div v-if="isLoading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+         <PropertyCardShimmer v-for="i in 3" :key="i" />
        </div>
 
        <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
            <NuxtLink
-            v-for="property in properties" 
+            v-for="(property, index) in properties" 
             :key="property.id"
-            :to="`/properties/${property.id}`"
-            class="group bg-card rounded-3xl overflow-hidden border border-border hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 flex flex-col"
+            :to="`/properties/${encodeId(property.id)}`"
+            class="group bg-card rounded-3xl overflow-hidden border border-border hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 flex flex-col reveal"
+            :class="(index as number) % 3 === 0 ? 'reveal-delay-100' : (index as number) % 3 === 1 ? 'reveal-delay-200' : 'reveal-delay-300'"
            >
                 <!-- Image -->
                 <div class="relative h-64 overflow-hidden">

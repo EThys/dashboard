@@ -3,6 +3,7 @@ import { Home, Key, Paintbrush, Hammer, Wrench, ShieldCheck, ArrowRight, Star } 
 import { Button } from '@/components/ui'
 import { formatCurrency, getCurrencyLabel } from '@/utils/currency'
 import type { ServiceResponse } from '@/types/service'
+import { encodeId } from '@/utils/urlObfuscator'
 
 const config = useRuntimeConfig()
 
@@ -36,7 +37,7 @@ const displayedServices = computed(() => {
            <NuxtLink 
             v-for="(item, index) in displayedServices" 
             :key="item.prestation.id"
-            :to="`/services/${item.prestation.id}`"
+            :to="`/services/${encodeId(item.prestation.id)}`"
             class="group bg-card rounded-3xl overflow-hidden border border-border/50 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 flex flex-col h-full hover:border-primary/50"
            >
                 <!-- Image Wrapper -->
