@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MapPin, Phone, Mail, Send, Clock, Globe } from 'lucide-vue-next'
+import { MapPin, Phone, Mail, Send, Clock, Globe, ChevronDown } from 'lucide-vue-next'
 import { Button } from '@/components/ui'
 
 definePageMeta({
@@ -23,6 +23,27 @@ const handleSubmit = async () => {
   formData.value = { name: '', email: '', subject: '', message: '' }
   isSubmitting.value = false
 }
+
+const activeFaq = ref<number | null>(0)
+
+const faqs = [
+  {
+    question: "Comment fonctionne la réservation sur l'application CasaNayo ?",
+    answer: "C'est très simple ! Une fois que vous avez trouvé le bien qui vous intéresse, cliquez sur 'Réserver' ou 'Demander une visite'. Pour valider votre première réservation, un abonnement annuel de seulement 4$ est requis, vous offrant un accès illimité à toutes les opportunités du réseau pendant un an."
+  },
+  {
+    question: "Quels sont les avantages d'utiliser votre plateforme web ?",
+    answer: "CasaNayo centralise les meilleures offres immobilières de Kinshasa et de la RDC. Vous profitez d'une interface ultra-rapide, de filtres intelligents, et d'un système de messagerie sécurisé pour communiquer en toute transparence."
+  },
+  {
+    question: "Comment garantissez-vous la véracité des annonces ?",
+    answer: "Chaque annonce publiée sur notre application web et mobile passe par un processus de modération. Nous vérifions les documents de propriété et l'identité des annonceurs pour vous garantir une expérience sécurisée et sans mauvaises surprises."
+  },
+  {
+    question: "Puis-je lister mon propre bien sur CasaNayo ?",
+    answer: "Absolument ! Créez un compte 'Propriétaire' pour commencer à publier vos biens. Pour activer la mise en ligne de vos annonces, un abonnement de 4$ par an est nécessaire, incluant des outils de gestion avancés pour suivre vos réservations en temps réel."
+  }
+]
 </script>
 
 <template>
@@ -41,7 +62,7 @@ const handleSubmit = async () => {
           Contactez <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-400">CasaNayo</span>
         </h1>
         <p class="text-slate-400 text-lg md:text-xl max-w-3xl mx-auto leading-relaxed">
-          Une question ? Un projet immobilier ? Notre équipe d'experts est à votre écoute pour vous accompagner dans toutes vos démarches.
+          Une question sur notre application web ? Un projet immobilier à concrétiser ? Notre équipe d'experts et nos outils digitaux sont là pour vous offrir l'expérience la plus fluide de RDC.
         </p>
       </div>
     </section>
@@ -103,32 +124,7 @@ const handleSubmit = async () => {
               </div>
             </div>
 
-            <!-- Business Hours / More info -->
-            <div class="p-8 bg-slate-900 rounded-[32px] text-white overflow-hidden relative group">
-              <div class="absolute -right-12 -bottom-12 size-48 bg-primary/20 rounded-full blur-3xl transition-transform duration-700 group-hover:scale-110"></div>
-              <div class="relative z-10 space-y-6">
-                <div class="flex items-center gap-3">
-                  <div class="size-8 rounded-lg bg-white/10 flex items-center justify-center">
-                    <Clock class="size-4 text-primary-foreground" />
-                  </div>
-                  <h4 class="text-lg font-bold">Heures d'ouverture</h4>
-                </div>
-                <div class="space-y-3 font-medium text-slate-300">
-                  <div class="flex justify-between items-center py-2 border-b border-white/5">
-                    <span>Lundi - Vendredi</span>
-                    <span class="text-white font-bold text-sm">08:00 - 18:00</span>
-                  </div>
-                  <div class="flex justify-between items-center py-2 border-b border-white/5">
-                    <span>Samedi</span>
-                    <span class="text-white font-bold text-sm">09:00 - 15:00</span>
-                  </div>
-                  <div class="flex justify-between items-center pt-2">
-                    <span>Dimanche</span>
-                    <span class="bg-red-500/10 text-red-400 px-3 py-1 rounded-full text-xs font-black uppercase">Fermé</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+
           </div>
 
           <!-- Contact Form -->
@@ -193,6 +189,53 @@ const handleSubmit = async () => {
                   </Button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section class="py-24 bg-white border-t border-slate-100">
+      <div class="container mx-auto px-4 sm:px-6 lg:px-12">
+        <div class="max-w-4xl mx-auto">
+          <div class="text-center mb-16 space-y-4">
+            <span class="text-primary font-bold tracking-widest uppercase text-[10px]">Questions Fréquentes</span>
+            <h2 class="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">Tout ce que vous devez savoir</h2>
+            <p class="text-slate-500 font-medium">Vous avez des questions sur l'utilisation de notre application ? Voici les réponses aux interrogations les plus fréquentes.</p>
+          </div>
+
+          <div class="space-y-4">
+            <div 
+              v-for="(item, index) in faqs" 
+              :key="index" 
+              class="group rounded-[32px] bg-white border border-slate-100 transition-all duration-500 overflow-hidden"
+              :class="{ 'border-primary/30 shadow-xl shadow-primary/5': activeFaq === index }"
+            >
+              <button 
+                @click="activeFaq = activeFaq === index ? null : index"
+                class="w-full p-6 md:p-8 flex items-center justify-between text-left"
+              >
+                <h3 class="text-lg font-black text-slate-900 flex items-center gap-4">
+                  <span class="size-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-black shrink-0">{{ index + 1 }}</span>
+                  {{ item.question }}
+                </h3>
+                <ChevronDown 
+                  class="size-5 text-slate-400 transition-transform duration-500"
+                  :class="{ 'rotate-180 text-primary': activeFaq === index }"
+                />
+              </button>
+
+              <div 
+                class="grid transition-all duration-500 ease-in-out"
+                :class="activeFaq === index ? 'grid-rows-[1fr] opacity-100 pb-8 px-8 md:px-12 ml-4' : 'grid-rows-[0fr] opacity-0 pb-0'"
+              >
+                <div class="overflow-hidden">
+                  <p class="text-slate-600 leading-relaxed font-medium pl-12 border-l-2 border-primary/20">
+                    {{ item.answer }}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
