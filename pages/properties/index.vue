@@ -1,15 +1,18 @@
 <script setup lang="ts">
-import { MapPin, BedDouble, Bath, Maximize, Heart, Share2, Calendar, CheckCircle2, Phone, Mail, User, ArrowLeft, Zap, Droplets, ChefHat, Sofa, Home, Briefcase, DoorOpen, Users, Search, Filter, ArrowRight, SlidersHorizontal, ChevronDown, Check } from 'lucide-vue-next'
+import { MapPin, BedDouble, Bath, Maximize, Heart, Share2, Calendar, CheckCircle2, Phone, Mail, User, ArrowLeft, Zap, Droplets, ChefHat, Sofa, Home, Briefcase, DoorOpen, Users, Search, Filter, ArrowRight, SlidersHorizontal, ChevronDown, Check, Home as HomeIcon } from 'lucide-vue-next'
 import { Button } from '@/components/ui'
 import { usePropertyStore } from '@/stores/properties'
 import { formatCurrency, getCurrencyLabel } from '@/utils/currency'
+import PropertyCardShimmer from '@/components/front/PropertyCardShimmer.vue'
 import CasaLoader from '@/components/ui/CasaLoader.vue'
+import { encodeId } from '@/utils/urlObfuscator'
 
 definePageMeta({
   layout: 'default'
 })
 
 const config = useRuntimeConfig()
+const route = useRoute()
 const propertyStore = usePropertyStore()
 
 // Fetch properties with lazy loading for instant navigation
@@ -25,17 +28,34 @@ const { pending: isLoading } = await useAsyncData('all-properties', async () => 
     ])
 }, { lazy: true })
 
+const isStoreEmpty = computed(() => 
+    propertyStore.properties.length === 0 && 
+    propertyStore.terrains.length === 0 &&
+    propertyStore.bureaux.length === 0 &&
+    propertyStore.hotels.length === 0 &&
+    propertyStore.festives.length === 0 &&
+    propertyStore.funeraires.length === 0
+)
+
 // ----------------------------------------------------------------------------
 // Filter States
 // ----------------------------------------------------------------------------
-const searchQuery = ref('')
-const selectedType = ref('all')
+const searchQuery = ref(route.query.city?.toString() || '')
+const selectedType = ref(route.query.type?.toString() || 'all')
 const selectedTransaction = ref('all')
 
+// Sync with route query
+watch(() => route.query.type, (newType) => {
+    selectedType.value = newType?.toString() || 'all'
+})
+watch(() => route.query.city, (newCity) => {
+    searchQuery.value = newCity?.toString() || ''
+})
+
 // Advanced Filters
-const showAdvancedFilters = ref(false)
-const minPrice = ref<number | null>(null)
-const maxPrice = ref<number | null>(null)
+const showAdvancedFilters = ref(!!(route.query.minPrice || route.query.maxPrice))
+const minPrice = ref<number | null>(route.query.minPrice ? Number(route.query.minPrice) : null)
+const maxPrice = ref<number | null>(route.query.maxPrice ? Number(route.query.maxPrice) : null)
 const selectedCurrency = ref('all') // 'all', 'USD', 'CDF'
 const roomCount = ref('all') // 'all', '1', '2', '3', '4+'
 
@@ -182,16 +202,16 @@ const filteredProperties = computed(() => {
       res = res.filter(p => p.transaction === selectedTransaction.value)
    }
 
-   // Advanced Filters
+   // Price Filters (Apply regardless of panel visibility if values exist)
+   if (minPrice.value !== null) {
+       res = res.filter(p => p.priceValue >= (minPrice.value as number))
+   }
+   if (maxPrice.value !== null) {
+       res = res.filter(p => p.priceValue <= (maxPrice.value as number))
+   }
+
+   // Advanced Filters Panel Specifics
    if (showAdvancedFilters.value) {
-      // Min Price
-      if (minPrice.value !== null) {
-          res = res.filter(p => p.priceValue >= (minPrice.value as number))
-      }
-      // Max Price
-      if (maxPrice.value !== null) {
-          res = res.filter(p => p.priceValue <= (maxPrice.value as number))
-      }
       // Currency
       if (selectedCurrency.value !== 'all') {
           res = res.filter(p => p.currencyCode === selectedCurrency.value)
@@ -230,6 +250,7 @@ const scrollToTop = () => {
 // Reset pagination when filters change
 watch([searchQuery, selectedType, selectedTransaction, showAdvancedFilters, minPrice, maxPrice, selectedCurrency, roomCount], () => {
   currentPage.value = 1
+  scrollToTop()
 })
 </script>
 
@@ -264,7 +285,7 @@ watch([searchQuery, selectedType, selectedTransaction, showAdvancedFilters, minP
             <input 
               v-model="searchQuery"
               type="text" 
-              placeholder="Que recherchez-vous ? (ex: Gombe, 3 chambres...)"
+              placeholder="Que recherchez-vous ? (ex: Gombe, Matadi...)"
               class="flex-1 h-12 bg-transparent border-none focus:ring-0 text-foreground px-4 font-outfit"
             />
             <Button size="lg" class="hidden sm:flex rounded-lg px-8">
@@ -398,9 +419,9 @@ watch([searchQuery, selectedType, selectedTransaction, showAdvancedFilters, minP
     <section class="pb-20 bg-muted/30">
       <div class="container mx-auto px-4">
         
-        <!-- Loading -->
-        <div v-if="isLoading" class="flex flex-col items-center justify-center py-20 min-h-[400px]">
-             <CasaLoader size="lg" />
+        <!-- Loading State (Shimmer Grid) -->
+        <div v-if="isLoading && isStoreEmpty" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 py-10">
+             <PropertyCardShimmer v-for="i in 8" :key="i" />
         </div>
 
         <!-- Empty State -->
@@ -417,7 +438,7 @@ watch([searchQuery, selectedType, selectedTransaction, showAdvancedFilters, minP
           <NuxtLink 
             v-for="property in paginatedProperties" 
             :key="property.id"
-            :to="`/properties/${property.id}`"
+            :to="`/properties/${encodeId(property.id)}`"
             class="group bg-card rounded-3xl overflow-hidden border border-border/50 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 flex flex-col h-full"
           >
             <!-- Image -->

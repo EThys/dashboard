@@ -1,4 +1,3 @@
-```
 <script setup lang="ts">
 import { MapPin, BedDouble, Bath, Maximize, Heart, Share2, Calendar, CheckCircle2, Phone, Mail, User, ArrowLeft, Zap, Droplets, ChefHat, Sofa, Home, Briefcase, DoorOpen, Users, Star, XCircle } from 'lucide-vue-next'
 import { Button } from '@/components/ui'
@@ -8,9 +7,10 @@ import { useReservationStore } from '@/stores/reservations'
 import VueEasyLightbox from 'vue-easy-lightbox'
 import { normalizeBureau, normalizeFestive, normalizeFuneraire, normalizeTerrain, normalizeHotel, normalizeStandardProperty } from '@/utils/propertyNormalizer'
 import type { AnyPropertyResponse, NormalizedProperty } from '@/types/property'
-import Vue3Shimmer from 'vue3-shimmer'
 import CasaLoader from '@/components/ui/CasaLoader.vue'
 import PropertyVisitModal from '@/components/modals/PropertyVisitModal.vue'
+import DetailShimmer from '@/components/front/DetailShimmer.vue'
+import { encodeId, decodeId } from '@/utils/urlObfuscator'
 import { ShieldCheck, Calendar as CalendarIcon, Loader2 } from 'lucide-vue-next'
 
 definePageMeta({
@@ -23,30 +23,44 @@ const config = useRuntimeConfig()
 const propertyStore = usePropertyStore()
 const authStore = useAuthStore()
 const resStore = useReservationStore()
-const propertyId = Number(route.params.id)
+const propertyId = computed(() => decodeId(route.params.id as string))
 
-// Try to get from store first
+// Local ref to store data fetched specifically for this page
+const fetchedProperty = ref<AnyPropertyResponse | null>(null)
+
+// Try to get from store first (cached)
 const rawProperty = computed<AnyPropertyResponse | undefined>(() => 
-  propertyStore.getPropertyById(propertyId)
+  fetchedProperty.value || propertyStore.getPropertyById(propertyId.value)
 )
 
-// Fetch if not in store
-const { data: fetchComplete, pending: isLoading } = await useAsyncData(
-  `property-${propertyId}`,
+const { pending: isLoading } = await useAsyncData(
+  `property-${propertyId.value}`,
   async () => {
-    // If we already have it in store, don't re-fetch everything immediately unless needed
-    // But we might want to ensure we have the fresh data.
-    // For now, if we have it, we return true to show it instantly, but we might want to background fetch.
+    // 1. If we already have it in store, we're good for immediate display
+    // But we still fetch to ensure data is fresh and complete
     
-    // Fetch all collections to populate store
-    await Promise.all([
-      propertyStore.bureaux.length === 0 ? propertyStore.fetchBureaux(config.public.apiBase) : Promise.resolve(),
-      propertyStore.festives.length === 0 ? propertyStore.fetchFestives(config.public.apiBase) : Promise.resolve(),
-      propertyStore.funeraires.length === 0 ? propertyStore.fetchFuneraires(config.public.apiBase) : Promise.resolve(),
-      propertyStore.terrains.length === 0 ? propertyStore.fetchTerrains(config.public.apiBase) : Promise.resolve(),
-      propertyStore.hotels.length === 0 ? propertyStore.fetchHotels(config.public.apiBase) : Promise.resolve(),
-      propertyStore.properties.length === 0 ? propertyStore.fetchProperties(config.public.apiBase) : Promise.resolve(),
-    ])
+    try {
+      const data = await $fetch<any>(`${config.public.apiBase}/property/${propertyId.value}`)
+      if (data && data.properties) {
+        fetchedProperty.value = data.properties as AnyPropertyResponse
+        return true
+      }
+    } catch (e) {
+      console.error('Failed to fetch property details:', e)
+    }
+
+    // 2. Fallback: If not found by direct ID, fetch collections as last resort
+    // (Only if we don't have it in store yet either)
+    if (!rawProperty.value) {
+      await Promise.all([
+        propertyStore.bureaux.length === 0 ? propertyStore.fetchBureaux(config.public.apiBase) : Promise.resolve(),
+        propertyStore.festives.length === 0 ? propertyStore.fetchFestives(config.public.apiBase) : Promise.resolve(),
+        propertyStore.funeraires.length === 0 ? propertyStore.fetchFuneraires(config.public.apiBase) : Promise.resolve(),
+        propertyStore.terrains.length === 0 ? propertyStore.fetchTerrains(config.public.apiBase) : Promise.resolve(),
+        propertyStore.hotels.length === 0 ? propertyStore.fetchHotels(config.public.apiBase) : Promise.resolve(),
+        propertyStore.properties.length === 0 ? propertyStore.fetchProperties(config.public.apiBase) : Promise.resolve(),
+      ])
+    }
     
     return true
   },
@@ -160,8 +174,8 @@ const isVisitModalOpen = ref(false)
       
     <!-- 1. LOADING STATE -->
     <Transition name="fade" mode="out-in">
-        <div v-if="!property && isLoading" class="min-h-screen flex items-center justify-center">
-            <CasaLoader size="lg" />
+        <div v-if="!property && isLoading">
+            <DetailShimmer type="property" />
         </div>
 
         <!-- 2. MAIN CONTENT -->
@@ -291,6 +305,11 @@ const isVisitModalOpen = ref(false)
                                     <Maximize class="h-6 w-6 text-primary group-hover:scale-110 transition-transform" />
                                     <span class="text-xl font-black">{{ property.area }}</span>
                                     <span class="text-xs text-muted-foreground uppercase tracking-wide">Surface</span>
+                                </div>
+                                <div v-if="property.guarantee" class="bg-card p-4 rounded-2xl border border-border/50 shadow-sm flex flex-col items-center justify-center text-center gap-2 hover:border-primary/50 transition-colors group">
+                                    <ShieldCheck class="h-6 w-6 text-primary group-hover:scale-110 transition-transform" />
+                                    <span class="text-xl font-black">{{ property.guarantee }} mois</span>
+                                    <span class="text-xs text-muted-foreground uppercase tracking-wide">Garantie</span>
                                 </div>
                             </template>
 
@@ -490,4 +509,3 @@ const isVisitModalOpen = ref(false)
   opacity: 0;
 }
 </style>
-```
