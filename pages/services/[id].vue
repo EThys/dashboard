@@ -150,21 +150,26 @@ onUnmounted(stopAutoScroll)
 
 // Share
 const shareService = async () => {
-  const shareData = {
-      title: service.value?.title || 'Service CasaNayo',
-      text: service.value?.title,
-      url: window.location.href
-  }
+  const title = service.value?.title || ''
+  const location = service.value?.location || ''
+  const price = service.value?.price || ''
+  const url = window.location.href
+  
+  const shareText = `Découvrez ce service : ${title} à ${location} à partir de ${price} ${url}`
 
   if (navigator.share) {
     try {
-        await navigator.share(shareData)
+        await navigator.share({
+            title: title,
+            text: shareText,
+            url: url
+        })
     } catch (err) {
         console.log('Share canceled')
     }
   } else {
-    navigator.clipboard.writeText(window.location.href)
-    alert('Lien copié dans le presse-papier !')
+    navigator.clipboard.writeText(shareText)
+    alert('Lien et présentation copiés !')
   }
 }
 

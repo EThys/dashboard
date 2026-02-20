@@ -17,6 +17,43 @@ definePageMeta({
   layout: 'default'
 })
 
+// ─── SEO ─────────────────────────────────────────────────────────────────────
+useSeoMeta({
+  title: 'Accueil',
+  ogTitle: 'CasaNayo — Immobilier & Services n°1 en RDC',
+  description:
+    'CasaNayo centralise l’ensemble du parcours immobilier : recherche de biens, vente, location et services à domicile (électricien, plombier...). Elle simplifie votre vie en offrant tout au même endroit. Gérez tout depuis votre téléphone, partout en RDC.',
+  ogDescription:
+    'CasaNayo redéfinit l’expérience immobilière en Afrique. Trouvez votre propriété idéale, vendez ou louez votre bien, et accédez à des services pros en un clic. Partout et à tout moment.',
+  ogImage: 'https://casanayo.com/logoCasa.png',
+  ogUrl: 'https://casanayo.com',
+  ogType: 'website',
+  twitterCard: 'summary',
+  twitterTitle: 'CasaNayo — Immobilier & Services n°1 en RDC',
+  twitterDescription: 'Louer, Acheter, Vendre & Services — CasaNayo simplifie votre vie. Téléchargez l’app maintenant.',
+  twitterImage: 'https://casanayo.com/logoCasa.png',
+})
+
+useHead({
+  link: [{ rel: 'canonical', href: 'https://casanayo.com' }],
+  script: [
+    {
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'WebSite',
+        name: 'CasaNayo',
+        url: 'https://casanayo.com',
+        potentialAction: {
+          '@type': 'SearchAction',
+          target: 'https://casanayo.com/properties?q={search_term_string}',
+          'query-input': 'required name=search_term_string',
+        },
+      }),
+    },
+  ],
+})
+
 const config = useRuntimeConfig()
 const propertyStore = usePropertyStore()
 

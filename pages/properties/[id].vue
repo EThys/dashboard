@@ -144,17 +144,24 @@ const isFavorite = ref(false)
 const toggleFavorite = () => isFavorite.value = !isFavorite.value
 
 const shareProperty = async () => {
+  const title = property.value?.title || ''
+  const address = property.value?.location || ''
+  const price = property.value?.price || ''
+  const url = window.location.href
+  
+  const shareText = `Découvrez cette propriété : ${title} à ${address} à seulement ${price} ${url}`
+
   if (navigator.share) {
     try {
         await navigator.share({
-            title: property.value?.title,
-            text: `Découvrez cette propriété : ${property.value?.title}`,
-            url: window.location.href
+            title: title,
+            text: shareText,
+            url: url
         })
     } catch (err) { console.log('Share canceled') }
   } else {
-    navigator.clipboard.writeText(window.location.href)
-    alert('Lien copié !')
+    navigator.clipboard.writeText(shareText)
+    alert('Lien et présentation copiés !')
   }
 }
 

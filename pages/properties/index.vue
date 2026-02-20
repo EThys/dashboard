@@ -11,6 +11,35 @@ definePageMeta({
   layout: 'default'
 })
 
+// ─── SEO ─────────────────────────────────────────────────────────────────────
+useSeoMeta({
+  title: 'Propriétés à Acheter & Louer en RDC',
+  ogTitle: 'CasaNayo | Maisons, Appartements, Terrains en RDC',
+  description:
+    'Parcourez toutes les propriétés disponibles en RDC sur CasaNayo : maisons, appartements, terrains, bureaux, hôtels, salles de fête. Filtrez par ville et budget. Contactez directement les propriétaires.',
+  ogDescription:
+    'CasaNayo — votre destination immobilière en RDC. Trouvez, comparez et contactez les propriétaires de maisons, terrains et bureaux à Kinshasa et partout au Congo.',
+  ogImage: 'https://casanayo.com/logoCasa.png',
+  ogUrl: 'https://casanayo.com/properties',
+  twitterCard: 'summary',
+})
+
+useHead({
+  link: [{ rel: 'canonical', href: 'https://casanayo.com/properties' }],
+  script: [
+    {
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'ItemList',
+        name: 'Propriétés immobilières en RDC — CasaNayo',
+        description: 'Liste des biens immobiliers disponibles à la vente et à la location en République Démocratique du Congo.',
+        url: 'https://casanayo.com/properties',
+      }),
+    },
+  ],
+})
+
 const config = useRuntimeConfig()
 const route = useRoute()
 const propertyStore = usePropertyStore()

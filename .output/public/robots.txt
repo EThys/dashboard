@@ -1,2 +1,21 @@
-User-Agent: *
-Disallow:
+User-agent: *
+Allow: /
+Allow: /properties
+Allow: /services
+Allow: /contact
+Allow: /team
+Allow: /legal
+Allow: /terms
+Allow: /privacy
+Allow: /booking-policy
+Allow: /security
+
+# Zones privées — ne pas indexer
+Disallow: /dashboard/
+Disallow: /login
+Disallow: /register/
+Disallow: /api/
+Disallow: /auth/
+
+# Sitemap
+Sitemap: https://casanayo.com/sitemap.xml

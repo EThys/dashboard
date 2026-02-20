@@ -8,7 +8,46 @@ definePageMeta({
   layout: 'default'
 })
 
-// Store
+// ─── SEO ─────────────────────────────────────────────────────────────────────
+useSeoMeta({
+  title: 'Services à Domicile en RDC — Électricien, Plombier & Plus',
+  ogTitle: 'CasaNayo Services | Professionnels à Domicile en RDC',
+  description:
+    'CasaNayo connecte les professionnels de services à domicile (plombier, électricien, menuisier...) avec les particuliers en RDC. Des experts qualifiés et certifiés à Kinshasa et partout au Congo.',
+  ogDescription:
+    'Accédez à des centaines de prestataires certifiés sur CasaNayo. Plomberie, électricité, menuiserie, peinture... Trouvez votre expert, comparez les prix et réservez en ligne.',
+  ogImage: 'https://casanayo.com/logoCasa.png',
+  ogUrl: 'https://casanayo.com/services',
+  twitterCard: 'summary',
+})
+
+useHead({
+  link: [{ rel: 'canonical', href: 'https://casanayo.com/services' }],
+  script: [
+    {
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'Service',
+        name: 'Services à domicile — CasaNayo',
+        description:
+          'Annuaire de prestataires de services professionnels à domicile en République Démocratique du Congo : plomberie, électricité, menuiserie, peinture et plus.',
+        provider: {
+          '@type': 'Organization',
+          name: 'CasaNayo',
+          url: 'https://casanayo.com',
+        },
+        areaServed: {
+          '@type': 'Country',
+          name: 'République Démocratique du Congo',
+        },
+        url: 'https://casanayo.com/services',
+      }),
+    },
+  ],
+})
+
+
 import { useServiceStore } from '@/stores/services'
 
 import { useAuthStore } from '@/stores/auth'
