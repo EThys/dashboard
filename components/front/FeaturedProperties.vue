@@ -22,7 +22,7 @@ const { data: propertiesData, isLoading } = useQuery({
 const properties = computed(() => {
   if (!propertiesData.value?.properties) return []
   
-  return propertiesData.value.properties.slice(0, 6).map((item: any) => {
+  return propertiesData.value.properties.slice(0, 8).map((item: any) => {
     const p = item.property
     const addr = item.address
     const img = item.images?.main?.[0]?.publicPath || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&q=80&w=800'
@@ -31,6 +31,22 @@ const properties = computed(() => {
     // Use livingRoom if surface is 0 or missing
     const displayArea = p.surface && p.surface > 0 ? `${p.surface}m²` : (p.livingRoom ? `${p.livingRoom} salon(s)` : '')
     
+    let frequency = p.transactionType === 'location' ? '/mois' : ''
+    let priceLabel = p.transactionType === 'location' ? 'Loyer' : 'Montant de la vente'
+
+    const typeStr = (p.propertyType?.name || '').toLowerCase()
+    const titleStr = (p.title || '').toLowerCase()
+    const isSpecial = ['hotel', 'hôtels', 'salle de fête', 'salles de fête', 'espace funéraire', 'espaces funéraires', 'hôtel'].some(keyword => typeStr.includes(keyword) || titleStr.includes(keyword)) || item.hotel || item.funeraire || item.festive
+
+    if (isSpecial) {
+        if (p.transactionType === 'location') {
+            frequency = ''
+            priceLabel = 'Prix de la location'
+        } else {
+            priceLabel = 'Montant de la vente'
+        }
+    }
+
     return {
       id: p.propertyId,
       title: p.title || 'Sans titre',
@@ -39,7 +55,8 @@ const properties = computed(() => {
       priceAmount: p.price,
       currency: getCurrencyLabel(currencyCode),
       currencyCode: currencyCode,
-      frequency: p.transactionType === 'location' ? '/mois' : '',
+      frequency: frequency,
+      priceLabel: priceLabel,
       beds: p.bedrooms || 0,
       baths: p.bathroom || 0,
       area: displayArea,
@@ -68,21 +85,22 @@ const properties = computed(() => {
        </div>
 
        <!-- Loading State (Shimmer Grid) -->
-       <div v-if="isLoading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-         <PropertyCardShimmer v-for="i in 3" :key="i" />
+       <div v-if="isLoading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+         <PropertyCardShimmer v-for="i in 4" :key="i" />
        </div>
 
-       <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+       <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
            <NuxtLink
             v-for="(property, index) in properties" 
             :key="property.id"
             :to="`/properties/${encodeId(property.id)}`"
-            class="group bg-card rounded-3xl overflow-hidden border border-border hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 flex flex-col reveal"
+            class="group bg-card rounded-3xl overflow-hidden border border-border hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/10 hover:-translate-y-2 transition-all duration-500 flex flex-col h-full reveal"
             :class="(index as number) % 3 === 0 ? 'reveal-delay-100' : (index as number) % 3 === 1 ? 'reveal-delay-200' : 'reveal-delay-300'"
            >
                 <!-- Image -->
                 <div class="relative h-64 overflow-hidden">
-                    <div class="absolute top-4 left-4 z-10 bg-white/90 backdrop-blur text-foreground text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">
+                    <div class="absolute top-4 left-4 z-10 backdrop-blur text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide"
+                         :class="property.tag === 'À Louer' ? 'bg-blue-600/90 text-white' : 'bg-green-600/90 text-white'">
                         {{ property.tag }}
                     </div>
                     <img 
@@ -90,27 +108,33 @@ const properties = computed(() => {
                         :alt="property.title"
                         class="h-full w-full object-cover group-hover:scale-110 transition-transform duration-700" 
                     />
-                    <div class="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors"></div>
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
                     <!-- Publisher Profile Image -->
                     <div v-if="property.publisherImage" class="absolute top-4 right-4 rounded-full border-2 border-white overflow-hidden h-12 w-12 bg-white/10 backdrop-blur-sm flex items-center justify-center">
                         <img :src="property.publisherImage" :alt="property.title" class="w-full h-full object-cover" />
+                    </div>
+
+                    <!-- Price Badge Floating Bottom Left (Matching Services Style) -->
+                    <div class="absolute bottom-4 left-4 text-white z-10 flex flex-col">
+                         <span class="text-xs font-medium opacity-90">{{ property.priceLabel }}</span>
+                         <div class="text-xl font-black">
+                             {{ property.price }}
+                         </div>
+                         <div class="text-xs font-medium opacity-80" v-if="property.currency">
+                             {{ property.currency }} {{ property.frequency }}
+                         </div>
                     </div>
                 </div>
 
                 <!-- Content -->
                 <div class="p-6 flex-1 flex flex-col">
                     <div class="flex items-start justify-between mb-4">
-                        <div>
+                        <div class="w-full">
                             <h3 class="font-bold text-lg text-foreground line-clamp-1">{{ property.title }}</h3>
                             <div class="flex items-center gap-2 text-muted-foreground text-sm mt-1">
-                                <MapPin class="h-4 w-4" />
-                                <span>{{ property.location }}</span>
+                                <MapPin class="h-4 w-4 shrink-0" />
+                                <span class="truncate">{{ property.location }}</span>
                             </div>
-                        </div>
-                        <div class="text-right">
-                             <div class="text-primary font-black text-lg">{{ property.price }}</div>
-                             <div class="text-xs text-muted-foreground" v-if="property.currency">{{ property.currency }}</div>
-                             <div class="text-xs text-muted-foreground" v-if="property.frequency">{{ property.frequency }}</div>
                         </div>
                     </div>
 

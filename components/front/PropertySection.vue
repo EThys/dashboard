@@ -1,5 +1,5 @@
-<script setup lang="ts">
-import { MapPin, ArrowRight } from 'lucide-vue-next'
+import { ref, onMounted, onUnmounted } from 'vue'
+import { MapPin, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import { Button } from '@/components/ui'
 import { formatCurrency, getCurrencyLabel } from '@/utils/currency'
 
@@ -62,11 +62,25 @@ const normalizeItem = (item: any) => {
          locationStr = `${p.communeValue || ''}, ${p.cityValue || ''}`
     }
 
-    // Price handling with safety
     const priceVal = p?.price ?? 0
     currencyCode = item.devise?.code || 'USD'
     const symbol = currencyCode === 'USD' ? '$' : 'FC'
     const currencyLabel = getCurrencyLabel(currencyCode)
+    const tType = p?.transactionType || 'vente'
+    const dispTag = tType === 'location' ? 'À Louer' : 'À Vendre'
+    
+    let frequency = tType === 'location' ? '/mois' : ''
+    let priceLabel = tType === 'location' ? 'Loyer' : 'Montant de la vente'
+
+    const isSpecial = ['hotel', 'hôtels', 'salle de fête', 'salles de fête', 'espace funéraire', 'espaces funéraires'].includes(props.title.toLowerCase())
+    if (isSpecial) {
+        if (tType === 'location') {
+            frequency = ''
+            priceLabel = 'Prix de la location'
+        } else {
+            priceLabel = 'Montant de la vente'
+        }
+    }
     
     return {
         id: p?.id || p?.propertyId || 0,
@@ -76,15 +90,58 @@ const normalizeItem = (item: any) => {
         currencyCode: currencyCode,
         currencySymbol: symbol,
         currencyLabel: currencyLabel,
+        currency: currencyLabel,
         image: img,
         publisherImage: item.image || '',
         postBy: item.postBy || '',
-        tag: props.title
+        tag: dispTag,
+        transactionType: tType,
+        frequency: frequency,
+        priceLabel: priceLabel
     }
 }
 
 const displayItems = computed(() => {
-    return props.items.slice(0, 3).map(normalizeItem)
+    return props.items.slice(0, 8).map(normalizeItem)
+})
+
+// Scroll Logic for Mobile
+const mobileScrollContainer = ref<HTMLElement | null>(null)
+const showLeftBtn = ref(false)
+const showRightBtn = ref(true)
+
+const doScrollLeft = () => {
+    if (!mobileScrollContainer.value) return
+    mobileScrollContainer.value.scrollBy({ left: -300, behavior: 'smooth' })
+}
+
+const doScrollRight = () => {
+    if (!mobileScrollContainer.value) return
+    const maxScrollLeft = mobileScrollContainer.value.scrollWidth - mobileScrollContainer.value.clientWidth
+    if (mobileScrollContainer.value.scrollLeft >= maxScrollLeft - 10) {
+        mobileScrollContainer.value.scrollTo({ left: 0, behavior: 'smooth' })
+    } else {
+        mobileScrollContainer.value.scrollBy({ left: 300, behavior: 'smooth' })
+    }
+}
+
+const updateScrollButtonsStatus = () => {
+  if (!mobileScrollContainer.value) return
+  showLeftBtn.value = mobileScrollContainer.value.scrollLeft > 0
+  showRightBtn.value = mobileScrollContainer.value.scrollLeft < mobileScrollContainer.value.scrollWidth - mobileScrollContainer.value.clientWidth - 5
+}
+
+onMounted(() => {
+    if (mobileScrollContainer.value) {
+        mobileScrollContainer.value.addEventListener('scroll', updateScrollButtonsStatus)
+        setTimeout(updateScrollButtonsStatus, 100)
+    }
+})
+
+onUnmounted(() => {
+    if (mobileScrollContainer.value) {
+        mobileScrollContainer.value.removeEventListener('scroll', updateScrollButtonsStatus)
+    }
 })
 </script>
 
@@ -97,50 +154,94 @@ const displayItems = computed(() => {
                 <h2 class="text-3xl font-bold text-foreground mt-1">{{ title }}</h2>
             </div>
             <NuxtLink :to="`/properties?type=${typeId}`" class="hidden md:block">
-                <Button variant="outline" class="gap-2 rounded-full">
+                <Button variant="outline" class="gap-2 rounded-full border-custom hover:bg-primary hover:text-white transition-colors duration-300">
                     Voir tout <ArrowRight class="h-4 w-4" />
                 </Button>
             </NuxtLink>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <NuxtLink 
-                v-for="(item, index) in displayItems" 
-                :key="item.id"
-                :to="`/properties/${item.id}`"
-                class="group bg-card rounded-3xl overflow-hidden border border-border hover:shadow-lg transition-all duration-300 reveal"
-                :class="(index as number) % 3 === 0 ? 'reveal-delay-100' : (index as number) % 3 === 1 ? 'reveal-delay-200' : 'reveal-delay-300'"
+        <div class="relative mt-2">
+            <!-- Mobile Navigation Buttons -->
+            <button 
+                v-show="showLeftBtn"
+                @click="doScrollLeft" 
+                class="md:hidden flex absolute -left-2 top-[calc(50%-40px)] -translate-y-1/2 z-20 size-8 items-center justify-center rounded-full bg-white border border-gray-200 shadow-md text-black hover:scale-105 transition-all"
             >
-                <div class="relative h-56 overflow-hidden">
+               <ChevronLeft class="size-4" />
+            </button>
+            <button 
+                v-show="showRightBtn"
+                @click="doScrollRight" 
+                class="md:hidden flex absolute -right-2 top-[calc(50%-40px)] -translate-y-1/2 z-20 size-8 items-center justify-center rounded-full bg-white border border-gray-200 shadow-md text-black hover:scale-105 transition-all"
+            >
+               <ChevronRight class="size-4" />
+            </button>
+
+            <!-- Grid Container -->
+            <div class="flex overflow-x-auto no-scrollbar pb-6 -mx-4 px-4 md:mx-0 md:px-0 md:grid md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 snap-x snap-mandatory md:snap-none" ref="mobileScrollContainer">
+                <NuxtLink 
+                    v-for="(item, index) in displayItems" 
+                    :key="item.id"
+                    :to="`/properties/${item.id}`"
+                    class="group flex-none snap-center w-[85vw] sm:w-[320px] md:w-auto bg-card rounded-3xl overflow-hidden border border-border hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/10 hover:-translate-y-2 transition-all duration-500 reveal flex flex-col h-full"
+                    :class="(index as number) % 3 === 0 ? 'reveal-delay-100' : (index as number) % 3 === 1 ? 'reveal-delay-200' : 'reveal-delay-300'"
+                >
+                <div class="relative h-64 overflow-hidden">
+                    <div class="absolute top-4 left-4 z-10 backdrop-blur text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide"
+                         :class="item.tag === 'À Louer' ? 'bg-blue-600/90 text-white' : 'bg-green-600/90 text-white'">
+                        {{ item.tag }}
+                    </div>
                     <img 
                       :src="item.image" 
                       class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                     />
                     <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                    <div class="absolute bottom-4 left-4 text-white">
-                        <div class="font-bold text-lg">{{ item.price }}</div>
-                        <div class="text-xs opacity-80">{{ item.currencyLabel }}</div>
-                        <div class="flex items-center gap-1 text-sm opacity-90 mt-1">
-                            <MapPin class="h-3 w-3" /> {{ item.location }}
-                        </div>
-                    </div>
+                    
                     <!-- Publisher Profile Image -->
-                    <div v-if="item.publisherImage" class="absolute top-3 right-3 rounded-full border-2 border-white overflow-hidden h-12 w-12 bg-white/10 backdrop-blur-sm flex items-center justify-center">
+                    <div v-if="item.publisherImage" class="absolute top-4 right-4 rounded-full border-2 border-white overflow-hidden h-12 w-12 bg-white/10 backdrop-blur-sm flex items-center justify-center">
                         <img :src="item.publisherImage" :alt="item.postBy" class="w-full h-full object-cover" />
                     </div>
+
+                    <!-- Price Badge Floating Bottom Left -->
+                    <div class="absolute bottom-4 left-4 text-white z-10 flex flex-col">
+                         <span class="text-xs font-medium opacity-90">{{ item.priceLabel }}</span>
+                         <div class="text-xl font-black">
+                             {{ item.price }}
+                         </div>
+                         <div class="text-xs font-medium opacity-80" v-if="item.currency">
+                             {{ item.currency }} {{ item.frequency }}
+                         </div>
+                    </div>
                 </div>
-                <div class="p-5">
-                    <h3 class="font-bold text-lg line-clamp-1 mb-2 group-hover:text-primary transition-colors">{{ item.title }}</h3>
-                    <Button variant="ghost" class="w-full justify-between hover:bg-primary/5 text-primary p-0 h-auto font-medium">
+                
+                <div class="p-6 flex-1 flex flex-col">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="w-full">
+                            <h3 class="font-bold text-lg text-foreground line-clamp-1 group-hover:text-primary transition-colors">{{ item.title }}</h3>
+                            <div class="flex items-center gap-2 text-muted-foreground text-sm mt-1">
+                                <MapPin class="h-4 w-4 shrink-0" /> 
+                                <span class="truncate">{{ item.location }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <Button variant="ghost" class="w-full mt-auto justify-between hover:bg-primary/5 text-primary p-0 h-auto font-medium">
                         Voir détails <ArrowRight class="h-4 w-4" />
                     </Button>
                 </div>
             </NuxtLink>
         </div>
         
-        <div class="mt-8 text-center md:hidden">
+        <!-- Swipe hint -->
+        <p class="md:hidden text-muted-foreground text-[10px] font-medium text-center mt-2 tracking-wide">
+            ← Glissez pour voir plus →
+        </p>
+
+        </div>
+        
+        <div class="mt-6 text-center md:hidden">
             <NuxtLink :to="`/properties?type=${typeId}`">
-                <Button variant="outline" class="w-full gap-2 rounded-full">
+                <Button variant="outline" class="w-full gap-2 rounded-full border-custom hover:bg-primary hover:text-white transition-colors duration-300">
                     Voir tout {{ title }}
                 </Button>
             </NuxtLink>
@@ -148,3 +249,13 @@ const displayItems = computed(() => {
     </div>
   </section>
 </template>
+
+<style scoped>
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+</style>

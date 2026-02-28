@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Wrench, Paintbrush, Hammer, Zap, Home as HomeIcon, Users, ArrowRight, Star } from 'lucide-vue-next'
+import { Wrench, Paintbrush, Hammer, Zap, Home as HomeIcon, Users, ArrowRight, Star, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import { Button } from '@/components/ui'
 import { formatCurrency, getCurrencyLabel } from '@/utils/currency'
 import type { ServiceResponse } from '@/types/service'
@@ -42,9 +42,48 @@ watch(fetchResult, (newData) => {
 }, { immediate: true })
 
 const displayedServices = computed(() => {
-    if (serviceStore.services.length) return serviceStore.services.slice(0, 6)
-    if (fetchResult.value && fetchResult.value.length) return fetchResult.value.slice(0, 6)
+    if (serviceStore.services.length) return serviceStore.services.slice(0, 8)
+    if (fetchResult.value && fetchResult.value.length) return fetchResult.value.slice(0, 8)
     return []
+})
+
+// Scroll Logic for Mobile
+const mobileScrollContainer = ref<HTMLElement | null>(null)
+const showLeftBtn = ref(false)
+const showRightBtn = ref(true)
+
+const doScrollLeft = () => {
+    if (!mobileScrollContainer.value) return
+    mobileScrollContainer.value.scrollBy({ left: -250, behavior: 'smooth' })
+}
+
+const doScrollRight = () => {
+    if (!mobileScrollContainer.value) return
+    const maxScrollLeft = mobileScrollContainer.value.scrollWidth - mobileScrollContainer.value.clientWidth
+    if (mobileScrollContainer.value.scrollLeft >= maxScrollLeft - 10) {
+        mobileScrollContainer.value.scrollTo({ left: 0, behavior: 'smooth' })
+    } else {
+        mobileScrollContainer.value.scrollBy({ left: 250, behavior: 'smooth' })
+    }
+}
+
+const updateScrollButtonsStatus = () => {
+  if (!mobileScrollContainer.value) return
+  showLeftBtn.value = mobileScrollContainer.value.scrollLeft > 0
+  showRightBtn.value = mobileScrollContainer.value.scrollLeft < mobileScrollContainer.value.scrollWidth - mobileScrollContainer.value.clientWidth - 5
+}
+
+onMounted(() => {
+    if (mobileScrollContainer.value) {
+        mobileScrollContainer.value.addEventListener('scroll', updateScrollButtonsStatus)
+        setTimeout(updateScrollButtonsStatus, 100)
+    }
+})
+
+onUnmounted(() => {
+    if (mobileScrollContainer.value) {
+        mobileScrollContainer.value.removeEventListener('scroll', updateScrollButtonsStatus)
+    }
 })
 </script>
 
@@ -71,14 +110,30 @@ const displayedServices = computed(() => {
       <!-- ===================== -->
       <!-- MOBILE: Horizontal scroll cards -->
       <!-- ===================== -->
-      <div class="md:hidden">
+      <div class="md:hidden relative">
+        <!-- Floating Scroll Buttons -->
+        <button 
+          v-show="showLeftBtn"
+          @click="doScrollLeft" 
+          class="flex absolute -left-2 top-[calc(50%-40px)] -translate-y-1/2 z-20 size-8 items-center justify-center rounded-full bg-white border border-gray-200 shadow-md text-black hover:scale-105 transition-all"
+        >
+          <ChevronLeft class="size-4" />
+        </button>
+        <button 
+          v-show="showRightBtn"
+          @click="doScrollRight" 
+          class="flex absolute -right-2 top-[calc(50%-40px)] -translate-y-1/2 z-20 size-8 items-center justify-center rounded-full bg-white border border-gray-200 shadow-md text-black hover:scale-105 transition-all"
+        >
+          <ChevronRight class="size-4" />
+        </button>
+
         <!-- Loading State Mobile -->
         <div v-if="!displayedServices.length" class="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
           <div v-for="i in 4" :key="i" class="flex-none w-56 h-72 bg-muted animate-pulse rounded-3xl"></div>
         </div>
 
         <!-- Services horizontal scroll -->
-        <div v-else class="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-4 px-4">
+        <div v-else class="flex gap-4 overflow-x-auto pb-4 no-scrollbar px-1" ref="mobileScrollContainer">
           <NuxtLink
             v-for="(item, index) in displayedServices"
             :key="item.prestation.id"
@@ -164,12 +219,12 @@ const displayedServices = computed(() => {
       <!-- ===================== -->
       <div class="hidden md:block">
         <!-- Loading State -->
-        <div v-if="!displayedServices.length" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-          <div v-for="i in 6" :key="i" class="h-80 bg-muted animate-pulse rounded-3xl"></div>
+        <div v-if="!displayedServices.length" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+          <div v-for="i in 8" :key="i" class="h-80 bg-muted animate-pulse rounded-3xl"></div>
         </div>
 
         <!-- Services Grid -->
-        <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
+        <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
           <NuxtLink 
             v-for="(item, index) in displayedServices" 
             :key="item.prestation.id"

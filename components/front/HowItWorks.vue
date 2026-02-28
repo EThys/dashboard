@@ -33,16 +33,13 @@ const steps = [
     <div class="absolute -bottom-24 -left-24 w-96 h-96 bg-blue-400/5 rounded-full blur-3xl pointer-events-none"></div>
     
     <div class="container mx-auto px-6 lg:px-12 relative z-10">
-      <div class="text-left max-w-3xl mb-20 reveal-left">
-        <span class="px-4 py-1.5 rounded-full bg-primary/10 text-primary font-bold text-sm uppercase tracking-wider mb-6 inline-block">
-          Simple & Efficace
-        </span>
-        <h3 class="text-4xl md:text-5xl font-black text-slate-900 mb-6 tracking-tight leading-tight">
-          Votre projet immobilier,<br>
-          <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-500">en toute simplicité</span>
+      <div class="text-left max-w-2xl mb-16 reveal-left">
+        <h3 class="text-3xl md:text-4xl font-black text-slate-900 mb-4 tracking-tight leading-tight">
+          Votre projet immobilier en <br>
+          <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-500">4 étapes simples</span>
         </h3>
-        <p class="text-slate-600 text-lg leading-relaxed">
-          Que vous cherchiez à acheter, louer ou obtenir un service, CasaNayo vous accompagne à chaque étape avec fluidité.
+        <p class="text-slate-600 text-base leading-relaxed">
+          Que vous cherchiez un bien ou un service, tout se fait en un clin d'œil.
         </p>
       </div>
 

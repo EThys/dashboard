@@ -69,9 +69,16 @@ const isStoreEmpty = computed(() =>
 // ----------------------------------------------------------------------------
 // Filter States
 // ----------------------------------------------------------------------------
+const searchInputText = ref(route.query.city?.toString() || '')
 const searchQuery = ref(route.query.city?.toString() || '')
+
+const applySearch = () => {
+    searchQuery.value = searchInputText.value
+}
+
 const selectedType = ref(route.query.type?.toString() || 'all')
 const selectedTransaction = ref('all')
+const sortOrder = ref('desc') // 'desc' = plus récents, 'asc' = plus anciens
 
 // Sync with route query
 watch(() => route.query.type, (newType) => {
@@ -79,6 +86,7 @@ watch(() => route.query.type, (newType) => {
 })
 watch(() => route.query.city, (newCity) => {
     searchQuery.value = newCity?.toString() || ''
+    searchInputText.value = newCity?.toString() || ''
 })
 
 // Advanced Filters
@@ -193,8 +201,12 @@ const properties = computed(() => {
       if (a.category === 'property' && b.category !== 'property') return -1
       if (a.category !== 'property' && b.category === 'property') return 1
       
-      // 2. Sort by Date (newest first)
-      return b.date.getTime() - a.date.getTime()
+      // 2. Sort by Date
+      if (sortOrder.value === 'asc') {
+          return a.date.getTime() - b.date.getTime()
+      } else {
+          return b.date.getTime() - a.date.getTime()
+      }
   })
 })
 
@@ -272,12 +284,19 @@ const paginatedProperties = computed(() => {
 
 const scrollToTop = () => {
   if (import.meta.client) {
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    const gridEl = document.getElementById('properties-grid')
+    if (gridEl) {
+       // Scroll relative to the element, adding a little offset for breathing room
+       const y = gridEl.getBoundingClientRect().top + window.scrollY - 20;
+       window.scrollTo({ top: y, behavior: 'smooth' })
+    } else {
+       window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
   }
 }
 
-// Reset pagination when filters change
-watch([searchQuery, selectedType, selectedTransaction, showAdvancedFilters, minPrice, maxPrice, selectedCurrency, roomCount], () => {
+// Reset pagination when filters change (do not include showAdvancedFilters to prevent scrolling when toggling)
+watch([searchQuery, selectedType, selectedTransaction, minPrice, maxPrice, selectedCurrency, roomCount, sortOrder], () => {
   currentPage.value = 1
   scrollToTop()
 })
@@ -312,12 +331,13 @@ watch([searchQuery, selectedType, selectedTransaction, showAdvancedFilters, minP
           <div class="relative flex items-center bg-white dark:bg-slate-800 rounded-xl p-2 shadow-2xl">
             <Search class="h-5 w-5 text-muted-foreground ml-3" />
             <input 
-              v-model="searchQuery"
+              v-model="searchInputText"
+              @keyup.enter="applySearch"
               type="text" 
               placeholder="Que recherchez-vous ? (ex: Gombe, Matadi...)"
               class="flex-1 h-12 bg-transparent border-none focus:ring-0 text-foreground px-4 font-outfit"
             />
-            <Button size="lg" class="hidden sm:flex rounded-lg px-8">
+            <Button size="lg" class="hidden sm:flex rounded-lg px-8" @click="applySearch">
               Rechercher
             </Button>
           </div>
@@ -333,7 +353,7 @@ watch([searchQuery, selectedType, selectedTransaction, showAdvancedFilters, minP
         <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
             
             <!-- Type -->
-            <div class="md:col-span-4 relative group">
+            <div class="md:col-span-3 relative group">
                 <div class="absolute inset-y-0 left-4 flex items-center pointer-events-none">
                 <HomeIcon class="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
                 </div>
@@ -350,7 +370,7 @@ watch([searchQuery, selectedType, selectedTransaction, showAdvancedFilters, minP
             </div>
 
             <!-- Transaction -->
-            <div class="md:col-span-4 relative group">
+            <div class="md:col-span-3 relative group">
                 <div class="absolute inset-y-0 left-4 flex items-center pointer-events-none">
                 <Calendar class="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
                 </div>
@@ -367,15 +387,31 @@ watch([searchQuery, selectedType, selectedTransaction, showAdvancedFilters, minP
                 </div>
             </div>
 
+            <!-- Date Sort -->
+            <div class="md:col-span-3 relative group">
+                <div class="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+                <SlidersHorizontal class="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                </div>
+                <select 
+                v-model="sortOrder"
+                class="w-full h-12 pl-12 pr-8 bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary text-foreground cursor-pointer appearance-none"
+                >
+                <option value="desc">Plus récents</option>
+                <option value="asc">Plus anciens</option>
+                </select>
+                <div class="absolute inset-y-0 right-4 flex items-center pointer-events-none">
+                <ChevronDown class="h-4 w-4 text-muted-foreground opacity-50" />
+                </div>
+            </div>
+
             <!-- Advanced Toggle -->
-            <div class="md:col-span-4">
+            <div class="md:col-span-3">
                <Button 
                     @click="toggleAdvanced"
                     :variant="showAdvancedFilters ? 'default' : 'outline'" 
                     class="w-full h-12 rounded-xl flex items-center justify-between"
                >
                     <span class="flex items-center gap-2">
-                        <SlidersHorizontal class="h-4 w-4" />
                         Filtres Avancés
                     </span>
                     <ChevronDown class="h-4 w-4 transition-transform" :class="{'rotate-180': showAdvancedFilters}" />
@@ -445,7 +481,7 @@ watch([searchQuery, selectedType, selectedTransaction, showAdvancedFilters, minP
     </div>
 
     <!-- Properties Grid (Updated to 4 cols) -->
-    <section class="pb-20 bg-muted/30">
+    <section id="properties-grid" class="pb-20 bg-muted/30 pt-4">
       <div class="container mx-auto px-4">
         
         <!-- Loading State (Shimmer Grid) -->

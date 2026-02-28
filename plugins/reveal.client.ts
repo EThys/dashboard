@@ -2,8 +2,8 @@ export default defineNuxtPlugin(() => {
   if (import.meta.client) {
     const observerOptions = {
       root: null,
-      rootMargin: '0px',
-      threshold: 0.15
+      rootMargin: '50px 0px 200px 0px',
+      threshold: 0.01
     }
 
     const observer = new IntersectionObserver((entries) => {

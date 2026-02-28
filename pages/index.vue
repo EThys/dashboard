@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import Hero from '~/components/front/Hero.vue'
 import HowItWorks from '~/components/front/HowItWorks.vue'
-import PropertyCategories from '~/components/front/PropertyCategories.vue'
-import ServiceCategories from '~/components/front/ServiceCategories.vue'
+import CombinedCategories from '~/components/front/CombinedCategories.vue'
 import About from '~/components/front/About.vue'
 import Services from '~/components/front/Services.vue'
 import AllServices from '~/components/front/AllServices.vue'
@@ -72,12 +71,10 @@ const { pending: isLoadingProp } = await useAsyncData('home-properties', async (
 <template>
   <div>
     <Hero />
-    <div class="reveal"><HowItWorks /></div>
     
-    <div class="reveal"><PropertyCategories /></div>
+    <div class="reveal"><CombinedCategories /></div>
+
     <div class="reveal"><FeaturedProperties /></div>
-    
-    <div class="reveal"><ServiceCategories /></div>
     <div class="reveal"><AllServices /></div>
 
     <!-- Loading State for Sections -->
@@ -134,7 +131,7 @@ const { pending: isLoadingProp } = await useAsyncData('home-properties', async (
         </div>
         </div>
     </Transition>
-    
+    <div class="reveal"><HowItWorks /></div>
     <div class="reveal"><AppDownload /></div>
   </div>
 </template>

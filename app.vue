@@ -2,6 +2,7 @@
 import { Toaster } from 'vue-sonner'
 import ScrollToTop from '@/components/ui/ScrollToTop.vue'
 import CasaLoader from '@/components/ui/CasaLoader.vue'
+import CookieConsent from '@/components/ui/CookieConsent.vue'
 
 const isInitialLoading = ref(true)
 
@@ -50,6 +51,7 @@ onMounted(() => {
         }"
       />
       <ScrollToTop />
+      <CookieConsent />
     </ClientOnly>
   </div>
 </template>
