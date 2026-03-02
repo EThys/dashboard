@@ -77,49 +77,101 @@ const startServiceDate = ref('')
 const endServiceDate = ref('')
 const selectedServiceExperience = ref('all') 
 const selectedServiceStatus = ref('all')
+const serviceSortOrder = ref('newest')
 
 // Fetch logic
-const { data: propertiesData, isLoading, isError } = useQuery({
-  queryKey: ['properties'],
+const { data: allPropertiesData, isLoading, isError } = useQuery({
+  queryKey: ['all-dashboard-properties'],
   queryFn: async () => {
-    const res = await fetch(`${config.public.apiBase}/property`)
-    return res.json()
+    const [props, terrains, bureaux, hotels, festives, funeraires] = await Promise.all([
+      fetch(`${config.public.apiBase}/property`).then(res => res.json()),
+      fetch(`${config.public.apiBase}/property/terrains`).then(res => res.json()),
+      fetch(`${config.public.apiBase}/property/bureaux`).then(res => res.json()),
+      fetch(`${config.public.apiBase}/property/hotels`).then(res => res.json()),
+      fetch(`${config.public.apiBase}/property/festives`).then(res => res.json()),
+      fetch(`${config.public.apiBase}/property/funeraires`).then(res => res.json())
+    ])
+    return {
+      properties: props?.properties || [],
+      terrains: terrains?.terrain || [],
+      bureaux: bureaux?.bureaux || [],
+      hotels: hotels?.data || [],
+      festives: festives?.festives || [],
+      funeraires: funeraires?.funeraires || []
+    }
   }
 })
 
 // Sync with Pinia
-watch(propertiesData, (newData) => {
-  if (newData?.properties) {
-    propertyStore.setProperties(newData.properties)
+watch(allPropertiesData, (newData) => {
+  if (newData) {
+    propertyStore.properties = newData.properties
+    propertyStore.terrains = newData.terrains
+    propertyStore.bureaux = newData.bureaux
+    propertyStore.hotels = newData.hotels
+    propertyStore.festives = newData.festives
+    propertyStore.funeraires = newData.funeraires
   }
 }, { immediate: true })
 
 // Processing
 const allPublications = computed(() => {
-  if (!propertiesData.value?.properties) return []
+  if (!allPropertiesData.value) return []
   
-  return propertiesData.value.properties.map((item: any) => {
-    const p = item.property
-    const addr = item.address
-    const img = item.images?.main?.[0]?.publicPath || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&q=80&w=800'
-    const status = p.available ? 'Active' : 'Pending' 
-    const price = typeof p.price === 'number' ? p.price.toLocaleString() : p.price
+  const allRaw = [
+      ...allPropertiesData.value.properties.map((i: any) => ({ ...i, _category: 'property' })),
+      ...allPropertiesData.value.terrains.map((i: any) => ({ ...i, _category: 'terrain', typeProperty: { name: 'Terrain' } })),
+      ...allPropertiesData.value.bureaux.map((i: any) => ({ ...i, _category: 'bureau', typeProperty: { name: 'Bureau' } })),
+      ...allPropertiesData.value.hotels.map((i: any) => ({ ...i, _category: 'hotel', typeProperty: { name: 'Hôtel' } })),
+      ...allPropertiesData.value.festives.map((i: any) => ({ ...i, _category: 'festive', typeProperty: { name: 'Salle de fête' } })),
+      ...allPropertiesData.value.funeraires.map((i: any) => ({ ...i, _category: 'funeraire', typeProperty: { name: 'Espace funéraire' } }))
+  ]
+
+  return allRaw.map((item: any) => {
+    const p = item.property || item.terrain || item.funeraire || item.festive || item.bureau || item.hotel || {}
+    const addr = item.address || {}
+    
+    // Image extraction
+    let img = 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&q=80&w=800'
+    if (item.images?.main?.[0]?.publicPath) {
+        img = item.images.main[0].publicPath
+    } else if (item.hotel?.image) {
+        img = item.hotel.image
+    } else if (item.images && Array.isArray(item.images) && item.images[0]?.path) {
+        img = item.images[0].path
+    }
+
+    const status = p.available || p.active ? 'Active' : 'Pending' 
+    const priceVal = p.price || p.minPrice || 0
+    const priceDisplay = typeof priceVal === 'number' ? priceVal.toLocaleString() : priceVal
+    
+    // Location string
+    let locationStr = 'RDC'
+    if (addr.communeValue && addr.cityValue) {
+        locationStr = `${addr.communeValue}, ${addr.cityValue}`
+    } else if (p.communeValue && p.cityValue) {
+        locationStr = `${p.communeValue}, ${p.cityValue}`
+    }
+
+    const typeName = item.typeProperty?.name || (item._category === 'terrain' ? 'Terrain' : item._category === 'hotel' ? 'Hôtel' : 'Propriété')
+
     return {
-      id: p.propertyId,
-      title: p.title || 'Sans titre',
-      type: item.typeProperty?.name || 'Inconnu',
-      location: `${addr?.communeValue || ''}, ${addr?.cityValue || 'RDC'}`,
-      price: `${price} ${item.devise?.code || 'USD'}`,
+      id: p.propertyId || p.id,
+      title: p.title || typeName,
+      type: typeName,
+      location: locationStr,
+      price: `${priceDisplay} ${item.devise?.code || 'USD'}`,
       image: img,
       status: status,
       author: item.postBy?.replace('@@', '') || 'Inconnu',
       description: p.description || 'Aucune description fournie.',
-      date: new Date(p.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }),
-      rawDate: new Date(p.createdAt),
-      transactionType: p.transactionType,
+      date: new Date(p.createdAt || p.dateCreated).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }),
+      rawDate: new Date(p.createdAt || p.dateCreated),
+      transactionType: p.transactionType || 'vente',
       deviseCode: item.devise?.code,
-      rawType: item.typeProperty?.name,
-      rawAddress: `${addr?.address || ''} ${addr?.communeValue || ''} ${addr?.quartierValue || ''} ${addr?.cityValue || ''}`,
+      rawType: typeName,
+      rawAddress: `${addr.address || ''} ${addr.communeValue || ''} ${addr.cityValue || ''}`,
+      category: item._category,
       raw: item
     }
   })
@@ -211,6 +263,15 @@ const filteredServices = computed(() => {
         else if (status === 'inactive') list = list.filter((s: any) => !s.raw.prestation.active)
         else if (status === 'certified') list = list.filter((s: any) => s.raw.prestation.certified)
     }
+
+    // Sorting
+    list = [...list].sort((a: any, b: any) => {
+        if (serviceSortOrder.value === 'newest') {
+            return b.rawDate.getTime() - a.rawDate.getTime()
+        } else {
+            return a.rawDate.getTime() - b.rawDate.getTime()
+        }
+    })
 
     return list
 })
@@ -464,8 +525,11 @@ watch([currentFilter, searchQuery], () => { currentPage.value = 1 })
                     <option value="Maisons">Maisons</option>
                     <option value="Apparts">Appartements</option>
                     <option value="Studio">Studio</option>
-                    <option value="Villas">Villas</option>
-                    <option value="Parcelles">Parcelles</option>
+                    <option value="Terrain">Terrains</option>
+                    <option value="Bureau">Bureaux</option>
+                    <option value="Hôtel">Hôtels</option>
+                    <option value="Salle de fête">Salles de fête</option>
+                    <option value="Espace funéraire">Espaces funéraires</option>
                 </select>
             </div>
 
@@ -594,32 +658,34 @@ watch([currentFilter, searchQuery], () => { currentPage.value = 1 })
             </div>
 
             <!-- Advanced Toggle -->
-            <div class="md:col-span-4">
-               <Button 
+            <div class="md:col-span-4 flex items-center gap-3">
+                <div class="relative flex-1">
+                    <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                        v-model="serviceSearchQuery"
+                        placeholder="Rechercher..." 
+                        class="pl-10 h-11"
+                    />
+                </div>
+                <select v-model="serviceSortOrder" class="h-11 px-4 rounded-md border border-input bg-background text-sm font-medium hover:bg-muted/50 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring">
+                    <option value="newest">Plus récent</option>
+                    <option value="oldest">Plus ancien</option>
+                </select>
+                <Button 
                     @click="showServiceFilters = !showServiceFilters"
                     :variant="showServiceFilters ? 'default' : 'outline'" 
-                    class="w-full h-11 rounded-xl flex items-center justify-between"
-               >
-                    <span class="flex items-center gap-2">
-                        <Filter class="h-4 w-4" />
-                        Filtres Avancés
-                    </span>
+                    class="h-11 rounded-xl flex items-center justify-between gap-2"
+                >
+                    <Filter class="h-4 w-4" />
                     <ChevronDown class="h-4 w-4 transition-transform" :class="{'rotate-180': showServiceFilters}" />
-               </Button>
+                </Button>
             </div>
         </div>
 
         <!-- Advanced Filters Area (Collapsible) -->
         <div v-if="showServiceFilters" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pt-4 border-t animate-in fade-in slide-in-from-top-1">
-            <!-- Search -->
-            <div class="space-y-2 md:col-span-2">
-                 <label class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Recherche</label>
-                 <Input 
-                  v-model="serviceSearchQuery"
-                  placeholder="Rechercher par titre, description..." 
-                  class="h-9"
-                 />
-            </div>
+             <!-- Empty if used above -->
+             <div class="md:col-span-2 hidden"></div>
 
             <!-- Min Price -->
             <div class="space-y-2">

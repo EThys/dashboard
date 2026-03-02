@@ -29,16 +29,32 @@ const statsData = ref({
 const fetchDashboardStats = async () => {
     statsData.value.isLoading = true
     try {
-        const [usersRes, propRes, servRes]: any = await Promise.all([
+        const [usersRes, propRes, terrainRes, bureauRes, hotelRes, festiveRes, funeraireRes, servRes]: any = await Promise.all([
             $fetch(`${config.public.apiBase}/users`, {
                 headers: { 'Authorization': `Bearer ${auth.token}` }
             }),
             $fetch(`${config.public.apiBase}/property`),
+            $fetch(`${config.public.apiBase}/property/terrains`),
+            $fetch(`${config.public.apiBase}/property/bureaux`),
+            $fetch(`${config.public.apiBase}/property/hotels`),
+            $fetch(`${config.public.apiBase}/property/festives`),
+            $fetch(`${config.public.apiBase}/property/funeraires`),
             $fetch(`${config.public.apiBase}/prestations`)
         ])
 
         statsData.value.users = usersRes.data || usersRes || []
-        statsData.value.properties = propRes.properties || propRes || []
+        
+        // Consolidate all property types
+        const allProps = [
+            ...(propRes.properties || []),
+            ...(terrainRes.terrain || []),
+            ...(bureauRes.bureaux || []),
+            ...(hotelRes.data || []),
+            ...(festiveRes.festives || []),
+            ...(funeraireRes.funeraires || [])
+        ]
+        
+        statsData.value.properties = allProps
         statsData.value.services = servRes.prestations || servRes || []
     } catch (error) {
         console.error('Error fetching dashboard stats:', error)
