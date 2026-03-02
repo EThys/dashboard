@@ -522,7 +522,7 @@ watch([searchQuery, selectedType, selectedTransaction, minPrice, maxPrice, selec
                  <span 
                     :class="[
                       'px-2.5 py-1 rounded-full text-[10px] font-bold text-white shadow-lg uppercase tracking-wider',
-                      property.transaction === 'location' ? 'bg-blue-600' : 'bg-primary'
+                      property.transaction === 'location' ? 'bg-blue-600' : 'bg-green-600'
                     ]"
                   >
                     {{ property.transaction === 'location' ? 'À Louer' : 'À Vendre' }}
