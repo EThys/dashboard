@@ -1,7 +1,9 @@
-import { ref, onMounted, onUnmounted } from 'vue'
+<script setup lang="ts">
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { MapPin, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import { Button } from '@/components/ui'
 import { formatCurrency, getCurrencyLabel } from '@/utils/currency'
+import { encodeId } from '@/utils/urlObfuscator'
 
 const props = defineProps<{
     title: string
@@ -165,16 +167,16 @@ onUnmounted(() => {
             <button 
                 v-show="showLeftBtn"
                 @click="doScrollLeft" 
-                class="md:hidden flex absolute -left-2 top-[calc(50%-40px)] -translate-y-1/2 z-20 size-8 items-center justify-center rounded-full bg-white border border-gray-200 shadow-md text-black hover:scale-105 transition-all"
+                class="md:hidden flex absolute -left-2 top-[calc(50%-60px)] -translate-y-1/2 z-20 size-10 items-center justify-center rounded-full bg-white border border-gray-200 shadow-xl text-black active:scale-95 transition-all"
             >
-               <ChevronLeft class="size-4" />
+               <ChevronLeft class="size-5" />
             </button>
             <button 
                 v-show="showRightBtn"
                 @click="doScrollRight" 
-                class="md:hidden flex absolute -right-2 top-[calc(50%-40px)] -translate-y-1/2 z-20 size-8 items-center justify-center rounded-full bg-white border border-gray-200 shadow-md text-black hover:scale-105 transition-all"
+                class="md:hidden flex absolute -right-2 top-[calc(50%-60px)] -translate-y-1/2 z-20 size-10 items-center justify-center rounded-full bg-white border border-gray-200 shadow-xl text-black active:scale-95 transition-all"
             >
-               <ChevronRight class="size-4" />
+               <ChevronRight class="size-5" />
             </button>
 
             <!-- Grid Container -->
@@ -182,11 +184,11 @@ onUnmounted(() => {
                 <NuxtLink 
                     v-for="(item, index) in displayItems" 
                     :key="item.id"
-                    :to="`/properties/${item.id}`"
-                    class="group flex-none snap-center w-[85vw] sm:w-[320px] md:w-auto bg-card rounded-3xl overflow-hidden border border-border hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/10 hover:-translate-y-2 transition-all duration-500 reveal flex flex-col h-full"
+                    :to="`/properties/${encodeId(item.id)}`"
+                    class="group flex-none snap-center w-[280px] md:w-auto bg-card rounded-3xl overflow-hidden border border-border hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/10 hover:-translate-y-2 transition-all duration-500 reveal flex flex-col h-full"
                     :class="(index as number) % 3 === 0 ? 'reveal-delay-100' : (index as number) % 3 === 1 ? 'reveal-delay-200' : 'reveal-delay-300'"
                 >
-                <div class="relative h-64 overflow-hidden">
+                <div class="relative h-44 md:h-64 overflow-hidden">
                     <div class="absolute top-4 left-4 z-10 backdrop-blur text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide"
                          :class="item.tag === 'À Louer' ? 'bg-blue-600/90 text-white' : 'bg-green-600/90 text-white'">
                         {{ item.tag }}
