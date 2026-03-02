@@ -80,7 +80,7 @@ const properties = computed(() => {
                </p>
            </div>
            <NuxtLink to="/properties">
-             <Button variant="outline" class="font-bold border-custom md:self-end rounded-full px-8 hover:bg-white hover:text-slate-900 transition-colors">Voir tout</Button>
+             <Button variant="outline" class="font-bold border-custom md:self-end rounded-full px-8 hover:bg-primary hover:text-white transition-colors duration-300">Voir tout</Button>
            </NuxtLink>
        </div>
 
