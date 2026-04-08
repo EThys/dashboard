@@ -15,8 +15,14 @@ const serviceStore = useServiceStore()
 const desktopScrollContainer = ref<HTMLElement | null>(null)
 
 // Fetch data
-const { pending: isLoadingProps } = await useAsyncData('property-types', () => propertyStore.fetchTypes(config.public.apiBase), { lazy: true })
-const { pending: isLoadingServices } = await useAsyncData('service-categories', () => serviceStore.fetchCategories(config.public.apiBase), { lazy: true })
+const { pending: isLoadingProps } = useAsyncData('property-types', () => propertyStore.fetchTypes(config.public.apiBase), {
+    lazy: true,
+    server: false,
+})
+const { pending: isLoadingServices } = useAsyncData('service-categories', () => serviceStore.fetchCategories(config.public.apiBase), {
+    lazy: true,
+    server: false,
+})
 
 const isLoading = computed(() => isLoadingProps.value || isLoadingServices.value)
 

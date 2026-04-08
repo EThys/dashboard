@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import type { ServiceItem } from '@/types/service'
+import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
 
 export const useServiceStore = defineStore('services', {
     state: () => ({
@@ -44,7 +45,7 @@ export const useServiceStore = defineStore('services', {
 
             try {
                 // Use $fetch for direct API call
-                const data = await $fetch<any>(`${apiBase}/accounts`, { timeout: 10000 })
+                const data = await $fetch<any>(joinApi(apiBase, ApiEndpoints.accounts), { timeout: 10000 })
 
                 if (data && data.accounts) {
                     const serviceProviders = data.accounts.filter((acc: any) => acc.typeAccount?.name === 'Prestataire de service')
@@ -62,7 +63,7 @@ export const useServiceStore = defineStore('services', {
             // 2. Fetch from API
             try {
                 // Use $fetch for direct API call
-                const data = await $fetch<any>(`${apiBase}/prestations`, {
+                const data = await $fetch<any>(joinApi(apiBase, ApiEndpoints.publicPrestations), {
                     query: { serviceId: categoryId },
                     timeout: 10000
                 })
@@ -87,10 +88,13 @@ export const useServiceStore = defineStore('services', {
                     }
                 }
 
-                // API Call (Assuming PATCH /prestations/:id)
-                await $fetch(`${apiBase}/prestations/${id}`, {
+                const token = useCookie<string | null>('auth_token').value
+                const headers: Record<string, string> = {}
+                if (token) headers.Authorization = `Bearer ${token}`
+                await $fetch(joinApi(apiBase, `${ApiEndpoints.updatePrestation}${id}`), {
                     method: 'PATCH',
                     body: updates,
+                    headers,
                     timeout: 10000
                 })
 
@@ -105,7 +109,7 @@ export const useServiceStore = defineStore('services', {
             if (this.services.length > 0) return
 
             try {
-                const data = await $fetch<any>(`${apiBase}/prestations`, { timeout: 15000 })
+                const data = await $fetch<any>(joinApi(apiBase, ApiEndpoints.publicPrestations), { timeout: 15000 })
                 if (data && data.prestations) {
                     this.setServices(data.prestations)
                 }

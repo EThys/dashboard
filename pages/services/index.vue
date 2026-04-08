@@ -53,6 +53,7 @@ import { useServiceStore } from '@/stores/services'
 import { useAuthStore } from '@/stores/auth'
 import { encodeId } from '@/utils/urlObfuscator'
 import ServiceCardShimmer from '~/components/front/ServiceCardShimmer.vue'
+import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
 
 const config = useRuntimeConfig()
 const route = useRoute()
@@ -87,7 +88,9 @@ const selectedCategory = ref(route.query.categoryId ? Number(route.query.categor
 await serviceStore.fetchCategories(config.public.apiBase)
 
 // Fetch services (initial load) - kept for "ALL" services fallback
-const { data: servicesData, pending: isLoading, error } = await useFetch<ServiceResponse>(`${config.public.apiBase}/prestations`, {
+const { data: servicesData, pending: isLoading, error } = await useFetch<ServiceResponse>(
+  joinApi(config.public.apiBase as string, ApiEndpoints.publicPrestations),
+  {
     key: 'services-list',
     lazy: true
 })
@@ -214,7 +217,8 @@ const toggleCertification = async (service: ServiceDetail) => {
     // Toggle certified status
     const newStatus = !service.certified
     await serviceStore.updateService(service.id, { certified: newStatus }, config.public.apiBase)
-}</script>
+}
+</script>
 
 <template>
   <div class="min-h-screen">

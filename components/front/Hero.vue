@@ -18,8 +18,14 @@ const serviceCategory = ref('')
 const serviceSearch = ref('')
 
 // Fetch dynamic data
-const { pending: isLoadingTypes } = useAsyncData('hero-types', () => propertyStore.fetchTypes(config.public.apiBase), { lazy: true })
-const { pending: isLoadingCats } = useAsyncData('hero-cats', () => serviceStore.fetchCategories(config.public.apiBase), { lazy: true })
+const { pending: isLoadingTypes } = useAsyncData('hero-types', () => propertyStore.fetchTypes(config.public.apiBase), {
+    lazy: true,
+    server: false,
+})
+const { pending: isLoadingCats } = useAsyncData('hero-cats', () => serviceStore.fetchCategories(config.public.apiBase), {
+    lazy: true,
+    server: false,
+})
 
 const propertyTypes = computed(() => propertyStore.getTypes)
 const serviceCategories = computed(() => serviceStore.getCategories)

@@ -7,6 +7,7 @@ import type { ServiceResponse } from '@/types/service'
 
 // Store
 import { useServiceStore } from '@/stores/services'
+import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
 
 const serviceStore = useServiceStore()
 const config = useRuntimeConfig()
@@ -19,7 +20,7 @@ const getCurrencyCode = (deviseId: number): 'CDF' | 'USD' => {
 // Validated Data Fetching
 const { data: fetchResult, pending: isLoading } = await useAsyncData('home-services', async () => {
     try {
-        const response = await $fetch<any>(`${config.public.apiBase}/prestations`)
+        const response = await $fetch<any>(joinApi(config.public.apiBase as string, ApiEndpoints.publicPrestations))
         if (response && response.prestations) {
             serviceStore.setServices(response.prestations)
             return response.prestations

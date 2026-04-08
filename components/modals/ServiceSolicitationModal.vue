@@ -2,6 +2,7 @@
 import { X, Loader2 } from 'lucide-vue-next'
 import { Button, Input, Label } from '@/components/ui'
 import { useAuthStore } from '@/stores/auth'
+import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
 
 const props = defineProps<{
     isOpen: boolean
@@ -33,8 +34,9 @@ const handleSubmit = async () => {
 
     isLoading.value = true
     try {
+        const uid = authStore.user.userId ?? (authStore.user as { id?: number }).id
         const payload = {
-            userId: authStore.user.id,
+            userId: uid,
             prestationId: props.serviceId,
             deviseId: props.deviseId || 1, 
             budget: Number(form.budget),
@@ -43,8 +45,9 @@ const handleSubmit = async () => {
             endDate: form.endDate || form.startDate
         }
 
-        await $fetch(`${config.public.apiBase}/sollicitation`, {
+        await $fetch(joinApi(config.public.apiBase as string, ApiEndpoints.sollicitation), {
             method: 'POST',
+            headers: authStore.token ? { Authorization: `Bearer ${authStore.token}` } : {},
             body: payload
         })
 

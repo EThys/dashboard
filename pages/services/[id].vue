@@ -7,6 +7,7 @@ import { encodeId, decodeId } from '@/utils/urlObfuscator'
 import { useServiceStore } from '@/stores/services'
 import DetailShimmer from '@/components/front/DetailShimmer.vue'
 import ServiceSolicitationModal from '@/components/modals/ServiceSolicitationModal.vue'
+import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
 
 definePageMeta({
   layout: 'default'
@@ -35,7 +36,9 @@ const { pending: isLoading } = await useAsyncData(
   async () => {
     // 1. Try to fetch specific service first
     try {
-        const data = await $fetch<any>(`${config.public.apiBase}/prestations/${serviceId.value}`)
+        const data = await $fetch<any>(
+            joinApi(config.public.apiBase as string, `${ApiEndpoints.publicPrestations}/${serviceId.value}`)
+        )
         if (data && data.prestations) {
             fetchedService.value = data
             return true

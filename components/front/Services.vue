@@ -4,6 +4,7 @@ import { Button } from '@/components/ui'
 import { formatCurrency, getCurrencyLabel } from '@/utils/currency'
 import type { ServiceResponse } from '@/types/service'
 import { encodeId } from '@/utils/urlObfuscator'
+import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
 
 const config = useRuntimeConfig()
 
@@ -13,7 +14,9 @@ const getCurrencyCode = (deviseId: number): 'CDF' | 'USD' => {
 }
 
 // Fetch services (limit to 6 for the home page)
-const { data: servicesData } = await useFetch<ServiceResponse>(`${config.public.apiBase}/prestation`, {
+const { data: servicesData } = await useFetch<ServiceResponse>(
+  joinApi(config.public.apiBase as string, ApiEndpoints.publicPrestations),
+  {
     key: 'home-services',
     lazy: true
 })
