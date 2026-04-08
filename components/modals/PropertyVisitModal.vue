@@ -3,14 +3,18 @@ import { X, Loader2, CheckCircle } from 'lucide-vue-next'
 import { Button, Input, Label } from '@/components/ui'
 import { useAuthStore } from '@/stores/auth'
 import { useReservationStore } from '@/stores/reservations'
+import { evaluateReservationEligibility } from '@/composables/useReservationEligibility'
 import { toast } from 'vue-sonner'
 import { h } from 'vue'
 
 const props = defineProps<{
     isOpen: boolean
+    /** Id bien (résidence, etc.) — ignoré si `chambreId` est défini */
     propertyId: number
     propertyTitle: string
     propertyType?: string
+    /** Réservation hôtel : id de la chambre (`POST …/public/property/hotels/chambre/{id}`) */
+    chambreId?: number | null
 }>()
 
 const emit = defineEmits(['close', 'success'])
@@ -35,15 +39,32 @@ const handleSubmit = async () => {
         return
     }
 
+    const elig = evaluateReservationEligibility(authStore.user as Record<string, unknown>)
+    if (!elig.ok) {
+        toast.error('Réservation impossible', {
+            description: elig.message,
+        })
+        if (elig.code === 'NOT_PREMIUM') {
+            await navigateTo('/compte/abonnement')
+        }
+        return
+    }
+
     isLoading.value = true
     try {
+        const targetId = props.chambreId != null ? props.chambreId : props.propertyId
+        const pType = props.chambreId != null ? 'chambre' : props.propertyType || 'Standard'
         const result = await resStore.createReservation(
-            props.propertyType || 'Standard',
-            props.propertyId,
+            pType,
+            targetId,
             {
                 startDate: form.date,
                 endDate: form.date,
-                message: form.message || "Je souhaite visiter ce bien.",
+                message:
+                    form.message ||
+                    (props.chambreId != null
+                        ? 'Demande de réservation pour cette chambre.'
+                        : 'Je souhaite visiter ce bien.'),
                 type: 'VIP',
                 reservationHeure: form.time
             }
@@ -60,8 +81,11 @@ const handleSubmit = async () => {
             })
         } else {
             toast.error('Échec de la demande', {
-                description: result.message || "Une erreur est survenue.",
+                description: result.message || 'Une erreur est survenue.',
             })
+            if (result.code === 'NOT_PREMIUM') {
+                await navigateTo('/compte/abonnement')
+            }
         }
     } catch (e) {
         console.error(e)
@@ -83,7 +107,9 @@ const handleSubmit = async () => {
               <X class="h-4 w-4" />
           </button>
 
-          <h2 class="text-xl font-bold mb-1">Programmer une visite</h2>
+          <h2 class="text-xl font-bold mb-1">
+            {{ chambreId != null ? 'Réserver cette chambre' : 'Programmer une visite' }}
+          </h2>
           <p class="text-sm text-muted-foreground mb-6">Pour : {{ propertyTitle }}</p>
 
           <form @submit.prevent="handleSubmit" class="space-y-4">
@@ -117,7 +143,7 @@ const handleSubmit = async () => {
                    <Button type="button" variant="ghost" @click="$emit('close')">Annuler</Button>
                    <Button type="submit" :disabled="isLoading">
                        <Loader2 v-if="isLoading" class="mr-2 h-4 w-4 animate-spin" />
-                       Valider la visite
+                       {{ chambreId != null ? 'Envoyer la demande' : 'Valider la visite' }}
                    </Button>
                </div>
           </form>

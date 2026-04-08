@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MapPin, BedDouble, Bath, Maximize, Heart, Share2, Calendar, CheckCircle2, Phone, Mail, User, ArrowLeft, Zap, Droplets, ChefHat, Sofa, Home, Briefcase, DoorOpen, Users, Star, XCircle } from 'lucide-vue-next'
+import { MapPin, BedDouble, Bath, Maximize, Heart, Share2, Calendar, CheckCircle2, Phone, Mail, User, ArrowLeft, Zap, Droplets, ChefHat, Sofa, Home, Briefcase, DoorOpen, Users, Star, XCircle, FileText, Hotel, X } from 'lucide-vue-next'
 import { Button } from '@/components/ui'
 import { usePropertyStore } from '@/stores/properties'
 import { useAuthStore } from '@/stores/auth'
@@ -7,11 +7,15 @@ import { useReservationStore } from '@/stores/reservations'
 import VueEasyLightbox from 'vue-easy-lightbox'
 import { normalizeBureau, normalizeFestive, normalizeFuneraire, normalizeTerrain, normalizeHotel, normalizeStandardProperty } from '@/utils/propertyNormalizer'
 import type { AnyPropertyResponse, NormalizedProperty } from '@/types/property'
+
+type HotelChambreItem = NonNullable<NormalizedProperty['hotelChambres']>[number]
 import CasaLoader from '@/components/ui/CasaLoader.vue'
 import PropertyVisitModal from '@/components/modals/PropertyVisitModal.vue'
 import DetailShimmer from '@/components/front/DetailShimmer.vue'
 import { encodeId, decodeId } from '@/utils/urlObfuscator'
 import { ShieldCheck, Calendar as CalendarIcon, Loader2 } from 'lucide-vue-next'
+import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
+import { formatCurrency } from '@/utils/currency'
 
 definePageMeta({
   layout: 'default'
@@ -40,7 +44,7 @@ const { pending: isLoading } = await useAsyncData(
     // But we still fetch to ensure data is fresh and complete
     
     try {
-      const data = await $fetch<any>(`${config.public.apiBase}/property/${propertyId.value}`)
+      const data = await $fetch<any>(joinApi(config.public.apiBase as string, `${ApiEndpoints.properties}/${propertyId.value}`))
       if (data && data.properties) {
         fetchedProperty.value = data.properties as AnyPropertyResponse
         return true
@@ -60,6 +64,10 @@ const { pending: isLoading } = await useAsyncData(
         propertyStore.hotels.length === 0 ? propertyStore.fetchHotels(config.public.apiBase) : Promise.resolve(),
         propertyStore.properties.length === 0 ? propertyStore.fetchProperties(config.public.apiBase) : Promise.resolve(),
       ])
+      const fromStore = propertyStore.getPropertyById(propertyId.value)
+      if (fromStore && 'hotel' in fromStore) {
+        fetchedProperty.value = fromStore as AnyPropertyResponse
+      }
     }
     
     return true
@@ -146,10 +154,12 @@ const toggleFavorite = () => isFavorite.value = !isFavorite.value
 const shareProperty = async () => {
   const title = property.value?.title || ''
   const address = property.value?.location || ''
-  const price = property.value?.price || ''
+  const price = property.value?.hideListingPrice ? '' : property.value?.price || ''
   const url = window.location.href
   
-  const shareText = `Découvrez cette propriété : ${title} à ${address} à seulement ${price} ${url}`
+  const shareText = property.value?.hideListingPrice
+    ? `Découvrez cet hébergement : ${title} — ${address}. ${url}`
+    : `Découvrez cette propriété : ${title} à ${address} à seulement ${price} ${url}`
 
   if (navigator.share) {
     try {
@@ -165,15 +175,94 @@ const shareProperty = async () => {
   }
 }
 
+const isPropertyTaken = computed(() => property.value?.sold === true)
+
 const contactAgent = () => {
+    if (isPropertyTaken.value) {
+        return
+    }
+    if (property.value?.isHotel) {
+        return
+    }
     if (!authStore.isAuthenticated) {
         return navigateTo(`/login?reason=reservation&redirect=${route.fullPath}`)
     }
+    visitChambreId.value = null
+    visitChambreTitleStr.value = ''
     isVisitModalOpen.value = true
 }
 
 // Modal State
 const isVisitModalOpen = ref(false)
+/** Réservation hôtel : id chambre (null = visite bien classique) */
+const visitChambreId = ref<number | null>(null)
+const visitChambreTitleStr = ref('')
+
+function onVisitModalClose() {
+    isVisitModalOpen.value = false
+    visitChambreId.value = null
+    visitChambreTitleStr.value = ''
+}
+
+function openChambreReservation() {
+    const ch = selectedChambre.value
+    if (!ch) return
+    if (!authStore.isAuthenticated) {
+        closeChambreDetail()
+        return navigateTo(`/login?reason=reservation&redirect=${route.fullPath}`)
+    }
+    visitChambreId.value = ch.id
+    visitChambreTitleStr.value = ch.title
+    closeChambreDetail()
+    isVisitModalOpen.value = true
+}
+
+const chambreDetailOpen = ref(false)
+const selectedChambre = ref<HotelChambreItem | null>(null)
+const chambreGalleryIndex = ref(0)
+
+function openChambreDetail(ch: HotelChambreItem) {
+  selectedChambre.value = ch
+  chambreGalleryIndex.value = 0
+  chambreDetailOpen.value = true
+}
+
+function closeChambreDetail() {
+  chambreDetailOpen.value = false
+  selectedChambre.value = null
+}
+
+function chambreImageUrlList(ch: HotelChambreItem): string[] {
+  const out: string[] = []
+  const imgs = ch.images as unknown
+  if (Array.isArray(imgs)) {
+    for (const im of imgs) {
+      if (typeof im === 'string' && im) out.push(im)
+      else if (im && typeof im === 'object') {
+        const o = im as { path?: string; publicPath?: string }
+        if (o.path) out.push(o.path)
+        if (o.publicPath) out.push(o.publicPath)
+      }
+    }
+  }
+  if (ch.image && typeof ch.image === 'string') out.push(ch.image)
+  return [...new Set(out.filter(Boolean))]
+}
+
+function chambreMainImages(ch: HotelChambreItem) {
+  const urls = chambreImageUrlList(ch)
+  return urls.length ? urls : []
+}
+
+function openChambreLightboxFromDetail() {
+  const ch = selectedChambre.value
+  if (!ch) return
+  const imgs = chambreMainImages(ch)
+  if (!imgs.length) return
+  lightboxImgs.value = imgs
+  lightboxIndex.value = chambreGalleryIndex.value
+  lightboxVisible.value = true
+}
 </script>
 
 <template>
@@ -238,6 +327,12 @@ const isVisitModalOpen = ref(false)
                     <div class="flex flex-col md:flex-row items-end justify-between gap-6">
                         <div class="space-y-4 max-w-3xl">
                             <div class="flex flex-wrap items-center gap-3">
+                                <span
+                                    v-if="isPropertyTaken"
+                                    class="px-4 py-1.5 rounded-full bg-red-600 text-white text-sm font-black uppercase tracking-wider shadow-lg shadow-red-900/30 border border-red-500/80"
+                                >
+                                    Déjà pris
+                                </span>
                                 <span class="px-4 py-1.5 rounded-full bg-primary text-white text-sm font-bold uppercase tracking-wider shadow-lg shadow-primary/25">
                                     {{ property.status }}
                                 </span>
@@ -251,20 +346,24 @@ const isVisitModalOpen = ref(false)
                             <h1 class="text-3xl md:text-5xl lg:text-6xl font-black text-white leading-tight drop-shadow-lg">
                                 {{ property.title }}
                             </h1>
-                            <p class="text-white/80 max-w-xl line-clamp-2 text-lg">
-                                Une opportunité unique à ne pas manquer.
+                            <p class="text-white/80 max-w-xl line-clamp-3 text-lg">
+                                {{ property.isHotel ? (property.description || 'Hébergement — tarifs indiqués par chambre.') : 'Une opportunité unique à ne pas manquer.' }}
                             </p>
                         </div>
 
                         <!-- Price & Actions -->
                         <div class="flex flex-col gap-3 min-w-[200px]">
-                            <div class="text-right text-white mb-2">
+                            <div v-if="!property.hideListingPrice" class="text-right text-white mb-2">
                                 <div class="text-sm opacity-80 mb-1">Prix</div>
                                 <div class="text-3xl font-black text-primary drop-shadow-sm filter brightness-110">
                                     {{ property.price }}
                                     <span class="text-lg text-white/80 font-normal">{{ property.frequency }}</span>
                                 </div>
                                 <div class="text-xs opacity-70 mt-1">{{ property.currencyLabel }}</div>
+                            </div>
+                            <div v-else class="text-right text-white mb-2 rounded-2xl border border-white/20 bg-white/10 px-4 py-3 backdrop-blur-md">
+                                <div class="text-xs font-bold uppercase tracking-wider opacity-90">Hôtel</div>
+                                <p class="text-sm font-medium leading-snug mt-1">Les tarifs sont affichés par chambre ci-dessous.</p>
                             </div>
                             <div class="flex gap-3 justify-end">
                                 <Button @click="toggleFavorite" size="icon" variant="secondary" class="rounded-full h-12 w-12 bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-md">
@@ -349,10 +448,23 @@ const isVisitModalOpen = ref(false)
                                 </div>
                             </template>
 
-                            <!-- Hotel Stats (Show features/rooms if available or just placeholders) -->
+                            <!-- Hotel — pas de stats prix au niveau établissement -->
                             <template v-else-if="property.isHotel">
-                                 <div class="col-span-4 bg-muted/20 p-6 rounded-2xl text-center">
-                                      <p class="text-muted-foreground">Voir les détails de l'hébergement dans la description ci-dessous.</p>
+                                 <div class="col-span-4 flex flex-col items-center justify-center gap-2 rounded-2xl bg-muted/20 p-6 text-center sm:flex-row sm:text-left">
+                                      <Hotel class="h-8 w-8 shrink-0 text-primary" />
+                                      <div>
+                                        <p class="font-semibold text-foreground">Tarifs par chambre</p>
+                                        <p class="text-sm text-muted-foreground">
+                                          {{ property.hotelChambres?.length ? `${property.hotelChambres.length} offre(s) ci-dessous.` : 'Les chambres disponibles apparaissent sous la description.' }}
+                                        </p>
+                                      </div>
+                                      <a
+                                        v-if="property.hotelChambres?.length"
+                                        href="#chambres-hotel"
+                                        class="ml-auto shrink-0 rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground hover:opacity-90"
+                                      >
+                                        Voir les chambres
+                                      </a>
                                  </div>
                             </template>
                             
@@ -392,6 +504,60 @@ const isVisitModalOpen = ref(false)
                             </div>
                         </div>
 
+                        <!-- Chambres (hôtel) -->
+                        <div
+          v-if="property.isHotel && property.hotelChambres?.length"
+          id="chambres-hotel"
+          class="scroll-mt-24 space-y-6"
+        >
+          <h2 class="flex items-center gap-2 text-2xl font-bold">
+            <Hotel class="h-7 w-7 text-primary" />
+            Chambres & tarifs
+          </h2>
+          <div class="grid gap-6 sm:grid-cols-2">
+            <button
+              v-for="ch in property.hotelChambres"
+              :key="ch.id"
+              type="button"
+              class="group flex flex-col overflow-hidden rounded-3xl border border-border/50 bg-card text-left shadow-sm transition hover:ring-2 hover:ring-primary/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              @click="openChambreDetail(ch)"
+            >
+              <div class="aspect-[5/3] bg-muted">
+                <img
+                  v-if="ch.image"
+                  :src="ch.image"
+                  alt=""
+                  class="h-full w-full object-cover transition group-hover:scale-[1.02]"
+                />
+                <div v-else class="flex h-full items-center justify-center text-muted-foreground/40">
+                  <BedDouble class="h-12 w-12" />
+                </div>
+              </div>
+              <div class="flex flex-1 flex-col gap-2 p-5">
+                <h3 class="text-lg font-bold group-hover:text-primary">{{ ch.title }}</h3>
+                <p class="line-clamp-4 text-sm text-muted-foreground">{{ ch.description }}</p>
+                <p class="text-xs font-medium text-primary">Voir le détail →</p>
+                <div class="mt-auto flex flex-wrap items-end justify-between gap-2 border-t border-border/50 pt-4">
+                  <div>
+                    <span class="text-xs text-muted-foreground">À partir de</span>
+                    <p class="text-2xl font-black text-primary">
+                      {{ formatCurrency(ch.price, ch.currencyLabel) }}
+                      <span class="text-sm font-semibold text-muted-foreground"> / nuit</span>
+                    </p>
+                  </div>
+                  <span v-if="ch.priceHeure" class="max-w-[50%] text-right text-xs text-muted-foreground">{{ ch.priceHeure }}</span>
+                </div>
+              </div>
+            </button>
+          </div>
+        </div>
+        <div
+          v-else-if="property.isHotel"
+          class="rounded-2xl border border-dashed border-border p-8 text-center text-muted-foreground"
+        >
+          Aucune chambre publiée pour cet établissement pour le moment.
+        </div>
+
                         <!-- Features -->
                         <div v-if="property.features && property.features.length > 0">
                             <h2 class="text-2xl font-bold mb-6">Caractéristiques</h2>
@@ -403,8 +569,8 @@ const isVisitModalOpen = ref(false)
                             </div>
                         </div>
 
-                     <!-- Utilities -->
-                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                     <!-- Utilities (pas pour les hôtels — non pertinent) -->
+                     <div v-if="!property.isHotel" class="grid grid-cols-1 gap-6 md:grid-cols-2">
                          <div class="bg-card rounded-3xl p-6 border border-border/50 shadow-sm flex items-center gap-4">
                              <div class="w-14 h-14 rounded-full bg-yellow-500/10 flex items-center justify-center">
                                  <Zap class="h-7 w-7 text-yellow-600" />
@@ -462,9 +628,21 @@ const isVisitModalOpen = ref(false)
                              </div>
                              
                              <div class="space-y-4">
-                                 <Button @click="contactAgent" class="w-full rounded-xl h-14 font-bold text-lg shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-shadow">
+                                 <p
+                                   v-if="property.isHotel"
+                                   class="rounded-xl border border-dashed border-border bg-muted/40 px-4 py-3 text-center text-sm text-muted-foreground"
+                                 >
+                                   Les réservations se font <span class="font-semibold text-foreground">par chambre</span> — ouvrez une chambre ci-dessous puis réservez.
+                                 </p>
+                                 <Button
+                                     v-else
+                                     :disabled="isPropertyTaken"
+                                     :title="isPropertyTaken ? 'Ce bien n’est plus disponible' : undefined"
+                                     @click="contactAgent"
+                                     class="w-full rounded-xl h-14 font-bold text-lg shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-shadow disabled:opacity-50 disabled:pointer-events-none disabled:shadow-none"
+                                 >
                                      <Calendar class="mr-2 h-5 w-5" />
-                                     Programmer une visite
+                                     {{ isPropertyTaken ? 'Indisponible' : 'Programmer une visite' }}
                                  </Button>
                              </div>
 
@@ -486,6 +664,144 @@ const isVisitModalOpen = ref(false)
         </div>
     </Transition>
 
+      <Teleport to="body">
+        <div
+          v-if="chambreDetailOpen && selectedChambre"
+          class="fixed inset-0 z-[90] flex items-end justify-center bg-black/60 p-4 sm:items-center"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="chambre-detail-title"
+          @click.self="closeChambreDetail"
+        >
+          <div
+            class="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-border bg-background shadow-2xl"
+            @click.stop
+          >
+            <div class="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-border bg-background/95 px-5 py-4 backdrop-blur">
+              <h2 id="chambre-detail-title" class="pr-4 text-lg font-bold leading-tight sm:text-xl">
+                {{ selectedChambre.title }}
+              </h2>
+              <button
+                type="button"
+                class="rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+                aria-label="Fermer"
+                @click="closeChambreDetail"
+              >
+                <X class="h-5 w-5" />
+              </button>
+            </div>
+
+            <div class="space-y-6 p-5 sm:p-6">
+              <div v-if="chambreMainImages(selectedChambre).length" class="space-y-3">
+                <button
+                  type="button"
+                  class="relative aspect-[16/10] w-full overflow-hidden rounded-2xl bg-muted ring-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  @click="openChambreLightboxFromDetail"
+                >
+                  <img
+                    :src="chambreMainImages(selectedChambre)[chambreGalleryIndex]"
+                    alt=""
+                    class="h-full w-full object-cover"
+                  />
+                  <span
+                    class="absolute bottom-3 right-3 rounded-full bg-black/40 px-2 py-1 text-xs font-medium text-white backdrop-blur"
+                  >
+                    Agrandir
+                  </span>
+                </button>
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    v-for="(u, i) in chambreMainImages(selectedChambre)"
+                    :key="i"
+                    type="button"
+                    class="h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 transition"
+                    :class="i === chambreGalleryIndex ? 'border-primary ring-2 ring-primary/30' : 'border-transparent opacity-80 hover:opacity-100'"
+                    @click="chambreGalleryIndex = i"
+                  >
+                    <img :src="u" alt="" class="h-full w-full object-cover" />
+                  </button>
+                </div>
+              </div>
+
+              <div class="flex flex-wrap gap-2">
+                <span
+                  v-if="selectedChambre.available !== false"
+                  class="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-800 dark:text-emerald-200"
+                >
+                  Disponible
+                </span>
+                <span
+                  v-else
+                  class="rounded-full bg-amber-500/15 px-3 py-1 text-xs font-bold text-amber-900 dark:text-amber-100"
+                >
+                  Indisponible
+                </span>
+                <span
+                  v-if="selectedChambre.numberPiece != null"
+                  class="rounded-full bg-muted px-3 py-1 text-xs font-medium"
+                >
+                  {{ selectedChambre.numberPiece }} pièce(s)
+                </span>
+              </div>
+
+              <div
+                class="rounded-2xl border border-border/50 bg-muted/30 p-4 text-sm text-muted-foreground"
+              >
+                <p class="text-xs font-bold uppercase tracking-wider text-foreground">Description</p>
+                <p class="mt-2 whitespace-pre-line text-foreground">{{ selectedChambre.description || '—' }}</p>
+              </div>
+
+              <div class="grid gap-6 rounded-2xl border border-border/50 bg-card p-4 sm:grid-cols-2">
+                <div>
+                  <p class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Prix / nuit</p>
+                  <p class="mt-1 text-2xl font-black text-primary">
+                    {{ formatCurrency(selectedChambre.price, selectedChambre.currencyLabel) }}
+                  </p>
+                </div>
+                <div v-if="selectedChambre.priceHeure">
+                  <p class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Infos horaires</p>
+                  <p class="mt-1 text-foreground">{{ selectedChambre.priceHeure }}</p>
+                </div>
+                <div>
+                  <p class="text-xs font-bold uppercase tracking-wider text-muted-foreground">ID chambre</p>
+                  <p class="mt-1 font-mono text-sm">{{ selectedChambre.id }}</p>
+                </div>
+                <div>
+                  <p class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Hôtel</p>
+                  <p class="mt-1 font-mono text-sm">#{{ selectedChambre.hotelId }}</p>
+                </div>
+                <div v-if="selectedChambre.createdAt">
+                  <p class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Créée le</p>
+                  <p class="mt-1 text-sm">{{ selectedChambre.createdAt }}</p>
+                </div>
+                <div v-if="selectedChambre.updatedAt">
+                  <p class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Mise à jour</p>
+                  <p class="mt-1 text-sm">{{ selectedChambre.updatedAt }}</p>
+                </div>
+              </div>
+
+              <div class="flex flex-col gap-3 border-t border-border pt-6 sm:flex-row sm:justify-end">
+                <Button type="button" variant="outline" class="rounded-xl" @click="closeChambreDetail">
+                  Fermer
+                </Button>
+                <Button
+                  v-if="selectedChambre.available !== false && !isPropertyTaken"
+                  type="button"
+                  class="rounded-xl font-bold"
+                  @click="openChambreReservation"
+                >
+                  <Calendar class="mr-2 h-5 w-5" />
+                  Réserver cette chambre
+                </Button>
+                <p v-else-if="isPropertyTaken" class="text-center text-sm text-muted-foreground sm:self-center">
+                  Cette annonce n’est plus disponible.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Teleport>
+
       <!-- Lightbox -->
       <VueEasyLightbox
         v-if="property"
@@ -498,9 +814,10 @@ const isVisitModalOpen = ref(false)
       <PropertyVisitModal
         :isOpen="isVisitModalOpen"
         :propertyId="propertyId"
-        :propertyTitle="property?.title || ''"
-        :propertyType="property?.type || ''"
-        @close="isVisitModalOpen = false"
+        :chambre-id="visitChambreId"
+        :property-title="visitChambreId != null ? visitChambreTitleStr : property?.title || ''"
+        :property-type="property?.type || ''"
+        @close="onVisitModalClose"
       />
   </div>
 </template>

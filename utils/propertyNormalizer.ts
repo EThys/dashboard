@@ -11,8 +11,9 @@ import type {
     FuneraireResponse,
     TerrainResponse,
     HotelResponse,
-    PropertyResponse
+    PropertyResponse,
 } from '@/types/property'
+import { getPublicTransactionBadgeLabel } from '@/utils/transactionDisplay'
 
 /**
  * Get quality indicator for utilities (electricity, water)
@@ -175,9 +176,10 @@ export function normalizeBureau(item: BureauResponse): NormalizedProperty {
         numberPiece: item.bureau.numberPiece,
         isEquipped: item.bureau.equip,
 
+        sold: !!item.bureau.sold,
         area: '',
         type: 'Bureau',
-        status: item.bureau.transactionType === 'location' ? 'À Louer' : 'À Vendre',
+        status: getPublicTransactionBadgeLabel(item.bureau.transactionType),
         description: item.bureau.description,
         electricity: item.bureau.electric,
         electricityInfo: getQualityIndicator(item.bureau.electric),
@@ -252,9 +254,10 @@ export function normalizeFestive(item: FestiveResponse): NormalizedProperty {
         roomMeet: 0,
         numberPiece: 0,
 
+        sold: !!item.festive.sold,
         area: '',
         type: 'Salle de fête',
-        status: item.festive.transactionType === 'location' ? 'À Louer' : 'À Vendre',
+        status: getPublicTransactionBadgeLabel(item.festive.transactionType),
         description: item.festive.description,
         electricity: item.festive.electric,
         electricityInfo: getQualityIndicator(item.festive.electric),
@@ -332,9 +335,10 @@ export function normalizeFuneraire(item: FuneraireResponse): NormalizedProperty 
         roomMeet: 0,
         numberPiece: 0,
 
+        sold: !!item.funeraire.sold,
         area: '',
         type: 'Espace funéraire',
-        status: item.funeraire.transactionType === 'location' ? 'À Louer' : 'À Vendre',
+        status: getPublicTransactionBadgeLabel(item.funeraire.transactionType),
         description: item.funeraire.description,
         electricity: item.funeraire.electric,
         electricityInfo: getQualityIndicator(item.funeraire.electric),
@@ -407,9 +411,10 @@ export function normalizeTerrain(item: TerrainResponse): NormalizedProperty {
         roomMeet: 0,
         numberPiece: 0,
 
+        sold: !!item.terrain.sold,
         area: `${item.terrain.surface} m²`,
         type: 'Terrain',
-        status: item.terrain.transactionType === 'location' ? 'À Louer' : 'À Vendre',
+        status: getPublicTransactionBadgeLabel(item.terrain.transactionType),
         description: item.terrain.description,
         electricity: 0,
         electricityInfo: 'Non applicable',
@@ -441,26 +446,58 @@ export function normalizeTerrain(item: TerrainResponse): NormalizedProperty {
     }
 }
 
+function hotelChambresFromApi(item: HotelResponse): NonNullable<NormalizedProperty['hotelChambres']> {
+    const rows = item.structure
+    if (!Array.isArray(rows)) return []
+    const out: NonNullable<NormalizedProperty['hotelChambres']> = []
+    for (const row of rows) {
+        const c = row.chambre
+        if (!c) continue
+        const imgs = Array.isArray(row.image)
+            ? row.image.map((im) => im.path || im.publicPath).filter(Boolean) as string[]
+            : []
+        const deviseId = c.deviseId ?? 2
+        out.push({
+            id: c.id,
+            hotelId: c.hotelId,
+            title: c.title || 'Chambre',
+            description: c.description || '',
+            price: Number(c.price) || 0,
+            priceHeure: c.priceHeure,
+            deviseId,
+            currencyLabel: deviseId === 1 ? 'CDF' : 'USD',
+            image: imgs[0] || '',
+            images: imgs,
+            numberPiece: c.numberPiece,
+            available: c.available,
+            createdAt: c.createdAt,
+            updatedAt: c.updatedAt,
+        })
+    }
+    return out
+}
+
 /**
- * Normalize Hotel to standard format
+ * Normalize Hotel to standard format — pas de prix établissement (tarifs sur les chambres).
  */
 export function normalizeHotel(item: HotelResponse): NormalizedProperty {
     const location = extractLocation(item)
     const images = extractImages(item)
-    const currencyCode = item.devise.code
+    const currencyCode = item.devise?.code ?? 'USD'
     const symbol = currencyCode === 'USD' ? '$' : 'FC'
-    const formattedPrice = item.hotel.price.toLocaleString('fr-FR')
-    const priceDisplay = currencyCode === 'USD' ? `${formattedPrice}${symbol}` : `${formattedPrice}${symbol}`
+    const hotelChambres = hotelChambresFromApi(item)
+    const tx = item.hotel.transactionType || 'en cours'
 
-    const features = item.feature?.map(f => f.name) || []
+    const features = item.feature?.map((f) => f.name) || []
 
     return {
         id: item.hotel.id,
         title: item.hotel.title,
         location,
         fullAddress: `${item.hotel.address || item.address?.address || ''}, ${location}`,
-        price: priceDisplay,
-        frequency: item.hotel.transactionType === 'location' ? '/mois' : '',
+        price: '—',
+        hideListingPrice: true,
+        frequency: '',
         currencyCode: currencyCode,
         currencySymbol: symbol,
         currencyLabel: currencyCode === 'USD' ? 'Dollars américains' : 'Franc congolais',
@@ -482,9 +519,10 @@ export function normalizeHotel(item: HotelResponse): NormalizedProperty {
         roomMeet: 0,
         numberPiece: 0,
 
+        sold: !!item.hotel.sold,
         area: '',
         type: 'Hôtel',
-        status: item.hotel.transactionType === 'location' ? 'À Louer' : 'À Vendre',
+        status: getPublicTransactionBadgeLabel(tx),
         description: item.hotel.description,
         electricity: 0,
         electricityInfo: 'Non applicable',
@@ -493,6 +531,7 @@ export function normalizeHotel(item: HotelResponse): NormalizedProperty {
         waterInfo: 'Non applicable',
         waterColor: 'text-muted-foreground',
         features,
+        hotelChambres,
         images: images.length ? images : ['https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80'],
         imagesByCategory: {
             main: images,
@@ -501,19 +540,42 @@ export function normalizeHotel(item: HotelResponse): NormalizedProperty {
             kitchen: []
         },
         agent: {
-            name: item.postBy.replace('@@', '@') || 'Agent CasaNayo',
+            name: hotelAgentName(item),
             phone: '+243 81 234 56 78',
             email: 'contact@casanayo.com',
             avatar: 'https://i.pravatar.cc/150?img=5',
             profileImage: item.image
         },
         publisherImage: item.image,
-        createdAt: new Date(item.hotel.createdAt).toLocaleDateString('fr-FR', {
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric'
-        })
+        createdAt: hotelPublicationDate(item)
     }
+}
+
+function hotelAgentName(item: HotelResponse): string {
+    const raw = item as Record<string, unknown>
+    const post = typeof item.postBy === 'string' ? item.postBy.replace('@@', '@').trim() : ''
+    if (post) return post
+    const mem = raw.member as { fullName?: string; username?: string } | undefined
+    if (mem?.fullName?.trim()) return mem.fullName.trim()
+    if (mem?.username?.trim()) return mem.username.trim()
+    const pub = raw.publisher as { name?: string } | undefined
+    if (pub?.name?.trim()) return pub.name.trim()
+    const u = raw.user as { username?: string } | undefined
+    if (u?.username?.trim()) return u.username.trim()
+    return 'Annonceur CasaNayo'
+}
+
+function hotelPublicationDate(item: HotelResponse): string {
+    const h = item.hotel
+    const raw = (h.createdAt || h.updatedAt || '') as string
+    if (!raw) return ''
+    const d = new Date(raw)
+    if (Number.isNaN(d.getTime())) return raw
+    return d.toLocaleDateString('fr-FR', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+    })
 }
 
 /**
@@ -557,9 +619,10 @@ export function normalizeStandardProperty(item: PropertyResponse): NormalizedPro
         roomMeet: 0,
         numberPiece: 0,
 
+        sold: !!item.property.sold,
         area: item.property.surface && item.property.surface > 0 ? `${item.property.surface} m²` : (item.property.livingRoom ? `${item.property.livingRoom} salon(s)` : ''),
         type: item.typeProperty?.name || 'Propriété',
-        status: item.property.transactionType === 'location' ? 'À Louer' : 'À Vendre',
+        status: getPublicTransactionBadgeLabel(item.property.transactionType),
         description: item.property.description,
         electricity: item.property.electricity || 0,
         electricityInfo: getQualityIndicator(item.property.electricity || 0),

@@ -8,6 +8,80 @@ import type {
     PropertyResponse,
     AnyPropertyResponse
 } from '@/types/property'
+import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
+
+/** Catégories alignées sur Endpoints.dart (`v1/protected/property/...`) */
+export type PublicationCategory = 'property' | 'terrain' | 'bureau' | 'festive' | 'funeraire' | 'hotel'
+
+function publicationEnableUrl(apiBase: string, category: PublicationCategory, id: number): string | null {
+    switch (category) {
+        case 'property':
+            return joinApi(apiBase, `${ApiEndpoints.enableProperty}${id}`)
+        case 'terrain':
+            return joinApi(apiBase, `${ApiEndpoints.enableTerrain}${id}`)
+        case 'bureau':
+            return joinApi(apiBase, `${ApiEndpoints.enableBureau}${id}`)
+        case 'festive':
+            return joinApi(apiBase, `${ApiEndpoints.enableFestive}${id}`)
+        case 'funeraire':
+            return joinApi(apiBase, `${ApiEndpoints.enableFuneraire}${id}`)
+        case 'hotel':
+            return null
+        default:
+            return null
+    }
+}
+
+function publicationSoldUrl(apiBase: string, category: PublicationCategory, id: number): string | null {
+    switch (category) {
+        case 'property':
+            return joinApi(apiBase, `${ApiEndpoints.soldProperty}${id}`)
+        case 'terrain':
+            return joinApi(apiBase, `${ApiEndpoints.soldTerrain}${id}`)
+        case 'bureau':
+            return joinApi(apiBase, `${ApiEndpoints.soldBureau}${id}`)
+        case 'festive':
+            return joinApi(apiBase, `${ApiEndpoints.soldFestive}${id}`)
+        case 'funeraire':
+            return joinApi(apiBase, `${ApiEndpoints.soldFuneraire}${id}`)
+        case 'hotel':
+            return null
+        default:
+            return null
+    }
+}
+
+/** Spring renvoie souvent 200 sans JSON → ofetch plantait au parse → toast rouge alors que ça a réussi */
+function parseJsonLenient(raw: string): unknown {
+    const s = String(raw ?? '').trim()
+    if (!s) return null
+    try {
+        return JSON.parse(s) as unknown
+    } catch {
+        return null
+    }
+}
+
+function apiErrorMessage(e: unknown): string {
+    const err = e as { data?: { message?: string; error?: string }; message?: string }
+    const d = err?.data
+    if (d && typeof d === 'object') {
+        const msg = (d as { message?: string; error?: string }).message ?? (d as { error?: string }).error
+        if (msg) return String(msg)
+    }
+    if (err?.message && !err.message.startsWith('[')) return String(err.message)
+    return 'Erreur lors de la mise à jour'
+}
+
+const publicationPutBase = (token: string) => ({
+    method: 'PUT' as const,
+    headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+    },
+    timeout: 20000,
+    parseResponse: parseJsonLenient,
+})
 
 export const usePropertyStore = defineStore('properties', {
     state: () => ({
@@ -81,7 +155,7 @@ export const usePropertyStore = defineStore('properties', {
             if (this.types.length > 0) return
 
             try {
-                const data = await $fetch<any>(`${apiBase}/property/types`, { timeout: 10000 })
+                const data = await $fetch<any>(joinApi(apiBase, ApiEndpoints.propertyTypesList), { timeout: 10000 })
 
                 if (data && data.data) {
                     this.setTypes(data.data)
@@ -93,7 +167,7 @@ export const usePropertyStore = defineStore('properties', {
 
         async fetchTerrains(apiBase: string) {
             try {
-                const data = await $fetch<{ terrain: TerrainResponse[] }>(`${apiBase}/property/terrains`, { timeout: 10000 })
+                const data = await $fetch<{ terrain: TerrainResponse[] }>(joinApi(apiBase, ApiEndpoints.propertyTerrains), { timeout: 10000 })
                 if (data && data.terrain) {
                     this.terrains = data.terrain
                 }
@@ -104,7 +178,7 @@ export const usePropertyStore = defineStore('properties', {
 
         async fetchFuneraires(apiBase: string) {
             try {
-                const data = await $fetch<{ funeraires: FuneraireResponse[] }>(`${apiBase}/property/funeraires`, { timeout: 10000 })
+                const data = await $fetch<{ funeraires: FuneraireResponse[] }>(joinApi(apiBase, ApiEndpoints.propertyFuneraires), { timeout: 10000 })
                 if (data && data.funeraires) {
                     this.funeraires = data.funeraires
                 }
@@ -115,7 +189,7 @@ export const usePropertyStore = defineStore('properties', {
 
         async fetchFestives(apiBase: string) {
             try {
-                const data = await $fetch<{ festives: FestiveResponse[] }>(`${apiBase}/property/festives`, { timeout: 10000 })
+                const data = await $fetch<{ festives: FestiveResponse[] }>(joinApi(apiBase, ApiEndpoints.propertyFestives), { timeout: 10000 })
                 if (data && data.festives) {
                     this.festives = data.festives
                 }
@@ -126,7 +200,7 @@ export const usePropertyStore = defineStore('properties', {
 
         async fetchBureaux(apiBase: string) {
             try {
-                const data = await $fetch<{ bureaux: BureauResponse[] }>(`${apiBase}/property/bureaux`, { timeout: 10000 })
+                const data = await $fetch<{ bureaux: BureauResponse[] }>(joinApi(apiBase, ApiEndpoints.propertyBureaux), { timeout: 10000 })
                 if (data && data.bureaux) {
                     this.bureaux = data.bureaux
                 }
@@ -137,7 +211,10 @@ export const usePropertyStore = defineStore('properties', {
 
         async fetchHotels(apiBase: string) {
             try {
-                const data = await $fetch<{ data: HotelResponse[] }>(`${apiBase}/property/hotels`, { timeout: 10000 })
+                const data = await $fetch<{ data: HotelResponse[] }>(
+                    joinApi(apiBase, ApiEndpoints.propertyHotelsPublic),
+                    { timeout: 10000 }
+                )
                 if (data && data.data) {
                     this.hotels = data.data
                 }
@@ -148,7 +225,9 @@ export const usePropertyStore = defineStore('properties', {
 
         async fetchProperties(apiBase: string) {
             try {
-                const data = await $fetch<{ properties: PropertyResponse[] }>(`${apiBase}/property`, { timeout: 15000 })
+                const data = await $fetch<{ properties: PropertyResponse[] }>(joinApi(apiBase, ApiEndpoints.properties), {
+                    timeout: 15000,
+                })
                 if (data && data.properties) {
                     this.properties = data.properties
                     this.lastFetch = new Date()
@@ -167,22 +246,22 @@ export const usePropertyStore = defineStore('properties', {
 
                 if (normalizedType === 'résidentiel' || normalizedType === 'standard' || !type) {
                     targetArray = this.properties
-                    endpoint = `${apiBase}/property/${id}`
+                    endpoint = joinApi(apiBase, `${ApiEndpoints.properties}/${id}`)
                 } else if (normalizedType === 'terrain') {
                     targetArray = this.terrains
-                    endpoint = `${apiBase}/property/terrains/${id}`
+                    endpoint = joinApi(apiBase, `${ApiEndpoints.propertyTerrains}/${id}`)
                 } else if (normalizedType === 'bureau') {
                     targetArray = this.bureaux
-                    endpoint = `${apiBase}/property/bureaux/${id}`
+                    endpoint = joinApi(apiBase, `${ApiEndpoints.propertyBureaux}/${id}`)
                 } else if (normalizedType === 'espace festif') {
                     targetArray = this.festives
-                    endpoint = `${apiBase}/property/festives/${id}`
+                    endpoint = joinApi(apiBase, `${ApiEndpoints.propertyFestives}/${id}`)
                 } else if (normalizedType === 'espace funéraire') {
                     targetArray = this.funeraires
-                    endpoint = `${apiBase}/property/funeraires/${id}`
+                    endpoint = joinApi(apiBase, `${ApiEndpoints.propertyFuneraires}/${id}`)
                 } else if (normalizedType === 'hôtel') {
                     targetArray = this.hotels
-                    endpoint = `${apiBase}/property/hotels/${id}`
+                    endpoint = joinApi(apiBase, `${ApiEndpoints.propertyHotels}/${id}`)
                 }
 
                 // Optimistic Update
@@ -212,6 +291,101 @@ export const usePropertyStore = defineStore('properties', {
                 return { success: false, error: e }
             }
         },
+
+        /**
+         * Visibilité sur le site (PUT enable) — body `{ status: "true" | "false" }` (chaînes).
+         * `hidden === true` → retirer du site → `status: "false"`.
+         * `hidden === false` → rendre visible → `status: "true"`.
+         */
+        async putPublicationEnable(
+            apiBase: string,
+            token: string | null,
+            category: PublicationCategory,
+            id: number,
+            hidden: boolean
+        ): Promise<{ success: boolean; message?: string }> {
+            if (!token) return { success: false, message: 'Non authentifié' }
+            const url = publicationEnableUrl(apiBase, category, id)
+            if (!url) return { success: false, message: 'Activation non disponible pour ce type de bien (ex. hôtel).' }
+            try {
+                const base = publicationPutBase(token)
+                await $fetch(url, { ...base, body: { status: hidden ? 'false' : 'true' } })
+                this.patchPublicationLocal(category, id, {
+                    available: !hidden,
+                    active: !hidden,
+                    siteHidden: hidden,
+                })
+                return { success: true }
+            } catch (e: unknown) {
+                return { success: false, message: apiErrorMessage(e) }
+            }
+        },
+
+        /**
+         * Marque comme vendu ou l’inverse (PUT sold) — body `{ status: boolean }`.
+         */
+        async putPublicationSold(
+            apiBase: string,
+            token: string | null,
+            category: PublicationCategory,
+            id: number,
+            status: boolean
+        ): Promise<{ success: boolean; message?: string }> {
+            if (!token) return { success: false, message: 'Non authentifié' }
+            const url = publicationSoldUrl(apiBase, category, id)
+            if (!url) return { success: false, message: 'Statut « vendu » non disponible pour ce type de bien.' }
+            try {
+                const base = publicationPutBase(token)
+                await $fetch(url, { ...base, body: { status: status ? 'true' : 'false' } })
+                this.patchPublicationLocal(category, id, {
+                    sold: status,
+                    available: status ? false : true,
+                })
+                return { success: true }
+            } catch (e: unknown) {
+                return { success: false, message: apiErrorMessage(e) }
+            }
+        },
+
+        patchPublicationLocal(
+            category: PublicationCategory,
+            id: number,
+            flags: { available?: boolean; active?: boolean; sold?: boolean; siteHidden?: boolean }
+        ) {
+            const matchId = (p: Record<string, unknown> | null) => {
+                if (!p) return false
+                const pid = (p as { propertyId?: number; id?: number }).propertyId ?? (p as { id?: number }).id
+                return String(pid) === String(id)
+            }
+
+            const apply = (item: Record<string, unknown>, entityKey: string) => {
+                const ent = item[entityKey] as Record<string, unknown> | undefined
+                if (!ent || !matchId(ent)) return false
+                if (flags.available !== undefined) ent.available = flags.available
+                if (flags.active !== undefined) ent.active = flags.active
+                if (flags.sold !== undefined) ent.sold = flags.sold
+                if (flags.siteHidden !== undefined) {
+                    const e = ent as Record<string, unknown>
+                    if (typeof e.status !== 'string') e.status = flags.siteHidden
+                }
+                return true
+            }
+
+            const map: { cat: PublicationCategory; arr: unknown[]; key: string }[] = [
+                { cat: 'property', arr: this.properties, key: 'property' },
+                { cat: 'terrain', arr: this.terrains, key: 'terrain' },
+                { cat: 'bureau', arr: this.bureaux, key: 'bureau' },
+                { cat: 'festive', arr: this.festives, key: 'festive' },
+                { cat: 'funeraire', arr: this.funeraires, key: 'funeraire' },
+                { cat: 'hotel', arr: this.hotels, key: 'hotel' },
+            ]
+            const entry = map.find((m) => m.cat === category)
+            if (!entry) return
+            for (const it of entry.arr) {
+                if (apply(it as Record<string, unknown>, entry.key)) return
+            }
+        },
+
         reset() {
             this.properties = []
             this.types = []

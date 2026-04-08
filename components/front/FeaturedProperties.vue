@@ -6,6 +6,9 @@ import { formatCurrency, getCurrencyLabel } from '@/utils/currency'
 import PropertyCardShimmer from '@/components/front/PropertyCardShimmer.vue'
 import CasaLoader from '@/components/ui/CasaLoader.vue'
 import { encodeId } from '@/utils/urlObfuscator'
+import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
+import { getPublicListingStatus } from '@/utils/listingAvailability'
+import { getPublicTransactionBadgeLabel, isLocationTransactionType } from '@/utils/transactionDisplay'
 
 const config = useRuntimeConfig()
 
@@ -13,9 +16,11 @@ const config = useRuntimeConfig()
 const { data: propertiesData, isLoading } = useQuery({
   queryKey: ['featured-properties'],
   queryFn: async () => {
-    const res = await fetch(`${config.public.apiBase}/property`)
+    const res = await fetch(joinApi(config.public.apiBase as string, ApiEndpoints.properties), {
+      signal: AbortSignal.timeout(15000),
+    })
     return res.json()
-  }
+  },
 })
 
 // Process properties
@@ -31,15 +36,15 @@ const properties = computed(() => {
     // Use livingRoom if surface is 0 or missing
     const displayArea = p.surface && p.surface > 0 ? `${p.surface}m²` : (p.livingRoom ? `${p.livingRoom} salon(s)` : '')
     
-    let frequency = p.transactionType === 'location' ? '/mois' : ''
-    let priceLabel = p.transactionType === 'location' ? 'Loyer' : 'Montant de la vente'
+    let frequency = isLocationTransactionType(p.transactionType) ? '/mois' : ''
+    let priceLabel = isLocationTransactionType(p.transactionType) ? 'Loyer' : 'Montant de la vente'
 
     const typeStr = (p.propertyType?.name || '').toLowerCase()
     const titleStr = (p.title || '').toLowerCase()
     const isSpecial = ['hotel', 'hôtels', 'salle de fête', 'salles de fête', 'espace funéraire', 'espaces funéraires', 'hôtel'].some(keyword => typeStr.includes(keyword) || titleStr.includes(keyword)) || item.hotel || item.funeraire || item.festive
 
     if (isSpecial) {
-        if (p.transactionType === 'location') {
+        if (isLocationTransactionType(p.transactionType)) {
             frequency = ''
             priceLabel = 'Prix de la location'
         } else {
@@ -62,7 +67,8 @@ const properties = computed(() => {
       area: displayArea,
       image: img,
       publisherImage: item.image || '',
-      tag: p.transactionType === 'location' ? 'À Louer' : 'À Vendre'
+      tag: getPublicTransactionBadgeLabel(p.transactionType),
+      listingStatus: getPublicListingStatus(p as Record<string, unknown>, p.transactionType),
     }
   })
 })
@@ -99,9 +105,17 @@ const properties = computed(() => {
            >
                 <!-- Image -->
                 <div class="relative h-64 overflow-hidden">
-                    <div class="absolute top-4 left-4 z-10 backdrop-blur text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide"
-                         :class="property.tag === 'À Louer' ? 'bg-blue-600/90 text-white' : 'bg-green-600/90 text-white'">
-                        {{ property.tag }}
+                    <div class="absolute top-4 left-4 z-10 flex flex-col items-start gap-2">
+                      <div class="backdrop-blur text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide"
+                           :class="property.tag === 'Location' ? 'bg-blue-600/90 text-white' : 'bg-emerald-600/90 text-white'">
+                          {{ property.tag }}
+                      </div>
+                      <div
+                        class="text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wide shadow-md"
+                        :class="property.listingStatus.badgeClass"
+                      >
+                        {{ property.listingStatus.label }}
+                      </div>
                     </div>
                     <img 
                         :src="property.image" 

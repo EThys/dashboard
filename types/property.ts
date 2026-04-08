@@ -72,6 +72,8 @@ export interface Bureau {
     createdAt: string
     available: boolean
     equip: boolean
+    /** Bien déjà pris / clôturé (API sold) */
+    sold?: boolean
 }
 
 export interface BureauResponse {
@@ -109,6 +111,7 @@ export interface Festive {
     updatedAt: string
     available: boolean
     decore: boolean
+    sold?: boolean
 }
 
 export interface FestiveImage extends PropertyImage {
@@ -191,6 +194,7 @@ export interface Terrain {
     available: boolean
     cityValue?: string
     communeValue?: string
+    sold?: boolean
 }
 
 export interface TerrainResponse {
@@ -210,33 +214,58 @@ export interface TerrainResponse {
 // Hotel Type
 // ============================================================================
 
+/** Chambre renvoyée dans `structure[]` sur la liste / détail hôtel */
+export interface HotelChambreApi {
+    id: number
+    hotelId: number
+    deviseId?: number
+    title: string
+    description: string
+    numberPiece?: number
+    price: number
+    priceHeure?: string
+    createdAt?: string
+    updatedAt?: string
+    available?: boolean
+}
+
+export interface HotelStructureRow {
+    chambre?: HotelChambreApi
+    image?: Array<{ path?: string; publicPath?: string; name?: string }>
+}
+
 export interface Hotel {
     id: number
     userId: number
     title: string
     description: string
-    price: number
-    transactionType: string
+    /** Souvent absent : le tarif est sur les chambres */
+    price?: number
+    transactionType?: string
     propertyTypeId: number
     createdAt: string
+    updatedAt?: string
     available: boolean
     image?: string
     address?: string
     cityValue?: string
     communeValue?: string
+    sold?: boolean
 }
 
 export interface HotelResponse {
     hotel: Hotel
-    devise: Devise
-    postBy: string
+    devise?: Devise
+    postBy?: string
     address?: Address
     localAddress?: LocalAddress
     geoZone?: GeoZone
     images?: PropertyImage[]
     feature?: Feature[]
-    typeProperty: TypeProperty
+    typeProperty?: TypeProperty
     image?: string
+    /** Chambres + photos (API agrégée) */
+    structure?: HotelStructureRow[]
 }
 
 // ============================================================================
@@ -261,6 +290,7 @@ export interface Property {
     createdAt: string
     available: boolean
     guarantee?: string
+    sold?: boolean
 }
 
 export interface PropertyImages {
@@ -343,6 +373,8 @@ export interface NormalizedProperty {
     area: string
     type: string
     status: string
+    /** Indisponible à la réservation (vendu / déjà pris) */
+    sold: boolean
     description: string
     electricity: number
     electricityInfo: string
@@ -368,6 +400,25 @@ export interface NormalizedProperty {
     publisherImage?: string
     createdAt: string
     guarantee?: string
+    /** Hôtel : pas de prix global sur la fiche / cartes */
+    hideListingPrice?: boolean
+    /** Chambres (prix affichés ici) */
+    hotelChambres?: Array<{
+        id: number
+        hotelId: number
+        title: string
+        description: string
+        price: number
+        priceHeure?: string
+        deviseId: number
+        currencyLabel: string
+        image: string
+        images: string[]
+        numberPiece?: number
+        available?: boolean
+        createdAt?: string
+        updatedAt?: string
+    }>
 }
 
 // ============================================================================

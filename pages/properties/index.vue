@@ -6,6 +6,8 @@ import { formatCurrency, getCurrencyLabel } from '@/utils/currency'
 import PropertyCardShimmer from '@/components/front/PropertyCardShimmer.vue'
 import CasaLoader from '@/components/ui/CasaLoader.vue'
 import { encodeId } from '@/utils/urlObfuscator'
+import { getPublicListingStatus } from '@/utils/listingAvailability'
+import { getPublicTransactionBadgeLabel, isLocationTransactionType } from '@/utils/transactionDisplay'
 
 definePageMeta({
   layout: 'default'
@@ -167,10 +169,11 @@ const properties = computed(() => {
          else typeName = 'Propriété'
      }
     
-    // Price
+    const isHotel = item._category === 'hotel'
+    // Price — pas sur l’hôtel (tarifs par chambre)
     const currencyCode = item.devise?.code || 'USD'
-    const priceVal = p.price || 0
-    const priceDisplay = formatCurrency(priceVal, currencyCode)
+    const priceVal = isHotel ? 0 : (p.price || 0)
+    const priceDisplay = isHotel ? '—' : formatCurrency(priceVal, currencyCode)
 
     // Calculate Display Area
     const displayArea = p.surface && p.surface > 0 
@@ -183,6 +186,8 @@ const properties = computed(() => {
        location: locationStr,
        price: priceDisplay,
        priceValue: priceVal,
+       hidePrice: isHotel,
+       description: (p.description || '').trim(),
        currencyCode: currencyCode,
        currencyLabel: getCurrencyLabel(currencyCode),
        type: typeName,
@@ -191,9 +196,10 @@ const properties = computed(() => {
        beds: p.bedrooms || 0,
        baths: p.bathroom || 0,
        area: displayArea,
-       transaction: p.transactionType || 'vente',
+       transaction: isHotel ? 'hébergement' : (p.transactionType || 'vente'),
        category: item._category,
-       date: p.createdAt ? new Date(p.createdAt) : new Date()
+       date: p.createdAt ? new Date(p.createdAt) : new Date(),
+       listingStatus: getPublicListingStatus(p as Record<string, unknown>, p.transactionType as string | undefined),
     }
   })
   .sort((a, b) => {
@@ -240,29 +246,32 @@ const filteredProperties = computed(() => {
 
    // Transaction Filter
    if (selectedTransaction.value !== 'all') {
-      res = res.filter(p => p.transaction === selectedTransaction.value)
+      res = res.filter((p) => {
+         if (selectedTransaction.value === 'location') return isLocationTransactionType(p.transaction)
+         return !isLocationTransactionType(p.transaction)
+      })
    }
 
-   // Price Filters (Apply regardless of panel visibility if values exist)
+   // Price Filters (hôtels : pas de prix global — exclus des bornes)
    if (minPrice.value !== null) {
-       res = res.filter(p => p.priceValue >= (minPrice.value as number))
+       res = res.filter(p => p.hidePrice || p.priceValue >= (minPrice.value as number))
    }
    if (maxPrice.value !== null) {
-       res = res.filter(p => p.priceValue <= (maxPrice.value as number))
+       res = res.filter(p => p.hidePrice || p.priceValue <= (maxPrice.value as number))
    }
 
    // Advanced Filters Panel Specifics
    if (showAdvancedFilters.value) {
       // Currency
       if (selectedCurrency.value !== 'all') {
-          res = res.filter(p => p.currencyCode === selectedCurrency.value)
+          res = res.filter(p => p.hidePrice || p.currencyCode === selectedCurrency.value)
       }
       // Room Count (Residential only usually)
       if (roomCount.value !== 'all') {
             if (roomCount.value === '4+') {
-                res = res.filter(p => p.beds >= 4)
+                res = res.filter(p => p.hidePrice || p.beds >= 4)
             } else {
-                res = res.filter(p => p.beds === Number(roomCount.value))
+                res = res.filter(p => p.hidePrice || p.beds === Number(roomCount.value))
             }
       }
    }
@@ -379,8 +388,8 @@ watch([searchQuery, selectedType, selectedTransaction, minPrice, maxPrice, selec
                 class="w-full h-12 pl-12 pr-8 bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary text-foreground cursor-pointer appearance-none"
                 >
                 <option value="all">Vente & Location</option>
-                <option value="vente">À Vendre</option>
-                <option value="location">À Louer</option>
+                <option value="vente">Vente</option>
+                <option value="location">Location</option>
                 </select>
                 <div class="absolute inset-y-0 right-4 flex items-center pointer-events-none">
                 <ChevronDown class="h-4 w-4 text-muted-foreground opacity-50" />
@@ -518,14 +527,27 @@ watch([searchQuery, selectedType, selectedTransaction, minPrice, maxPrice, selec
                   {{ property.type }}
                 </span>
               </div>
-              <div class="absolute top-3 right-3">
+              <div class="absolute top-3 right-3 flex flex-col items-end gap-1.5">
                  <span 
+                    v-if="property.category === 'hotel'"
+                    class="px-2.5 py-1 rounded-full text-[10px] font-bold text-white shadow-lg uppercase tracking-wider bg-slate-700"
+                  >
+                    Hébergement
+                  </span>
+                 <span 
+                    v-else
                     :class="[
                       'px-2.5 py-1 rounded-full text-[10px] font-bold text-white shadow-lg uppercase tracking-wider',
-                      property.transaction === 'location' ? 'bg-blue-600' : 'bg-green-600'
+                      isLocationTransactionType(property.transaction) ? 'bg-blue-600' : 'bg-emerald-600'
                     ]"
                   >
-                    {{ property.transaction === 'location' ? 'À Louer' : 'À Vendre' }}
+                    {{ getPublicTransactionBadgeLabel(property.transaction) }}
+                  </span>
+                  <span
+                    class="px-2.5 py-1 rounded-full text-[10px] font-black shadow-lg uppercase tracking-wide"
+                    :class="property.listingStatus.badgeClass"
+                  >
+                    {{ property.listingStatus.label }}
                   </span>
               </div>
               <!-- Publisher Profile Image -->
@@ -544,6 +566,9 @@ watch([searchQuery, selectedType, selectedTransaction, minPrice, maxPrice, selec
                  <h3 class="text-lg font-bold line-clamp-1 group-hover:text-primary transition-colors">
                   {{ property.title }}
                 </h3>
+                 <p v-if="property.hidePrice && property.description" class="text-xs text-muted-foreground line-clamp-2 mt-1">
+                   {{ property.description }}
+                 </p>
               </div>
 
               <!-- Specs Compact -->
@@ -577,8 +602,13 @@ watch([searchQuery, selectedType, selectedTransaction, minPrice, maxPrice, selec
 
               <div class="mt-auto flex items-center justify-between">
                 <div class="text-xl font-black text-primary">
-                  {{ property.price }}
-                  <div class="text-xs text-muted-foreground font-normal">{{ property.currencyLabel }}</div>
+                  <template v-if="property.hidePrice">
+                    <span class="text-sm font-semibold text-muted-foreground">Tarifs par chambre</span>
+                  </template>
+                  <template v-else>
+                    {{ property.price }}
+                    <div class="text-xs text-muted-foreground font-normal">{{ property.currencyLabel }}</div>
+                  </template>
                 </div>
                 <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
                    <ArrowRight class="h-4 w-4" />

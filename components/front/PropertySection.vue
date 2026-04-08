@@ -4,6 +4,8 @@ import { MapPin, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import { Button } from '@/components/ui'
 import { formatCurrency, getCurrencyLabel } from '@/utils/currency'
 import { encodeId } from '@/utils/urlObfuscator'
+import { getPublicListingStatus } from '@/utils/listingAvailability'
+import { getPublicTransactionBadgeLabel, isLocationTransactionType } from '@/utils/transactionDisplay'
 
 const props = defineProps<{
     title: string
@@ -35,8 +37,28 @@ const normalizeItem = (item: any) => {
         img = item.images?.[0]?.path
     } else if (item.hotel) {
         p = item.hotel
-        addr = p.address // Hotel address seems to be on the hotel object based on user JSON
-        img = p.image 
+        addr = p.address
+        img = p.image
+        const loc = [p.communeValue, p.cityValue].filter(Boolean).join(', ') || String(p.address || '').slice(0, 80)
+        return {
+            id: p?.id || p?.propertyId || 0,
+            title: p?.title || 'Sans titre',
+            location: loc || 'RDC',
+            price: '—',
+            hidePrice: true,
+            currencyCode: 'USD',
+            currencySymbol: '$',
+            currencyLabel: 'USD',
+            currency: 'USD',
+            image: img || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800&q=80',
+            publisherImage: item.image || '',
+            postBy: item.postBy || '',
+            tag: 'Hébergement',
+            transactionType: 'hébergement',
+            frequency: '',
+            priceLabel: 'Tarifs par chambre',
+            listingStatus: getPublicListingStatus(p as Record<string, unknown>, undefined),
+        }
     } else {
         // Fallback for generic property structure
         p = item.property
@@ -69,14 +91,14 @@ const normalizeItem = (item: any) => {
     const symbol = currencyCode === 'USD' ? '$' : 'FC'
     const currencyLabel = getCurrencyLabel(currencyCode)
     const tType = p?.transactionType || 'vente'
-    const dispTag = tType === 'location' ? 'À Louer' : 'À Vendre'
+    const dispTag = getPublicTransactionBadgeLabel(tType)
     
-    let frequency = tType === 'location' ? '/mois' : ''
-    let priceLabel = tType === 'location' ? 'Loyer' : 'Montant de la vente'
+    let frequency = isLocationTransactionType(tType) ? '/mois' : ''
+    let priceLabel = isLocationTransactionType(tType) ? 'Loyer' : 'Montant de la vente'
 
     const isSpecial = ['hotel', 'hôtels', 'salle de fête', 'salles de fête', 'espace funéraire', 'espaces funéraires'].includes(props.title.toLowerCase())
     if (isSpecial) {
-        if (tType === 'location') {
+        if (isLocationTransactionType(tType)) {
             frequency = ''
             priceLabel = 'Prix de la location'
         } else {
@@ -99,12 +121,23 @@ const normalizeItem = (item: any) => {
         tag: dispTag,
         transactionType: tType,
         frequency: frequency,
-        priceLabel: priceLabel
+        priceLabel: priceLabel,
+        listingStatus: getPublicListingStatus(p as Record<string, unknown>, p?.transactionType as string | undefined),
     }
 }
 
 const displayItems = computed(() => {
     return props.items.slice(0, 8).map(normalizeItem)
+})
+
+const viewAllTo = computed(() => {
+    const t = String(props.title || '').toLowerCase()
+    const isHotels = t.includes('hotel') || t.includes('hôtel')
+    /** Aligné sur `typeProperty.name` (`Hôtel`) — encodage URL : `type=H%C3%B4tel` */
+    if (isHotels) {
+        return { path: '/properties', query: { type: 'Hôtel' } }
+    }
+    return `/properties?type=${props.typeId}`
 })
 
 // Scroll Logic for Mobile
@@ -155,7 +188,7 @@ onUnmounted(() => {
                 <span class="text-primary font-bold text-sm tracking-wider uppercase">{{ subtitle || 'Découvrez' }}</span>
                 <h2 class="text-3xl font-bold text-foreground mt-1">{{ title }}</h2>
             </div>
-            <NuxtLink :to="`/properties?type=${typeId}`" class="hidden md:block">
+            <NuxtLink :to="viewAllTo" class="hidden md:block">
                 <Button variant="outline" class="gap-2 rounded-full border-custom hover:bg-primary hover:text-white transition-colors duration-300">
                     Voir tout <ArrowRight class="h-4 w-4" />
                 </Button>
@@ -189,9 +222,17 @@ onUnmounted(() => {
                     :class="(index as number) % 3 === 0 ? 'reveal-delay-100' : (index as number) % 3 === 1 ? 'reveal-delay-200' : 'reveal-delay-300'"
                 >
                 <div class="relative h-44 md:h-64 overflow-hidden">
-                    <div class="absolute top-4 left-4 z-10 backdrop-blur text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide"
-                         :class="item.tag === 'À Louer' ? 'bg-blue-600/90 text-white' : 'bg-green-600/90 text-white'">
-                        {{ item.tag }}
+                    <div class="absolute top-4 left-4 z-10 flex flex-col items-start gap-2">
+                      <div class="backdrop-blur text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide"
+                           :class="item.hidePrice ? 'bg-slate-700/95 text-white' : item.tag === 'Location' ? 'bg-blue-600/90 text-white' : 'bg-emerald-600/90 text-white'">
+                          {{ item.tag }}
+                      </div>
+                      <div
+                        class="text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wide shadow-md"
+                        :class="item.listingStatus.badgeClass"
+                      >
+                        {{ item.listingStatus.label }}
+                      </div>
                     </div>
                     <img 
                       :src="item.image" 
@@ -205,14 +246,20 @@ onUnmounted(() => {
                     </div>
 
                     <!-- Price Badge Floating Bottom Left -->
-                    <div class="absolute bottom-4 left-4 text-white z-10 flex flex-col">
-                         <span class="text-xs font-medium opacity-90">{{ item.priceLabel }}</span>
-                         <div class="text-xl font-black">
-                             {{ item.price }}
-                         </div>
-                         <div class="text-xs font-medium opacity-80" v-if="item.currency">
-                             {{ item.currency }} {{ item.frequency }}
-                         </div>
+                    <div class="absolute bottom-4 left-4 text-white z-10 flex flex-col max-w-[85%]">
+                         <template v-if="item.hidePrice">
+                           <span class="text-xs font-medium opacity-90">Adresse & description</span>
+                           <div class="text-sm font-bold leading-tight">Tarifs sur les chambres</div>
+                         </template>
+                         <template v-else>
+                           <span class="text-xs font-medium opacity-90">{{ item.priceLabel }}</span>
+                           <div class="text-xl font-black">
+                               {{ item.price }}
+                           </div>
+                           <div class="text-xs font-medium opacity-80" v-if="item.currency">
+                               {{ item.currency }} {{ item.frequency }}
+                           </div>
+                         </template>
                     </div>
                 </div>
                 
@@ -242,7 +289,7 @@ onUnmounted(() => {
         </div>
         
         <div class="mt-6 text-center md:hidden">
-            <NuxtLink :to="`/properties?type=${typeId}`">
+            <NuxtLink :to="viewAllTo">
                 <Button variant="outline" class="w-full gap-2 rounded-full border-custom hover:bg-primary hover:text-white transition-colors duration-300">
                     Voir tout {{ title }}
                 </Button>
