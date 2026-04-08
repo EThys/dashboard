@@ -1,18 +1,24 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useQuery } from '@tanstack/vue-query'
+import { useQuery, useQueryClient } from '@tanstack/vue-query'
 import VueEasyLightbox from 'vue-easy-lightbox'
 import { 
   ArrowLeft, MapPin, BedDouble, Bath, Maximize, Home, 
   CheckCircle, Calendar, MessageSquare, Info, ShieldCheck,
-  Loader2, ShieldAlert, EyeOff, Tag, Trash2
+  Loader2, ShieldAlert, EyeOff, Eye, Tag, Trash2,
+  Ban, Building2,
 } from 'lucide-vue-next'
 import { Button, Badge, Skeleton, Sheet, Input, Label } from '@/components/ui'
-import { usePropertyStore } from '@/stores/properties'
+import { usePropertyStore, type PublicationCategory } from '@/stores/properties'
+import type { AnyPropertyResponse, BureauResponse, HotelResponse } from '@/types/property'
+import { normalizeProperty } from '@/utils/propertyNormalizer'
 import { useAuthStore } from '@/stores/auth'
 import { useReservationStore } from '@/stores/reservations'
 import { toast } from 'vue-sonner'
+import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
+import { reloadNuxtApp } from '#app'
+import { unwrapArrayPayload } from '@/utils/apiListResponse'
 
 definePageMeta({
   layout: 'dashboard'
@@ -24,164 +30,544 @@ const config = useRuntimeConfig()
 const authStore = useAuthStore()
 const resStore = useReservationStore()
 const propertyStore = usePropertyStore()
+const queryClient = useQueryClient()
 const propertyId = String(route.params.id)
 
 const isUpdating = ref(false)
 
-const toggleAvailability = async () => {
-    if (!property.value) return
-    isUpdating.value = true
-    const newStatus = !foundProperty.value.property?.available
-    const result = await propertyStore.updateProperty(
-        Number(propertyId),
-        property.value.type,
-        { available: newStatus },
-        config.public.apiBase
-    )
-    if (result.success) {
-        toast.success(newStatus ? 'Bien rendu disponible' : 'Bien rendu indisponible')
-    } else {
-        toast.error('Erreur lors de la mise à jour')
+/** Détail direct — admin uniquement.
+ * - Standard: `GET /v1/protected/property/{propertyId}`
+ * - Bureau: `GET /v1/protected/property/bureaux/{propertyId}`
+ */
+const { data: adminProtectedProperty, isPending: adminPropertyPending } = useQuery({
+  queryKey: ['admin-protected-property', propertyId],
+  queryFn: async () => {
+    const apiBase = config.public.apiBase as string
+    const token = useCookie<string | null>('auth_token').value
+    if (!token) throw new Error('Non authentifié')
+    const headers = { Authorization: `Bearer ${token}` }
+    try {
+      const url = joinApi(apiBase, `${ApiEndpoints.protectedProperties}/${propertyId}`)
+      return await $fetch<Record<string, unknown>>(url, { headers })
+    } catch (e: any) {
+      // Bureau admin: endpoint dédié (l’API ne renvoie pas forcément le bureau via /protected/property/{id})
+      const url = joinApi(
+        apiBase,
+        `${ApiEndpoints.protectedPropertyBureauDetailPrefix}/${propertyId}`
+      )
+      return await $fetch<Record<string, unknown>>(url, { headers })
     }
-    isUpdating.value = false
+  },
+  enabled: computed(() => authStore.isAdmin),
+})
+
+const { data: propertiesData, isLoading, isError, isFetching } = useQuery({
+  queryKey: ['all-dashboard-properties'],
+  queryFn: async () => {
+    const apiBase = config.public.apiBase as string
+    const token = useCookie<string | null>('auth_token').value
+    const h: Record<string, string> = {}
+    if (token) h.Authorization = `Bearer ${token}`
+    const isAdmin = authStore.isAdmin
+
+    const propsUrl = joinApi(apiBase, isAdmin ? ApiEndpoints.protectedProperties : ApiEndpoints.properties)
+    const terrainsUrl = joinApi(
+      apiBase,
+      isAdmin ? ApiEndpoints.protectedPropertyTerrains : ApiEndpoints.propertyTerrains
+    )
+    const bureauxUrl = joinApi(
+      apiBase,
+      isAdmin ? ApiEndpoints.protectedPropertyBureaux : ApiEndpoints.propertyBureaux
+    )
+    const festivesUrl = joinApi(
+      apiBase,
+      isAdmin ? ApiEndpoints.protectedPropertyFestives : ApiEndpoints.propertyFestives
+    )
+    const funerairesUrl = joinApi(
+      apiBase,
+      isAdmin ? ApiEndpoints.protectedPropertyFuneraires : ApiEndpoints.propertyFuneraires
+    )
+    const hotelsUrl = joinApi(
+      apiBase,
+      isAdmin ? ApiEndpoints.protectedPropertyHotels : ApiEndpoints.propertyHotels
+    )
+
+    const [props, terrains, bureaux, hotels, festives, funeraires] = await Promise.all([
+      fetch(propsUrl, isAdmin ? { headers: h } : undefined).then((res) => res.json()),
+      fetch(terrainsUrl, isAdmin ? { headers: h } : undefined).then((res) => res.json()),
+      fetch(bureauxUrl, isAdmin ? { headers: h } : undefined).then((res) => res.json()),
+      fetch(hotelsUrl, { headers: h }).then((res) => res.json()),
+      fetch(festivesUrl, isAdmin ? { headers: h } : undefined).then((res) => res.json()),
+      fetch(funerairesUrl, isAdmin ? { headers: h } : undefined).then((res) => res.json()),
+    ])
+    return {
+      properties: props?.properties || [],
+      terrains: terrains?.terrain || [],
+      bureaux: unwrapArrayPayload<BureauResponse>(bureaux),
+      hotels: unwrapArrayPayload<HotelResponse>(hotels),
+      festives: festives?.festives || [],
+      funeraires: funeraires?.funeraires || [],
+    }
+  },
+})
+
+watch(
+  propertiesData,
+  (newData) => {
+    if (!newData) return
+    propertyStore.setProperties(newData.properties || [])
+    propertyStore.terrains = newData.terrains || []
+    propertyStore.bureaux = newData.bureaux || []
+    propertyStore.hotels = newData.hotels || []
+    propertyStore.festives = newData.festives || []
+    propertyStore.funeraires = newData.funeraires || []
+  },
+  { immediate: true }
+)
+
+/** Annonce trouvée dans l’agrégat dashboard + catégorie pour enable/sold */
+const foundListing = computed(() => {
+  if (authStore.isAdmin && adminProtectedProperty.value) {
+    const res = adminProtectedProperty.value
+    const prop = (res.property ?? res) as Record<string, unknown> | undefined
+    const pid = prop?.propertyId ?? prop?.id
+    if (prop && pid != null && String(pid) === propertyId) {
+      const raw =
+        res.property != null && typeof res.property === 'object'
+          ? res
+          : { ...res, property: prop }
+      return {
+        category: 'property' as const,
+        raw: raw as Record<string, unknown>,
+        entityId: Number(pid),
+      }
+    }
+  }
+
+  const d = propertiesData.value
+  if (!d) return null
+  const idStr = propertyId
+  const buckets: { cat: PublicationCategory; list: unknown[]; key: string }[] = [
+    { cat: 'property', list: d.properties || [], key: 'property' },
+    { cat: 'terrain', list: d.terrains || [], key: 'terrain' },
+    { cat: 'bureau', list: d.bureaux || [], key: 'bureau' },
+    { cat: 'festive', list: d.festives || [], key: 'festive' },
+    { cat: 'funeraire', list: d.funeraires || [], key: 'funeraire' },
+    { cat: 'hotel', list: d.hotels || [], key: 'hotel' },
+  ]
+  for (const { cat, list, key } of buckets) {
+    const found = list.find((item) => {
+      if (!item || typeof item !== 'object') return false
+      const rec = item as Record<string, unknown>
+      const ent = rec[key] as { propertyId?: number; id?: number } | undefined
+      if (!ent) return false
+      const eid = ent.propertyId ?? ent.id
+      return String(eid) === idStr
+    }) as Record<string, unknown> | undefined
+    if (found) {
+      const ent = found[key] as { propertyId?: number; id?: number }
+      const entityId = Number(ent.propertyId ?? ent.id)
+      return { category: cat, raw: found, entityId }
+    }
+  }
+  return null
+})
+
+const listingEntity = computed(() => {
+  const fl = foundListing.value
+  if (!fl) return null
+  const key =
+    fl.category === 'property'
+      ? 'property'
+      : fl.category === 'terrain'
+        ? 'terrain'
+        : fl.category === 'bureau'
+          ? 'bureau'
+          : fl.category === 'festive'
+            ? 'festive'
+            : fl.category === 'funeraire'
+              ? 'funeraire'
+              : 'hotel'
+  return (fl.raw as Record<string, unknown>)[key] as Record<string, unknown> | null
+})
+
+/** Visibilité site : API `status` booléen — `true` = retiré du site, `false` = visible */
+const listingAvailable = computed(() => {
+  const p = listingEntity.value as { available?: boolean; active?: boolean; status?: unknown } | null
+  if (!p) return true
+  if (typeof p.status === 'boolean') return p.status === false
+  if (p.available === false) return false
+  if (p.active === false) return false
+  return true
+})
+
+/** Transaction clôturée — champ `sold` uniquement (`status` sert à la visibilité) */
+const isSoldListing = computed(() => {
+  const p = listingEntity.value as { sold?: boolean } | null
+  return !!p?.sold
+})
+
+/** `transactionType` ou `Transaction` (API) : location / vente / en cours */
+const rawTransactionType = computed(() => {
+  const e = listingEntity.value as { transactionType?: string; Transaction?: string } | null
+  if (!e) return ''
+  return String(e.transactionType ?? e.Transaction ?? '').trim()
+})
+
+type TransactionKind = 'location' | 'vente' | 'en_cours' | 'unknown'
+
+const transactionKind = computed((): TransactionKind => {
+  const t = rawTransactionType.value.toLowerCase()
+  if (!t) return 'unknown'
+  if (t.includes('cours') || t === 'en cours' || t.replace(/\s/g, '') === 'encours') return 'en_cours'
+  if (t.includes('location') || t.includes('louer')) return 'location'
+  if (t.includes('vente') || t.includes('vendre')) return 'vente'
+  return 'unknown'
+})
+
+const transactionTypeLabel = computed(() => {
+  switch (transactionKind.value) {
+    case 'location':
+      return 'Location'
+    case 'vente':
+      return 'Vente'
+    case 'en_cours':
+      return 'En cours'
+    default:
+      return rawTransactionType.value || '—'
+  }
+})
+
+const isLocationTransaction = computed(() => transactionKind.value === 'location')
+
+const isHotelListing = computed(() => foundListing.value?.category === 'hotel')
+
+const categoryLabel = computed(() => {
+  const c = foundListing.value?.category
+  const map: Record<PublicationCategory, string> = {
+    property: 'Résidentiel',
+    terrain: 'Terrain',
+    bureau: 'Bureau',
+    festive: 'Salle / espace festif',
+    funeraire: 'Espace funéraire',
+    hotel: 'Hôtel',
+  }
+  return c ? map[c] : '—'
+})
+
+/** État synthétique pour un dashboard lisible d’un coup d’œil */
+const lifecycleState = computed(() => {
+  if (isHotelListing.value) return 'hotel' as const
+  if (isSoldListing.value) return 'sold' as const
+  if (!listingAvailable.value) return 'hidden' as const
+  return 'live' as const
+})
+
+const lifecyclePresentation = computed(() => {
+  switch (lifecycleState.value) {
+    case 'live':
+      return {
+        headline: 'Publiée et visible',
+        sub: 'Les visiteurs voient cette annonce sur le site public.',
+        dotClass: 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.7)]',
+        cardTint: 'border-emerald-200/80 bg-emerald-50/50 dark:border-emerald-900/50 dark:bg-emerald-950/20',
+      }
+    case 'hidden':
+      return {
+        headline: 'Masquée (non publiée)',
+        sub: 'Le public ne la voit pas. Vous pouvez la réactiver sans changer le statut transaction.',
+        dotClass: 'bg-amber-500',
+        cardTint: 'border-amber-200/80 bg-amber-50/40 dark:border-amber-900/40 dark:bg-amber-950/15',
+      }
+    case 'sold':
+      return {
+        headline: isLocationTransaction.value
+          ? 'Plus disponible à la location'
+          : 'Vendu — transaction clôturée',
+        sub: isLocationTransaction.value
+          ? 'Marqué comme déjà pris / loué. Retirez ce statut pour modifier la visibilité sur le site.'
+          : 'Marqué comme vendu. Retirez ce statut pour modifier la visibilité sur le site.',
+        dotClass: 'bg-slate-500',
+        cardTint: 'border-slate-300 bg-slate-50 dark:border-slate-600 dark:bg-slate-900/40',
+      }
+    default:
+      return {
+        headline: 'Hôtel',
+        sub: 'La visibilité et le statut vendu ne sont pas gérés par les mêmes endpoints que les autres biens.',
+        dotClass: 'bg-[#1976D2]',
+        cardTint: 'border-[#1976D2]/30 bg-[#1976D2]/5',
+      }
+  }
+})
+
+const publicationBadge = computed(() => {
+  if (isSoldListing.value)
+    return {
+      label: isLocationTransaction.value ? 'Non disponible' : 'Vendu',
+      class: 'bg-slate-800 text-white border-slate-800 font-semibold',
+    }
+  if (!listingAvailable.value)
+    return {
+      label: 'Non publiée',
+      class: 'border-amber-400/80 bg-amber-100/90 text-amber-950 font-semibold',
+    }
+  return { label: 'En ligne', class: 'bg-[#1976D2] text-white border-[#1976D2] font-semibold' }
+})
+
+const canToggleVisibility = computed(
+  () =>
+    !isHotelListing.value &&
+    !isSoldListing.value &&
+    !isUpdating.value
+)
+
+const canToggleSold = computed(() => !isHotelListing.value && !isUpdating.value)
+
+const toggleAvailability = async () => {
+  const fl = foundListing.value
+  if (!property.value || !fl) return
+  if (isHotelListing.value) {
+    toast.info('Les hôtels ne sont pas gérés par ces endpoints sur cette API.')
+    return
+  }
+  if (isSoldListing.value) {
+    toast.error('Retirez d’abord le statut « vendu » pour réactiver la visibilité.')
+    return
+  }
+  isUpdating.value = true
+  const hidden = listingAvailable.value
+  const result = await propertyStore.putPublicationEnable(
+    config.public.apiBase as string,
+    authStore.token,
+    fl.category,
+    fl.entityId,
+    hidden
+  )
+  if (result.success) {
+    toast.success(
+      hidden ? 'Annonce retirée du site' : 'Annonce visible sur le site'
+    )
+    await queryClient.invalidateQueries({ queryKey: ['all-dashboard-properties'] })
+    await reloadNuxtApp({ ttl: 1000 })
+  } else {
+    toast.error(result.message || 'Erreur lors de la mise à jour')
+  }
+  isUpdating.value = false
 }
 
 const markAsSold = async () => {
-    if (!property.value) return
-    const confirmSold = confirm("Voulez-vous marquer ce bien comme vendu ? Cela le rendra indisponible.")
+  const fl = foundListing.value
+  if (!property.value || !fl) return
+  if (isHotelListing.value) {
+    toast.info('Les hôtels ne sont pas gérés par ces endpoints sur cette API.')
+    return
+  }
+  const ent = listingEntity.value as { sold?: boolean } | null
+  const currentlySold = !!ent?.sold
+  if (!currentlySold) {
+    const msg = isLocationTransaction.value
+      ? 'Marquer ce bien comme déjà pris / loué ? Il ne sera plus disponible à la location.'
+      : 'Marquer ce bien comme vendu ? Il ne sera plus disponible à la vente.'
+    const confirmSold = confirm(msg)
     if (!confirmSold) return
-    
-    isUpdating.value = true
-    const result = await propertyStore.updateProperty(
-        Number(propertyId),
-        property.value.type,
-        { available: false }, // Sold means not available
-        config.public.apiBase
+  } else {
+    const confirmUnsold = confirm(
+      isLocationTransaction.value
+        ? 'Rouvrir la transaction (bien à nouveau disponible) ?'
+        : 'Retirer le statut « vendu » ?'
     )
-    if (result.success) {
-        toast.success('Bien marqué comme vendu')
-    } else {
-        toast.error('Erreur lors de la mise à jour')
-    }
-    isUpdating.value = false
+    if (!confirmUnsold) return
+  }
+
+  isUpdating.value = true
+  const result = await propertyStore.putPublicationSold(
+    config.public.apiBase as string,
+    authStore.token,
+    fl.category,
+    fl.entityId,
+    !currentlySold
+  )
+  if (result.success) {
+    toast.success(
+      currentlySold
+        ? isLocationTransaction.value
+          ? 'Bien à nouveau disponible'
+          : 'Statut vendu retiré'
+        : isLocationTransaction.value
+          ? 'Marqué comme non disponible (déjà pris / loué)'
+          : 'Bien marqué comme vendu'
+    )
+    await queryClient.invalidateQueries({ queryKey: ['all-dashboard-properties'] })
+    await reloadNuxtApp({ ttl: 1000 })
+  } else {
+    toast.error(result.message || 'Erreur lors de la mise à jour')
+  }
+  isUpdating.value = false
 }
 
-// Reservation State
 const isResSheetOpen = ref(false)
 const showAuthModal = ref(false)
 const resForm = ref({
-    startDate: new Date().toISOString().split('T')[0],
-    endDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
-    message: '',
-    type: 'VIP' as any
+  startDate: new Date().toISOString().split('T')[0],
+  endDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+  message: '',
+  type: 'VIP' as any
 })
 
 const handleStartReservation = () => {
-    if (!authStore.isAuthenticated) {
-        showAuthModal.value = true
-        return
-    }
-    isResSheetOpen.value = true
+  if (isSoldListing.value) {
+    toast.info('Ce bien est déjà pris — réservation impossible.')
+    return
+  }
+  if (!authStore.isAuthenticated) {
+    showAuthModal.value = true
+    return
+  }
+  isResSheetOpen.value = true
 }
 
 const submitReservation = async () => {
-    if (!property.value) return
+  if (!property.value) return
+  if (isSoldListing.value) {
+    toast.error('Ce bien n’est plus disponible.')
+    return
+  }
 
-    const result = await resStore.createReservation(
-        property.value.type || 'Standard',
-        property.value.id,
-        {
-            ...resForm.value,
-            reservationHeure: new Date().toLocaleTimeString('fr-FR', { hour12: false })
-        }
-    )
-
-    if (result.success) {
-        toast.success('Votre demande de réservation a été envoyée avec succès !')
-        isResSheetOpen.value = false
-        resForm.value.message = ''
-    } else {
-        toast.error(result.message || 'Échec de la réservation')
+  const result = await resStore.createReservation(
+    property.value.type || 'Standard',
+    property.value.id,
+    {
+      ...resForm.value,
+      reservationHeure: new Date().toLocaleTimeString('fr-FR', { hour12: false })
     }
+  )
+
+  if (result.success) {
+    toast.success('Votre demande de réservation a été envoyée avec succès !')
+    isResSheetOpen.value = false
+    resForm.value.message = ''
+  } else {
+    toast.error(result.message || 'Échec de la réservation')
+    if (result.code === 'NOT_PREMIUM') {
+      await navigateTo('/compte/abonnement')
+    }
+  }
 }
 
-// Fetch properties
-const { data: propertiesData, isLoading, isError } = useQuery({
-  queryKey: ['properties'],
-  queryFn: async () => {
-    const res = await fetch(`${config.public.apiBase}/property`)
-    return res.json()
+const normalizedListing = computed(() => {
+  const fl = foundListing.value
+  if (!fl) return null
+  try {
+    return normalizeProperty(fl.raw as unknown as AnyPropertyResponse)
+  } catch {
+    return null
   }
 })
 
-// Sync data to store
-watch(propertiesData, (newData) => {
-  if (newData?.properties) {
-    propertyStore.setProperties(newData.properties)
-  }
-}, { immediate: true })
-
-// Find property
-const foundProperty = computed(() => {
-  if (!propertiesData.value?.properties) return null
-  return propertiesData.value.properties.find((item: any) => 
-    String(item.property.propertyId) === propertyId
-  )
-})
-
-// Map Property Data
 const property = computed(() => {
-  const rawRoot = foundProperty.value
-  if (!rawRoot) return null
+  const fl = foundListing.value
+  const n = normalizedListing.value
+  if (!fl || !n) return null
 
-  const p = rawRoot.property
-  const addr = rawRoot.address
-  const images = rawRoot.images || {}
-  
+  const raw = fl.raw as Record<string, unknown>
+  const addr = (raw.address || {}) as Record<string, string | undefined>
+  const category = fl.category
+  const ent = listingEntity.value as Record<string, unknown> | null
+  if (!ent) return null
+
+  const priceNum = ent.price as number | undefined
+  const priceStr = typeof priceNum === 'number' ? priceNum.toLocaleString('fr-FR') : String(priceNum ?? '')
+
+  const imgs = n.imagesByCategory
+  const mainArr =
+    imgs.main?.length > 0 ? imgs.main : n.images.length > 0 ? [n.images[0]] : []
+
+  let surface: string | number = '-'
+  let rooms: string | number = '-'
+  let bedrooms: string | number = '-'
+  let bathrooms: string | number = '-'
+  let kitchens: string | number | undefined
+  let livingRooms: string | number | undefined
+  let floor = 'RDC'
+  let guarantee: string | number = '-'
+
+  if (category === 'property' && raw.property) {
+    const p = raw.property as Record<string, unknown>
+    surface = p.surface != null ? String(p.surface) : '-'
+    rooms = p.rooms != null ? String(p.rooms) : '-'
+    bedrooms = String(p.bedrooms ?? '-')
+    bathrooms = String(p.bathroom ?? '-')
+    kitchens = p.kitchen as number | undefined
+    livingRooms = p.livingRoom as number | undefined
+    floor = (p.floor as string) || 'RDC'
+    guarantee = (p.guarantee as string | number) ?? '-'
+  } else if (category === 'terrain' && raw.terrain) {
+    const t = raw.terrain as { surface?: number }
+    surface = t.surface != null ? String(t.surface) : '-'
+  } else if (category === 'bureau' && raw.bureau) {
+    const b = raw.bureau as { numberPiece?: number }
+    rooms = b.numberPiece != null ? String(b.numberPiece) : '-'
+  }
+
+  const featRaw = raw.features ?? raw.feature
+  const featuresList = Array.isArray(featRaw)
+    ? (featRaw as { name?: string }[]).map((f) => f.name).filter(Boolean) as string[]
+    : n.features
+
+  const entRec = ent as Record<string, unknown>
+  const sold = !!(ent.sold as boolean | undefined)
+  const activeListing =
+    typeof entRec.status === 'boolean'
+      ? entRec.status === false
+      : ent.available !== false && ent.active !== false
+
   return {
-    id: p.propertyId,
-    title: p.title || 'Sans titre',
-    description: p.description,
-    price: typeof p.price === 'number' ? p.price.toLocaleString() : p.price,
-    currency: rawRoot.devise?.code || 'USD',
-    currencyLabel: rawRoot.devise?.code || 'USD',
-    status: p.available ? 'Active' : 'Pending',
-    transactionType: p.transactionType,
-    surface: p.surface,
-    rooms: p.rooms,
-    bedrooms: p.bedrooms,
-    bathrooms: p.bathroom,
-    kitchens: p.kitchen,
-    livingRooms: p.livingRoom,
-    floor: p.floor,
-    guarantee: p.guarantee,
-    category: rawRoot.typeProperty?.name,
-    createdAt: new Date(p.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }),
-    
+    id: fl.entityId,
+    title: n.title || 'Sans titre',
+    description: n.description,
+    price: priceStr,
+    currency: (raw.devise as { code?: string } | undefined)?.code || 'USD',
+    currencyLabel: (raw.devise as { code?: string } | undefined)?.code || 'USD',
+    status: sold ? 'Sold' : activeListing ? 'Active' : 'Inactive',
+    transactionType: ent.transactionType as string,
+    surface,
+    rooms,
+    bedrooms,
+    bathrooms,
+    kitchens,
+    livingRooms,
+    floor,
+    guarantee,
+    category: n.type,
+    createdAt: n.createdAt,
     address: {
-      full: addr?.address,
-      commune: addr?.communeValue,
-      quartier: addr?.quartierValue,
-      city: addr?.cityValue,
-      country: addr?.countryValue
+      full: addr.address,
+      commune: addr.communeValue,
+      quartier: addr.quartierValue,
+      city: addr.cityValue,
+      country: addr.countryValue
     },
-    
     publisher: {
-      username: rawRoot.postBy?.replace('@@', '') || 'Inconnu',
-      id: rawRoot.userId,
-      photo: rawRoot.image || null
+      username: String(raw.postBy || '').replace('@@', '') || 'Inconnu',
+      id: raw.userId as number | undefined,
+      photo: (raw.image as string | null) || null
     },
-    
-    type: rawRoot.typeProperty?.name,
-    features: rawRoot.features?.map((f: any) => f.name) || [],
-    
+    type: n.type,
+    features: featuresList,
     images: {
-      main: images.main?.map((i: any) => i.publicPath) || [],
-      room: images.room?.map((i: any) => i.publicPath) || [],
-      living: images.living?.map((i: any) => i.publicPath) || [],
-      kitchen: images.kitchen?.map((i: any) => i.publicPath) || []
+      main: mainArr,
+      room: imgs.room || [],
+      living: imgs.living || [],
+      kitchen: imgs.kitchen || []
     }
   }
+})
+
+const showPageSkeleton = computed(() => {
+  if (property.value) return false
+  if (isLoading.value) return true
+  if (authStore.isAdmin && adminPropertyPending.value) return true
+  return false
 })
 
 const allPropertyImages = computed(() => {
@@ -224,7 +610,7 @@ const goBack = () => router.push('/dashboard/publications?tab=properties')
   <div class="space-y-8 pb-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     
     <!-- Loading State -->
-    <div v-if="isLoading && !property" class="space-y-8 animate-pulse">
+    <div v-if="showPageSkeleton" class="space-y-8 animate-pulse">
       <div class="space-y-4">
         <Skeleton class="h-10 w-2/3 rounded-lg" />
         <Skeleton class="h-6 w-1/3 rounded-lg" />
@@ -270,9 +656,13 @@ const goBack = () => router.push('/dashboard/publications?tab=properties')
                         <span class="w-1 h-1 rounded-full bg-border"></span>
                         <span>{{ property?.category || 'Bien immobilier' }}</span>
                         <span class="w-1 h-1 rounded-full bg-border"></span>
-                         <Badge :variant="property?.status === 'Active' ? 'default' : 'outline'" class="rounded-full px-2.5 py-0.5 text-xs font-semibold" :class="property?.status === 'Active' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-orange-50 text-orange-600 border-orange-200'">
-                            {{ property?.status === 'Active' ? 'Validé' : 'En attente' }}
-                        </Badge>
+                         <Badge
+                           variant="outline"
+                           class="rounded-full px-2.5 py-0.5 text-xs border"
+                           :class="publicationBadge.class"
+                         >
+                           {{ publicationBadge.label }}
+                         </Badge>
                     </div>
                 </div>
             </div>
@@ -380,7 +770,7 @@ const goBack = () => router.push('/dashboard/publications?tab=properties')
                  <div class="grid grid-cols-2 md:grid-cols-3 gap-6 bg-muted/30 p-6 rounded-2xl border border-border/50">
                      <div class="space-y-1">
                          <p class="text-xs text-muted-foreground uppercase font-semibold">Type</p>
-                         <p class="font-medium">{{ property?.transactionType === 'vente' ? 'Vente' : 'Location' }}</p>
+                         <p class="font-medium">{{ transactionTypeLabel }}</p>
                      </div>
                       <div class="space-y-1">
                          <p class="text-xs text-muted-foreground uppercase font-semibold">Étage</p>
@@ -431,50 +821,208 @@ const goBack = () => router.push('/dashboard/publications?tab=properties')
         <div class="lg:col-span-4 relative">
             <div class="sticky top-24 space-y-6">
                 
-                <!-- Administrative Actions (Admin Only in Dashboard) -->
-                <div class="rounded-3xl border bg-slate-900 text-white p-6 md:p-8 space-y-6 shadow-xl shadow-slate-200">
-                    <div class="flex items-center gap-3 pb-4 border-b border-white/10">
-                        <div class="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center">
-                            <ShieldCheck class="h-6 w-6 text-primary" />
-                        </div>
-                        <div>
-                            <h3 class="font-bold text-lg">Actions Admin</h3>
-                            <p class="text-xs text-white/50">Gestion de la publication</p>
+                <!-- Administration : état réactif + actions (enable/sold par type de bien) -->
+                <div
+                    class="relative rounded-3xl border border-border/80 bg-card shadow-lg shadow-black/5 overflow-hidden dark:bg-slate-950 dark:border-slate-800"
+                >
+                    <div
+                        v-if="isFetching && !isLoading && property"
+                        class="absolute top-0 left-0 right-0 z-20 h-0.5 bg-[#1976D2] animate-pulse"
+                    />
+                    <div
+                        v-if="isUpdating"
+                        class="absolute inset-0 z-30 flex items-center justify-center bg-background/70 backdrop-blur-[2px] dark:bg-slate-950/75"
+                    >
+                        <div class="flex items-center gap-2 rounded-full border bg-card px-4 py-2 text-sm font-semibold shadow-lg">
+                            <Loader2 class="h-4 w-4 animate-spin text-[#1976D2]" />
+                            Mise à jour…
                         </div>
                     </div>
 
-                    <div class="space-y-3">
-                        <Button 
-                            @click="toggleAvailability"
-                            variant="secondary"
-                            :disabled="isUpdating"
-                            class="w-full h-12 rounded-xl font-bold justify-start gap-3 bg-white/10 hover:bg-white/20 border-none text-white transition-all"
-                        >
-                            <Loader2 v-if="isUpdating" class="h-4 w-4 animate-spin" />
-                            <template v-else>
-                                <EyeOff v-if="property?.status === 'Active'" class="h-4 w-4" />
-                                <CheckCircle v-else class="h-4 w-4" />
-                            </template>
-                            {{ property?.status === 'Active' ? 'Rendre indisponible' : 'Rendre disponible' }}
-                        </Button>
+                    <div
+                        class="bg-gradient-to-r from-[#1976D2] to-[#1565C0] px-5 py-4 text-white"
+                    >
+                        <div class="flex items-start gap-3">
+                            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm">
+                                <ShieldCheck class="h-6 w-6 text-white" />
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <h3 class="font-bold text-base leading-tight tracking-tight">Publication & visibilité</h3>
+                                <div class="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-white/90">
+                                    <span class="inline-flex items-center gap-1 rounded-md bg-black/15 px-2 py-0.5">
+                                        <Building2 class="h-3.5 w-3.5 shrink-0 opacity-90" />
+                                        {{ categoryLabel }}
+                                    </span>
+                                    <span
+                                        class="inline-flex rounded-md border border-white/25 bg-white/10 px-2 py-0.5 font-semibold"
+                                    >
+                                        {{ transactionTypeLabel }}
+                                    </span>
+                                    <span class="tabular-nums opacity-80">#{{ propertyId }}</span>
+                                </div>
+                            
+                            </div>
+                            <Badge
+                                variant="outline"
+                                class="shrink-0 border-white/40 bg-white/10 text-white hover:bg-white/15"
+                            >
+                                {{ publicationBadge.label }}
+                            </Badge>
+                        </div>
+                    </div>
 
-                        <Button 
-                            v-if="property?.status === 'Active'"
-                            @click="markAsSold"
-                            :disabled="isUpdating"
-                            variant="outline"
-                            class="w-full h-12 rounded-xl font-bold justify-start gap-3 border-white/20 hover:bg-white/5 text-white"
+                    <div class="space-y-4 p-5">
+                        <!-- Synthèse d’état (réactive au refetch / mutations) -->
+                        <div
+                            class="rounded-2xl border p-4 transition-colors duration-300"
+                            :class="lifecyclePresentation.cardTint"
                         >
-                            <Tag class="h-4 w-4" />
-                            Marquer comme vendu
-                        </Button>
+                            <div class="flex gap-3">
+                                <div class="relative mt-0.5 flex h-3 w-3 shrink-0">
+                                    <span
+                                        v-if="lifecycleState === 'live'"
+                                        class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60"
+                                    />
+                                    <span
+                                        class="relative inline-flex h-3 w-3 rounded-full ring-2 ring-background"
+                                        :class="lifecyclePresentation.dotClass"
+                                    />
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-sm font-bold leading-tight text-foreground">
+                                        {{ lifecyclePresentation.headline }}
+                                    </p>
+                                    <p class="mt-1 text-xs leading-relaxed text-muted-foreground">
+                                        {{ lifecyclePresentation.sub }}
+                                    </p>
+                                </div>
+                            </div>
 
-                        <Button 
-                            variant="destructive"
-                            class="w-full h-12 rounded-xl font-bold justify-start gap-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 border-none transition-all"
+                            <div class="mt-4 grid grid-cols-2 gap-2">
+                                <div
+                                    class="rounded-xl border border-border/60 bg-background/90 px-3 py-2.5 shadow-sm dark:bg-slate-900/80"
+                                >
+                                    <p class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                                        Visibilité site
+                                    </p>
+                                    <p class="mt-1 flex items-center gap-2 text-sm font-bold text-foreground">
+                                        <Eye
+                                            v-if="listingAvailable && !isSoldListing && !isHotelListing"
+                                            class="h-4 w-4 text-emerald-600"
+                                        />
+                                        <EyeOff
+                                            v-else-if="!isSoldListing && !isHotelListing"
+                                            class="h-4 w-4 text-amber-600"
+                                        />
+                                        <Ban v-else-if="isSoldListing" class="h-4 w-4 text-slate-500" />
+                                        <ShieldAlert v-else class="h-4 w-4 text-[#1976D2]" />
+                                        <span v-if="isHotelListing">N/A</span>
+                                        <span v-else-if="isSoldListing">{{
+                                          isLocationTransaction ? 'Masquée (non dispo.)' : 'Masquée (vendu)'
+                                        }}</span>
+                                        <span v-else-if="listingAvailable">Active</span>
+                                        <span v-else>Désactivée</span>
+                                    </p>
+                                </div>
+                                <div
+                                    class="rounded-xl border border-border/60 bg-background/90 px-3 py-2.5 shadow-sm dark:bg-slate-900/80"
+                                >
+                                    <p class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                                        Transaction
+                                    </p>
+                                    <p class="mt-1 flex items-center gap-2 text-sm font-bold text-foreground">
+                                        <Tag
+                                            class="h-4 w-4"
+                                            :class="isSoldListing ? 'text-slate-600' : 'text-[#1976D2]'"
+                                        />
+                                        {{
+                                          isSoldListing
+                                            ? isLocationTransaction
+                                              ? 'Déjà pris / loué'
+                                              : 'Vendu'
+                                            : 'En cours'
+                                        }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <p class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                                Visibilité (public)
+                            </p>
+                            <Button
+                                v-if="!listingAvailable"
+                                type="button"
+                                @click="toggleAvailability"
+                                :disabled="!canToggleVisibility"
+                                class="h-12 w-full gap-2 rounded-xl border-0 bg-emerald-600 font-bold text-white shadow-md hover:bg-emerald-700"
+                            >
+                                <Loader2 v-if="isUpdating" class="h-4 w-4 shrink-0 animate-spin" />
+                                <Eye v-else class="h-4 w-4 shrink-0" />
+                                Rendre visible sur le site
+                            </Button>
+                            <Button
+                                v-else
+                                type="button"
+                                @click="toggleAvailability"
+                                :disabled="!canToggleVisibility"
+                                variant="outline"
+                                class="h-12 w-full gap-2 rounded-xl border-2 border-amber-500/80 bg-amber-50/90 font-bold text-amber-950 hover:bg-amber-100 dark:border-amber-600 dark:bg-amber-950/30 dark:text-amber-100 dark:hover:bg-amber-950/50"
+                            >
+                                <Loader2 v-if="isUpdating" class="h-4 w-4 shrink-0 animate-spin" />
+                                <EyeOff v-else class="h-4 w-4 shrink-0" />
+                                Retirer du site (masquer)
+                            </Button>
+                            <p v-if="isSoldListing && !isHotelListing" class="text-xs text-muted-foreground">
+                                Retirez le statut <span class="font-semibold">Vendu / pris</span> ci-dessous pour pouvoir changer la visibilité.
+                            </p>
+                            <p v-if="isHotelListing" class="text-xs text-muted-foreground">
+                                Les hôtels ne sont pas couverts par les endpoints enable/sold « property » sur cette API.
+                            </p>
+                        </div>
+
+                        <div class="h-px bg-border" />
+
+                        <div class="space-y-2">
+                            <p class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                                Statut transaction
+                            </p>
+                            <Button
+                                type="button"
+                                @click="markAsSold"
+                                :disabled="!canToggleSold"
+                                variant="outline"
+                                :class="
+                                    isSoldListing
+                                        ? 'h-12 w-full justify-start gap-3 rounded-xl border-2 border-emerald-600/50 bg-emerald-50/80 font-bold text-emerald-950 hover:bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-950/25 dark:text-emerald-100'
+                                        : 'h-12 w-full justify-start gap-3 rounded-xl border-2 border-slate-400/80 bg-slate-50/90 font-bold text-slate-900 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100'
+                                "
+                            >
+                                <Loader2 v-if="isUpdating" class="h-4 w-4 shrink-0 animate-spin" />
+                                <Tag v-else class="h-4 w-4 shrink-0 text-[#1976D2]" />
+                                {{
+                                  isSoldListing
+                                    ? isLocationTransaction
+                                      ? 'Rendre disponible à la location'
+                                      : 'Rouvrir la vente'
+                                    : isLocationTransaction
+                                      ? 'Marquer déjà pris / loué'
+                                      : 'Marquer comme vendu'
+                                }}
+                            </Button>
+                        </div>
+
+                        <div class="h-px bg-border" />
+
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            disabled
+                            class="h-11 w-full justify-start gap-2 rounded-xl text-muted-foreground"
                         >
                             <Trash2 class="h-4 w-4" />
-                            Supprimer l'annonce
+                            Supprimer l’annonce (bientôt)
                         </Button>
                     </div>
                 </div>
@@ -486,9 +1034,30 @@ const goBack = () => router.push('/dashboard/publications?tab=properties')
                             <span class="text-3xl font-black text-primary">{{ property?.price }} <span class="text-lg text-foreground font-bold">{{ property?.currencyLabel }}</span></span>
                             <span class="text-muted-foreground text-sm font-medium mb-1.5" v-if="property?.transactionType === 'location'">/ mois</span>
                         </div>
-                        <div class="flex items-center gap-2 text-green-600 text-sm font-medium">
+                        <div
+                            v-if="isSoldListing"
+                            class="flex items-center gap-2 text-slate-700 dark:text-slate-300 text-sm font-semibold"
+                        >
+                            <Tag class="h-3.5 w-3.5" />
+                            {{
+                              isLocationTransaction
+                                ? 'Non disponible — déjà pris / loué'
+                                : 'Vendu — transaction clôturée'
+                            }}
+                        </div>
+                        <div
+                            v-else-if="listingAvailable"
+                            class="flex items-center gap-2 text-[#1976D2] text-sm font-bold"
+                        >
                             <CheckCircle class="h-3.5 w-3.5" />
-                            Disponible immédiatement
+                            Annonce en ligne
+                        </div>
+                        <div
+                            v-else
+                            class="flex items-center gap-2 text-[#1565C0] text-sm font-bold"
+                        >
+                            <EyeOff class="h-3.5 w-3.5" />
+                            Désactivée (visible administrateurs)
                         </div>
                     </div>
 
@@ -506,7 +1075,18 @@ const goBack = () => router.push('/dashboard/publications?tab=properties')
                             <div v-if="property?.publisher?.photo" class="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                 <Maximize class="h-5 w-5 text-white" />
                             </div>
-                            <div class="absolute -bottom-1 -right-1 h-4 w-4 bg-green-500 rounded-full border-2 border-card"></div>
+                            <div
+                                class="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-card"
+                                :class="
+                                    lifecycleState === 'live'
+                                        ? 'bg-emerald-500'
+                                        : lifecycleState === 'hidden'
+                                          ? 'bg-amber-500'
+                                          : lifecycleState === 'sold'
+                                            ? 'bg-slate-500'
+                                            : 'bg-[#1976D2]'
+                                "
+                            />
                          </div>
                          <div class="flex-1 min-w-0">
                              <p class="font-bold text-foreground truncate">{{ property?.publisher?.username }}</p>
@@ -521,11 +1101,19 @@ const goBack = () => router.push('/dashboard/publications?tab=properties')
                     <!-- CTAs -->
                     <div class="grid gap-3">
                         <Button 
+                            :disabled="isSoldListing"
+                            :title="isSoldListing ? 'Ce bien est déjà pris' : undefined"
                             @click="handleStartReservation"
-                            class="w-full h-14 text-base font-black bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 rounded-2xl group transition-all"
+                            class="w-full h-14 text-base font-black bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 rounded-2xl group transition-all disabled:opacity-50 disabled:pointer-events-none"
                         >
                             <Calendar class="h-5 w-5 mr-2 group-hover:scale-110 transition-transform" />
-                            Réserver ce bien
+                            {{
+                              isSoldListing
+                                ? isLocationTransaction
+                                  ? 'Indisponible'
+                                  : 'Déjà vendu'
+                                : 'Réserver ce bien'
+                            }}
                         </Button>
                         <div class="grid grid-cols-2 gap-3">
                             <Button variant="outline" class="h-12 text-sm font-bold border-border hover:bg-muted rounded-xl">
@@ -639,7 +1227,7 @@ const goBack = () => router.push('/dashboard/publications?tab=properties')
                 <div class="p-8 border-t border-border/50 bg-slate-50/50 dark:bg-white/5 mt-auto">
                     <Button 
                         @click="submitReservation" 
-                        :disabled="resStore.isSubmitting"
+                        :disabled="resStore.isSubmitting || isSoldListing"
                         class="w-full h-14 rounded-2xl font-black text-base shadow-2xl shadow-primary/20 group relative overflow-hidden"
                     >
                         <span class="relative z-10 flex items-center justify-center">

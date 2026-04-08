@@ -13,6 +13,7 @@ import { useAuthStore } from '~/stores/auth'
 import { useMembersStore } from '~/stores/members'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
+import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
 
 const router = useRouter()
 
@@ -38,16 +39,12 @@ const fetchUsers = async () => {
   membersStore.setLoading(true)
   try {
     // Fetch all in parallel
+    const apiBase = config.public.apiBase as string
+    const authH = { Authorization: `Bearer ${auth.token}` }
     const [usersRes, membersRes, cardsRes]: any = await Promise.all([
-      $fetch(`${config.public.apiBase}/users`, {
-        headers: { 'Authorization': `Bearer ${auth.token}` }
-      }),
-      $fetch(`${config.public.apiBase}/members`, {
-        headers: { 'Authorization': `Bearer ${auth.token}` }
-      }),
-      $fetch(`${config.public.apiBase}/cards`, {
-        headers: { 'Authorization': `Bearer ${auth.token}` }
-      })
+      $fetch(joinApi(apiBase, ApiEndpoints.allUsers), { headers: authH }),
+      $fetch(joinApi(apiBase, ApiEndpoints.protectedMembers), { headers: authH }),
+      $fetch(joinApi(apiBase, ApiEndpoints.cards), { headers: authH }),
     ])
     
     // Set Users

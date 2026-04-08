@@ -11,6 +11,7 @@ import {
 import { Button, Badge, Skeleton } from '@/components/ui'
 import { useServiceStore } from '@/stores/services'
 import { toast } from 'vue-sonner'
+import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
 
 definePageMeta({
   layout: 'dashboard'
@@ -26,7 +27,7 @@ const serviceId = String(route.params.id)
 const { data: servicesData, isLoading, isError } = useQuery({
   queryKey: ['prestations-detail', serviceId],
   queryFn: async () => {
-    const res = await fetch(`${config.public.apiBase}/prestations`)
+    const res = await fetch(joinApi(config.public.apiBase as string, ApiEndpoints.publicPrestations))
     return res.json()
   }
 })

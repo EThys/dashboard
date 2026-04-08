@@ -3,49 +3,57 @@
 import { useRoute, useRouter } from 'vue-router'
 const route = useRoute()
 const router = useRouter()
-const activeTab = ref<'properties' | 'services'>('properties')
+const activeTab = ref<'properties' | 'services' | 'hotels'>('properties')
 
 // Synchronise l'onglet actif avec le paramètre de query
 onMounted(() => {
   const tab = route.query.tab
-  if (tab === 'services' || tab === 'properties') {
-    activeTab.value = tab as 'properties' | 'services'
+  if (tab === 'services' || tab === 'properties' || tab === 'hotels') {
+    activeTab.value = tab as 'properties' | 'services' | 'hotels'
   }
 })
 
 watch(() => route.query.tab, (tab) => {
-  if (tab === 'services' || tab === 'properties') {
-    activeTab.value = tab as 'properties' | 'services'
+  if (tab === 'services' || tab === 'properties' || tab === 'hotels') {
+    activeTab.value = tab as 'properties' | 'services' | 'hotels'
   }
 })
-
-// Récupération des prestations (services)
-const { data: servicesData, isLoading: isLoadingServices, isError: isErrorServices } = useQuery({
-  queryKey: ['prestations'],
-  queryFn: async () => {
-    const res = await fetch(`${config.public.apiBase}/prestations`)
-    return res.json()
-  }
-})
-
 
 import { ref, computed, watch, onMounted } from 'vue'
-import { Check, X, Eye, MapPin, Search, ChevronLeft, ChevronRight, Filter, Wrench, Calendar, ChevronDown } from 'lucide-vue-next'
-import { useQuery } from '@tanstack/vue-query'
+import { Check, X, Eye, MapPin, Search, ChevronLeft, ChevronRight, Filter, Wrench, Calendar, ChevronDown, Power, Tag, Loader2 } from 'lucide-vue-next'
+import { useQuery, useQueryClient } from '@tanstack/vue-query'
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, Badge, Skeleton } from '@/components/ui'
+import { toast } from 'vue-sonner'
 
 // Store
 import { usePropertyStore } from '@/stores/properties'
+import type { PublicationCategory } from '@/stores/properties'
 import { useServiceStore } from '@/stores/services'
+import { useAuthStore } from '@/stores/auth'
+import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
+import { reloadNuxtApp } from '#app'
+import { unwrapArrayPayload } from '@/utils/apiListResponse'
 
 const propertyStore = usePropertyStore()
 const serviceStore = useServiceStore()
+const authStore = useAuthStore()
+const queryClient = useQueryClient()
+const publicationActionKey = ref<string | null>(null)
 
 definePageMeta({
   layout: 'dashboard'
 })
 
 const config = useRuntimeConfig()
+
+// Récupération des prestations (services)
+const { data: servicesData, isLoading: isLoadingServices, isError: isErrorServices } = useQuery({
+  queryKey: ['prestations'],
+  queryFn: async () => {
+    const res = await fetch(joinApi(config.public.apiBase as string, ApiEndpoints.publicPrestations))
+    return res.json()
+  },
+})
 
 // Fetch Categories
 serviceStore.fetchCategories(config.public.apiBase)
@@ -83,19 +91,58 @@ const serviceSortOrder = ref('newest')
 const { data: allPropertiesData, isLoading, isError } = useQuery({
   queryKey: ['all-dashboard-properties'],
   queryFn: async () => {
+    const apiBase = config.public.apiBase as string
+    const token = useCookie<string | null>('auth_token').value
+    const h: Record<string, string> = {}
+    if (token) h.Authorization = `Bearer ${token}`
+    const isAdmin = authStore.isAdmin
+    const isGerant = authStore.isGerant
+    const ownerUserId = authStore.user?.userId
+
+    const propsUrl = joinApi(apiBase, isAdmin ? ApiEndpoints.protectedProperties : ApiEndpoints.properties)
+    const terrainsUrl = joinApi(
+      apiBase,
+      isAdmin ? ApiEndpoints.protectedPropertyTerrains : ApiEndpoints.propertyTerrains
+    )
+    const bureauxUrl = joinApi(
+      apiBase,
+      isAdmin ? ApiEndpoints.protectedPropertyBureaux : ApiEndpoints.propertyBureaux
+    )
+    const festivesUrl = joinApi(
+      apiBase,
+      isAdmin ? ApiEndpoints.protectedPropertyFestives : ApiEndpoints.propertyFestives
+    )
+    const funerairesUrl = joinApi(
+      apiBase,
+      isAdmin ? ApiEndpoints.protectedPropertyFuneraires : ApiEndpoints.propertyFuneraires
+    )
+    /** Admin : liste globale protégée ; gérant : ses hôtels uniquement ; sinon endpoint privé générique */
+    const hotelsUrl = joinApi(
+      apiBase,
+      isAdmin
+        ? ApiEndpoints.protectedPropertyHotels
+        : isGerant && ownerUserId != null
+          ? `${ApiEndpoints.propertyHotelsByOwner}${ownerUserId}`
+          : ApiEndpoints.propertyHotels
+    )
+
     const [props, terrains, bureaux, hotels, festives, funeraires] = await Promise.all([
-      fetch(`${config.public.apiBase}/property`).then(res => res.json()),
-      fetch(`${config.public.apiBase}/property/terrains`).then(res => res.json()),
-      fetch(`${config.public.apiBase}/property/bureaux`).then(res => res.json()),
-      fetch(`${config.public.apiBase}/property/hotels`).then(res => res.json()),
-      fetch(`${config.public.apiBase}/property/festives`).then(res => res.json()),
-      fetch(`${config.public.apiBase}/property/funeraires`).then(res => res.json())
+      fetch(propsUrl, isAdmin ? { headers: h } : undefined).then((res) => res.json()),
+      fetch(terrainsUrl, isAdmin ? { headers: h } : undefined).then((res) => res.json()),
+      fetch(bureauxUrl, isAdmin ? { headers: h } : undefined).then((res) => res.json()),
+      fetch(hotelsUrl, { headers: h }).then((res) => res.json()),
+      fetch(festivesUrl, isAdmin ? { headers: h } : undefined).then((res) => res.json()),
+      fetch(funerairesUrl, isAdmin ? { headers: h } : undefined).then((res) => res.json()),
     ])
     return {
       properties: props?.properties || [],
       terrains: terrains?.terrain || [],
-      bureaux: bureaux?.bureaux || [],
-      hotels: hotels?.data || [],
+      bureaux: unwrapArrayPayload(bureaux),
+      hotels: (() => {
+        const h = hotels
+        const raw = h?.data ?? h ?? []
+        return Array.isArray(raw) ? raw : []
+      })(),
       festives: festives?.festives || [],
       funeraires: funeraires?.funeraires || []
     }
@@ -141,7 +188,12 @@ const allPublications = computed(() => {
         img = item.images[0].path
     }
 
-    const status = p.available || p.active ? 'Active' : 'Pending' 
+    const sold = !!(p as { sold?: boolean }).sold
+    /** Désactivé admin ≠ en attente : reste listé pour les administrateurs */
+    const explicitlyDisabled =
+      (p as { available?: boolean; active?: boolean }).available === false ||
+      (p as { available?: boolean; active?: boolean }).active === false
+    const status = sold ? 'Sold' : explicitlyDisabled ? 'Inactive' : 'Active'
     const priceVal = p.price || p.minPrice || 0
     const priceDisplay = typeof priceVal === 'number' ? priceVal.toLocaleString() : priceVal
     
@@ -171,11 +223,101 @@ const allPublications = computed(() => {
       deviseCode: item.devise?.code,
       rawType: typeName,
       rawAddress: `${addr.address || ''} ${addr.communeValue || ''} ${addr.cityValue || ''}`,
-      category: item._category,
+      category: item._category as PublicationCategory,
+      sold,
       raw: item
     }
   })
 })
+
+function getPubEntity(raw: Record<string, unknown>) {
+    return (raw.property ||
+        raw.terrain ||
+        raw.bureau ||
+        raw.festive ||
+        raw.funeraire ||
+        raw.hotel ||
+        {}) as Record<string, unknown>
+}
+
+function isPubAvailable(pub: { raw: Record<string, unknown> }) {
+    const p = getPubEntity(pub.raw)
+    if (typeof p.status === 'boolean') return p.status === false
+    if (p.available === false) return false
+    if (p.active === false) return false
+    return true
+}
+
+function isPubSold(pub: { raw: Record<string, unknown>; sold?: boolean }) {
+    if (pub.sold != null) return pub.sold
+    return !!getPubEntity(pub.raw).sold
+}
+
+async function togglePublicationEnable(pub: {
+    id: number
+    category: PublicationCategory
+    raw: Record<string, unknown>
+}) {
+    const key = `${pub.category}-${pub.id}-en`
+    publicationActionKey.value = key
+    const hidden = isPubAvailable(pub)
+    const res = await propertyStore.putPublicationEnable(
+        config.public.apiBase as string,
+        authStore.token,
+        pub.category,
+        pub.id,
+        hidden
+    )
+    publicationActionKey.value = null
+    if (res.success) {
+        toast.success(hidden ? 'Annonce retirée du site' : 'Annonce visible sur le site')
+        await queryClient.invalidateQueries({ queryKey: ['all-dashboard-properties'] })
+        await reloadNuxtApp({ ttl: 1000 })
+    } else {
+        toast.error(res.message || 'Mise à jour impossible')
+    }
+}
+
+async function togglePublicationSold(pub: {
+    id: number
+    category: PublicationCategory
+    raw: Record<string, unknown>
+}) {
+    if (pub.category === 'hotel') {
+        toast.info('Les hôtels ne sont pas gérés par ces endpoints pour l’instant.')
+        return
+    }
+    const currentlySold = isPubSold(pub)
+    if (!currentlySold) {
+        const ok = confirm('Marquer ce bien comme vendu ? Il sera traité comme indisponible.')
+        if (!ok) return
+    } else {
+        const ok = confirm('Retirer le statut « vendu » et rendre le bien à nouveau disponible ?')
+        if (!ok) return
+    }
+    const key = `${pub.category}-${pub.id}-sold`
+    publicationActionKey.value = key
+    const nextSold = !currentlySold
+    const res = await propertyStore.putPublicationSold(
+        config.public.apiBase as string,
+        authStore.token,
+        pub.category,
+        pub.id,
+        nextSold
+    )
+    publicationActionKey.value = null
+    if (res.success) {
+        toast.success(nextSold ? 'Bien marqué comme vendu' : 'Statut vendu retiré')
+        await queryClient.invalidateQueries({ queryKey: ['all-dashboard-properties'] })
+        await reloadNuxtApp({ ttl: 1000 })
+    } else {
+        toast.error(res.message || 'Mise à jour impossible')
+    }
+}
+
+function isPublicationActionLoading(pub: { id: number; category: PublicationCategory }, suffix: string) {
+    return publicationActionKey.value === `${pub.category}-${pub.id}-${suffix}`
+}
 
 // Services filtering logic
 const getCurrencyCode = (deviseId: number): 'CDF' | 'USD' => deviseId === 1 ? 'CDF' : 'USD'
@@ -304,14 +446,20 @@ const resetServiceFilters = () => {
 const filteredPublications = computed(() => {
   let pubs = allPublications.value
   
-  // Status Filter
+  // Status Filter — « Validées » = en ligne ou désactivée admin (toujours visible côté dashboard)
   if (currentFilter.value !== 'all') {
-    const statusMap: Record<string, string> = {
+    if (currentFilter.value === 'active') {
+      pubs = pubs.filter((p: any) => p.status === 'Active' || p.status === 'Inactive')
+    } else {
+      const statusMap: Record<string, string> = {
         pending: 'Pending',
-        active: 'Active',
-        rejected: 'Rejected'
+        rejected: 'Rejected',
+        sold: 'Sold',
+        inactive: 'Inactive',
+      }
+      const mapped = statusMap[currentFilter.value]
+      if (mapped) pubs = pubs.filter((p: any) => p.status === mapped)
     }
-    pubs = pubs.filter((p: any) => p.status === statusMap[currentFilter.value])
   }
 
   // Search Filter (General)
@@ -404,7 +552,9 @@ const filterOptions = [
     { label: 'Toutes', value: 'all' },
     { label: 'En attente', value: 'pending' },
     { label: 'Validées', value: 'active' },
-    { label: 'Rejetées', value: 'rejected' }
+    { label: 'Désactivées', value: 'inactive' },
+    { label: 'Vendus', value: 'sold' },
+    { label: 'Rejetées', value: 'rejected' },
 ]
 
 const activeFilterCount = computed(() => {
@@ -425,13 +575,33 @@ const activeFilterCount = computed(() => {
 })
 
 watch([currentFilter, searchQuery], () => { currentPage.value = 1 })
+
+const filteredHotelPublications = computed(() =>
+  filteredPublications.value.filter((p: { category?: string }) => p.category === 'hotel')
+)
+
+const hotelTotalPages = computed(() => Math.ceil(filteredHotelPublications.value.length / itemsPerPage))
+const hotelCurrentPage = ref(1)
+const paginatedHotels = computed(() => {
+  const start = (hotelCurrentPage.value - 1) * itemsPerPage
+  return filteredHotelPublications.value.slice(start, start + itemsPerPage)
+})
+
+watch([activeTab, filteredHotelPublications], () => {
+  hotelCurrentPage.value = 1
+})
+
+const goToHotelDetail = (id: number) => {
+  router.push(`/dashboard/publications/hotels/${id}`)
+}
 </script>
 
 <template>
   <div class="space-y-8 p-8 max-w-7xl mx-auto">
-    <div class="flex gap-2 mb-6">
+    <div class="flex flex-wrap gap-2 mb-6">
       <Button :variant="activeTab === 'properties' ? 'default' : 'outline'" @click="router.push({ path: '/dashboard/publications', query: { tab: 'properties' } })">Propriétés</Button>
       <Button :variant="activeTab === 'services' ? 'default' : 'outline'" @click="router.push({ path: '/dashboard/publications', query: { tab: 'services' } })">Services</Button>
+      <Button :variant="activeTab === 'hotels' ? 'default' : 'outline'" @click="router.push({ path: '/dashboard/publications', query: { tab: 'hotels' } })">Hôtels</Button>
     </div>
 
     <!-- Header Section -->
@@ -455,7 +625,7 @@ watch([currentFilter, searchQuery], () => { currentPage.value = 1 })
          </div>
       </div>
     </div>
-    <div v-else class="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b pb-8">
+    <div v-else-if="activeTab === 'services'" class="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b pb-8">
       <div>
         <h2 class="text-4xl font-black tracking-tight text-foreground">Mes Services</h2>
         <p class="text-lg text-muted-foreground mt-2">Gérez vos prestations et suivez leur performance.</p>
@@ -577,10 +747,27 @@ watch([currentFilter, searchQuery], () => { currentPage.value = 1 })
               <div class="absolute top-2 left-2">
                   <Badge variant="secondary" class="bg-white/90 hover:bg-white/90 text-black shadow-sm">{{ pub.type }}</Badge>
               </div>
-               <div class="absolute top-2 right-2">
-                   <Badge :variant="pub.status === 'Active' ? 'default' : 'secondary'" :class="pub.status === 'Active' ? 'bg-green-500 hover:bg-green-600' : 'bg-orange-500 hover:bg-orange-600 text-white'">
-                      {{ pub.status === 'Active' ? 'Validé' : 'En attente' }}
-                   </Badge>
+               <div class="absolute top-2 right-2 flex flex-col gap-1 items-end">
+                   <Badge
+                     v-if="pub.status === 'Sold'"
+                     variant="secondary"
+                     class="bg-[#1565C0] text-white hover:bg-[#1565C0] border-0 shadow-sm"
+                   >Vendu</Badge>
+                   <Badge
+                     v-else-if="pub.status === 'Inactive'"
+                     variant="outline"
+                     class="border-[#1976D2] bg-white/95 text-[#1565C0] font-semibold shadow-sm"
+                   >Désactivée</Badge>
+                   <Badge
+                     v-else-if="pub.status === 'Active'"
+                     variant="secondary"
+                     class="bg-[#1976D2] text-white hover:bg-[#1976D2] border-0 shadow-sm"
+                   >En ligne</Badge>
+                   <Badge
+                     v-else
+                     variant="outline"
+                     class="border-[#1976D2]/50 bg-white/95 text-[#1976D2] font-medium shadow-sm"
+                   >En attente</Badge>
               </div>
           </div>
           <CardContent class="flex-1 p-4 flex flex-col gap-3">
@@ -599,17 +786,106 @@ watch([currentFilter, searchQuery], () => { currentPage.value = 1 })
                   <span>{{ pub.date }}</span>
               </div>
               <div v-if="pub.status === 'Pending'" class="grid grid-cols-2 gap-2 mt-2">
-                   <Button size="icon" variant="default" class="h-8 w-full bg-green-600 hover:bg-green-700 z-10" @click.stop.prevent="appovePub(pub.id)">
+                   <Button size="icon" variant="default" class="h-8 w-full bg-[#1976D2] hover:bg-[#1565C0] text-white z-10" @click.stop.prevent="appovePub(pub.id)">
                       <Check class="h-4 w-4" />
                    </Button>
-                   <Button size="icon" variant="destructive" class="h-8 w-full z-10" @click.stop.prevent="rejectPub(pub.id)">
+                   <Button size="icon" variant="outline" class="h-8 w-full border-[#1976D2] text-[#1565C0] z-10" @click.stop.prevent="rejectPub(pub.id)">
                       <X class="h-4 w-4" />
                    </Button>
+              </div>
+
+              <div
+                class="mt-3 pt-3 border-t border-border/60 space-y-2"
+                @click.stop.prevent
+              >
+                <p class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Admin API</p>
+                <div class="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    class="h-8 text-xs font-semibold"
+                    :disabled="pub.category === 'hotel'"
+                    @click="togglePublicationEnable(pub)"
+                  >
+                    <Loader2 v-if="isPublicationActionLoading(pub, 'en')" class="h-3.5 w-3.5 mr-1 animate-spin shrink-0" />
+                    <Power v-else class="h-3.5 w-3.5 mr-1 shrink-0" />
+                    {{ isPubAvailable(pub) ? 'Désactiver' : 'Activer' }}
+                  </Button>
+                  <Button
+                    size="sm"
+                    :variant="isPubSold(pub) ? 'secondary' : 'default'"
+                    class="h-8 text-xs font-semibold"
+                    :disabled="pub.category === 'hotel'"
+                    @click="togglePublicationSold(pub)"
+                  >
+                    <Loader2 v-if="isPublicationActionLoading(pub, 'sold')" class="h-3.5 w-3.5 mr-1 animate-spin shrink-0" />
+                    <Tag v-else class="h-3.5 w-3.5 mr-1 shrink-0" />
+                    {{ isPubSold(pub) ? 'Non vendu' : 'Vendu' }}
+                  </Button>
+                </div>
+                <p v-if="pub.category === 'hotel'" class="text-[10px] text-muted-foreground">
+                  Pas d’endpoint enable/sold « hôtel » sur cette API.
+                </p>
               </div>
           </CardContent>
         </Card>
       </div>
     </div>
+
+    <!-- Onglet Hôtels -->
+    <div v-if="activeTab === 'hotels'" class="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b pb-8">
+      <div>
+        <h2 class="text-4xl font-black tracking-tight text-foreground">Hôtels</h2>
+        <p class="text-lg text-muted-foreground mt-2">
+          Toutes les annonces hôtelières (liste admin / protégée selon votre rôle).
+        </p>
+      </div>
+    </div>
+
+    <div v-if="activeTab === 'hotels'">
+      <div v-if="isLoading" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div v-for="i in 8" :key="'h' + i" class="flex flex-col space-y-3">
+          <Skeleton class="h-[200px] w-full rounded-xl" />
+          <div class="space-y-2">
+            <Skeleton class="h-4 w-[250px]" />
+            <Skeleton class="h-4 w-[200px]" />
+          </div>
+        </div>
+      </div>
+      <div v-else-if="filteredHotelPublications.length === 0" class="py-20 text-center border rounded-lg bg-card text-card-foreground">
+        <p class="text-muted-foreground">Aucun hôtel dans les publications.</p>
+      </div>
+      <div v-else class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <Card
+          v-for="pub in paginatedHotels"
+          :key="'hotel-' + pub.id"
+          class="overflow-hidden flex flex-col group hover:shadow-lg transition-all duration-300 h-full cursor-pointer hover:border-primary/50 relative"
+          @click="goToHotelDetail(pub.id)"
+        >
+          <div class="relative aspect-video overflow-hidden">
+            <img :src="pub.image" :alt="pub.title" class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+            <div class="absolute top-2 left-2">
+              <Badge variant="secondary" class="bg-white/90 text-black shadow-sm">Hôtel</Badge>
+            </div>
+          </div>
+          <CardContent class="flex-1 p-4 flex flex-col gap-3">
+            <div>
+              <h3 class="font-semibold text-lg line-clamp-1 leading-tight mb-1 group-hover:text-primary transition-colors">{{ pub.title }}</h3>
+              <div class="flex items-center text-xs text-muted-foreground gap-1">
+                <MapPin class="h-3 w-3" />
+                <span class="line-clamp-1">{{ pub.location }}</span>
+              </div>
+            </div>
+            <div class="font-bold text-primary text-xl">{{ pub.price }}</div>
+            <div class="mt-auto pt-3 border-t flex items-center justify-between text-xs text-muted-foreground">
+              <span>Par <span class="font-medium text-foreground">{{ pub.author }}</span></span>
+              <span>{{ pub.date }}</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+
     <!-- Filters & Search Toolbar (uniquement services) -->
     <div v-if="activeTab === 'services'" class="bg-card border rounded-2xl p-4 shadow-sm space-y-4">
         <!-- Primary Filters -->
@@ -832,24 +1108,24 @@ watch([currentFilter, searchQuery], () => { currentPage.value = 1 })
 
     <!-- Pagination -->
     <!-- Pagination (Shared logic) -->
-    <div class="flex items-center justify-center space-x-2 py-8" v-if="(activeTab === 'properties' && totalPages > 1) || (activeTab === 'services' && serviceTotalPages > 1)">
+    <div class="flex items-center justify-center space-x-2 py-8" v-if="(activeTab === 'properties' && totalPages > 1) || (activeTab === 'services' && serviceTotalPages > 1) || (activeTab === 'hotels' && hotelTotalPages > 1)">
         <Button 
             variant="outline" 
             size="sm" 
-            @click="activeTab === 'properties' ? currentPage-- : serviceCurrentPage--"
-            :disabled="activeTab === 'properties' ? currentPage === 1 : serviceCurrentPage === 1"
+            @click="activeTab === 'properties' ? currentPage-- : activeTab === 'hotels' ? hotelCurrentPage-- : serviceCurrentPage--"
+            :disabled="activeTab === 'properties' ? currentPage === 1 : activeTab === 'hotels' ? hotelCurrentPage === 1 : serviceCurrentPage === 1"
         >
              <ChevronLeft class="h-4 w-4 mr-2" />
             Précédent
         </Button>
         <span class="flex items-center text-sm font-medium mx-2">
-            Page {{ activeTab === 'properties' ? currentPage : serviceCurrentPage }} sur {{ activeTab === 'properties' ? totalPages : serviceTotalPages }}
+            Page {{ activeTab === 'properties' ? currentPage : activeTab === 'hotels' ? hotelCurrentPage : serviceCurrentPage }} sur {{ activeTab === 'properties' ? totalPages : activeTab === 'hotels' ? hotelTotalPages : serviceTotalPages }}
         </span>
         <Button 
             variant="outline" 
             size="sm" 
-            @click="activeTab === 'properties' ? currentPage++ : serviceCurrentPage++"
-             :disabled="activeTab === 'properties' ? currentPage === totalPages : serviceCurrentPage === serviceTotalPages"
+            @click="activeTab === 'properties' ? currentPage++ : activeTab === 'hotels' ? hotelCurrentPage++ : serviceCurrentPage++"
+             :disabled="activeTab === 'properties' ? currentPage === totalPages : activeTab === 'hotels' ? hotelCurrentPage === hotelTotalPages : serviceCurrentPage === serviceTotalPages"
         >
             Suivant
             <ChevronRight class="h-4 w-4 ml-2" />

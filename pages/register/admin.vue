@@ -4,6 +4,7 @@ import { Loader2, ShieldAlert, Mail, User } from 'lucide-vue-next'
 import { Button } from '@/components/ui'
 import { Input } from '@/components/ui'
 import { Label } from '@/components/ui'
+import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
 
 definePageMeta({
   layout: 'empty'
@@ -65,7 +66,7 @@ const handleRegister = async () => {
     }
 
     try {
-        const res = await $fetch(`${config.public.apiBase}/members`, {
+        const res = await $fetch(joinApi(config.public.apiBase as string, ApiEndpoints.register), {
             method: 'POST',
             body: payload
         })
