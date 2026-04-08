@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import 'vue-sonner/style.css'
 import { Toaster } from 'vue-sonner'
 import ScrollToTop from '@/components/ui/ScrollToTop.vue'
 import CasaLoader from '@/components/ui/CasaLoader.vue'
@@ -6,19 +7,18 @@ import CookieConsent from '@/components/ui/CookieConsent.vue'
 
 const isInitialLoading = ref(true)
 
-// Preload critical assets
+// Preload critical assets (éviter preloads d’images utilisées seulement sur certaines pages → avertissements console)
 useHead({
-  link: [
-    { rel: 'preload', as: 'image', href: '/logoCasa.png' },
-    { rel: 'preload', as: 'image', href: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=2675&auto=format&fit=crop' }
-  ]
+  link: [{ rel: 'preload', as: 'image', href: '/logoCasa.png' }],
 })
 
+function hideSplash() {
+  isInitialLoading.value = false
+}
+
 onMounted(() => {
-  // Give it a tiny bit of extra time for a smoother transition
-  setTimeout(() => {
-    isInitialLoading.value = false
-  }, 800)
+  setTimeout(hideSplash, 800)
+  setTimeout(hideSplash, 4000)
 })
 </script>
 

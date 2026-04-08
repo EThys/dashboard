@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
 
 export interface Currency {
     id: number
@@ -45,10 +46,26 @@ export const useCurrencyStore = defineStore('currency', {
     actions: {
         async fetchCurrencies(apiBase: string) {
             try {
-                const response = await $fetch(`${apiBase}/devise`)
+                let response: unknown = await $fetch(joinApi(apiBase, ApiEndpoints.devises))
+                if (response && typeof response === 'object' && 'devises' in (response as object)) {
+                    const d = (response as { devises: Currency[] }).devises
+                    if (Array.isArray(d)) {
+                        this.currencies = d
+                        this.lastFetch = new Date()
+                        return
+                    }
+                }
                 if (response && Array.isArray(response)) {
-                    this.currencies = response
+                    this.currencies = response as Currency[]
                     this.lastFetch = new Date()
+                    return
+                }
+                if (response && typeof response === 'object' && 'data' in (response as object)) {
+                    const d = (response as { data: unknown }).data
+                    if (Array.isArray(d)) {
+                        this.currencies = d as Currency[]
+                        this.lastFetch = new Date()
+                    }
                 }
             } catch (error) {
                 console.error('Failed to fetch currencies:', error)

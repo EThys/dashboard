@@ -1,4 +1,11 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+/** Vite résout sinon le champ `browser` → stomp.umd.js (pas d’export ESM `Client`) */
+const stompEsm = join(__dirname, 'node_modules/@stomp/stompjs/esm6/index.js')
+
 export default defineNuxtConfig({
   compatibilityDate: "2024-04-03",
   // Configuration du projet - Refreshed at 11:32
@@ -9,7 +16,7 @@ export default defineNuxtConfig({
     preference: "light",
     fallback: "light",
   },
-  css: ["~/assets/css/main.css", "vue-sonner/style.css"],
+  css: ['~/assets/css/main.css'],
   // Configure component auto-import
   components: [
     {
@@ -162,30 +169,56 @@ export default defineNuxtConfig({
     strict: true,
   },
 
-  // Proxy configuration for development to bypass CORS
-  nitro: {
-    devProxy: {
-      "/api": {
-        target: "https://server.casanayo.com/api",
-        changeOrigin: true,
-        prependPath: true,
-      },
-      "/auth": {
-        target: "https://server.casanayo.com/auth",
-        changeOrigin: true,
-        prependPath: true,
+  vite: {
+    optimizeDeps: {
+      include: [
+        '@vueuse/core',
+        '@vueuse/shared',
+        '@stomp/stompjs',
+        'vue',
+        'vue-router',
+      ],
+    },
+    resolve: {
+      alias: {
+        '@stomp/stompjs': stompEsm,
       },
     },
   },
 
-  // Runtime config for API base URL
-  // → En prod Vercel : définir NUXT_PUBLIC_API_BASE=https://server.casanayo.com/api
-  //                    et NUXT_PUBLIC_AUTH_BASE=https://server.casanayo.com
-  // → En dev : le proxy Nitro redirige /api et /auth automatiquement
+  // Proxy configuration for development to bypass CORS
+  nitro: {
+    devProxy: {
+      "/api": {
+        target: "https://migration.casanayo.com/api",
+        changeOrigin: true,
+        prependPath: true,
+      },
+      "/auth": {
+        target: "https://migration.casanayo.com/auth",
+        changeOrigin: true,
+        prependPath: true,
+      },
+      /** STOMP — si le client passe par le proxy local (peu usité si URL absolue dans runtimeConfig) */
+      "/websocket": {
+        target: "http://91.99.168.226:8093",
+        ws: true,
+        changeOrigin: true,
+      },
+    },
+  },
+
+  // Runtime config — aligné Flutter (Constantes.activeServer / migration)
+  // → Prod : NUXT_PUBLIC_API_BASE=https://migration.casanayo.com/api
+  //          NUXT_PUBLIC_AUTH_BASE=https://migration.casanayo.com
+  // → Dev : proxy Nitro vers migration.casanayo.com
   runtimeConfig: {
     public: {
-      apiBase: "/api", // overridé par NUXT_PUBLIC_API_BASE sur Vercel
-      authBase: "", // overridé par NUXT_PUBLIC_AUTH_BASE sur Vercel
+      apiBase: "/api",
+      authBase: "",
+      /** Surcharge : `NUXT_PUBLIC_STOMP_BROKER_URL` */
+      stompBrokerUrl:
+        process.env.NUXT_PUBLIC_STOMP_BROKER_URL || "ws://91.99.168.226:8093/websocket",
     },
   },
 
@@ -193,8 +226,8 @@ export default defineNuxtConfig({
   // Pages publiques en SSR → indexables par Google
   // Pages protégées en CSR → ssr: false
   routeRules: {
-    '/api/**': { proxy: 'https://server.casanayo.com/api/**' },
-    '/auth/**': { proxy: 'https://server.casanayo.com/auth/**' },
+    '/api/**': { proxy: 'https://migration.casanayo.com/api/**' },
+    '/auth/**': { proxy: 'https://migration.casanayo.com/auth/**' },
     // Pages publiques SSR (indexées par Google)
     '/': { ssr: true },
     '/properties': { ssr: true },
@@ -205,10 +238,11 @@ export default defineNuxtConfig({
     '/team': { ssr: true },
     // Pages protégées CSR uniquement
     '/dashboard/**': { ssr: false },
+    '/compte/**': { ssr: false },
     '/login': { ssr: false },
     '/register/**': { ssr: false },
   },
   build: {
-    transpile: ["vue-sonner"],
+    transpile: ["vue-sonner", "@stomp/stompjs"],
   },
 });

@@ -8,9 +8,9 @@ import AllServices from '~/components/front/AllServices.vue'
 import FeaturedProperties from '~/components/front/FeaturedProperties.vue'
 import AppDownload from '~/components/front/AppDownload.vue'
 import PropertySection from '~/components/front/PropertySection.vue'
+import AgenciesShowcase from '~/components/front/AgenciesShowcase.vue'
 import { usePropertyStore } from '@/stores/properties'
 import SectionShimmer from '~/components/front/SectionShimmer.vue'
-import CasaLoader from '@/components/ui/CasaLoader.vue'
 
 definePageMeta({
   layout: 'default'
@@ -57,15 +57,21 @@ const config = useRuntimeConfig()
 const propertyStore = usePropertyStore()
 
 // Fetch all property types for homepage sections
-const { pending: isLoadingProp } = await useAsyncData('home-properties', async () => {
-    await Promise.all([
-        propertyStore.fetchTerrains(config.public.apiBase),
-        propertyStore.fetchFuneraires(config.public.apiBase),
-        propertyStore.fetchFestives(config.public.apiBase),
-        propertyStore.fetchBureaux(config.public.apiBase),
-        propertyStore.fetchHotels(config.public.apiBase)
-    ])
-}, { lazy: true })
+/** CSR uniquement : évite de bloquer le SSR / Suspense si le proxy API ne répond pas */
+const { pending: isLoadingProp } = useAsyncData(
+    'home-properties',
+    async () => {
+        await Promise.all([
+            propertyStore.fetchTerrains(config.public.apiBase),
+            propertyStore.fetchFuneraires(config.public.apiBase),
+            propertyStore.fetchFestives(config.public.apiBase),
+            propertyStore.fetchBureaux(config.public.apiBase),
+            propertyStore.fetchHotels(config.public.apiBase),
+        ])
+        return { loaded: true as const }
+    },
+    { lazy: true, server: false }
+)
 </script> 
 
 <template>
@@ -119,6 +125,10 @@ const { pending: isLoadingProp } = await useAsyncData('home-properties', async (
                 :items="propertyStore.getFestives"
                 typeId="Salle de fête"
             />
+        </div>
+
+        <div class="reveal">
+            <AgenciesShowcase />
         </div>
 
         <div v-if="propertyStore.getFuneraires && propertyStore.getFuneraires.length" class="reveal">

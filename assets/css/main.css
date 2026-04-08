@@ -179,3 +179,51 @@
 .reveal-delay-300 { transition-delay: 300ms; }
 .reveal-delay-400 { transition-delay: 400ms; }
 .reveal-delay-500 { transition-delay: 500ms; }
+
+/* Shimmer listes (réservations / sollicitations) */
+@keyframes casa-shimmer-sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.casa-shimmer-slate {
+  position: relative;
+  overflow: hidden;
+  background-color: rgb(226 232 240 / 0.9);
+}
+
+.casa-shimmer-slate::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    rgb(255 255 255 / 0.55) 50%,
+    transparent 65%
+  );
+  animation: casa-shimmer-sweep 1.25s ease-in-out infinite;
+}
+
+.casa-shimmer-blue {
+  position: relative;
+  overflow: hidden;
+  background-color: rgb(255 255 255 / 0.12);
+}
+
+.casa-shimmer-blue::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 38%,
+    rgb(255 255 255 / 0.28) 50%,
+    transparent 62%
+  );
+  animation: casa-shimmer-sweep 1.25s ease-in-out infinite;
+}

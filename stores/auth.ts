@@ -62,7 +62,22 @@ export const useAuthStore = defineStore('auth', {
             if (!state.accounts || state.accounts.length === 0) return false
             // Check if any account has id 18 (Admin) or 19 (Superadmin)
             return state.accounts.some(acc => acc.id === 18 || acc.id === 19)
-        }
+        },
+        /**
+         * Compte gérant hôtel — l’API renvoie p.ex. `{ id: 3, name: "gerant", typeAccount: { typeAccountId: 2, name: "Proprietaire" } }`.
+         * Le rôle se lit sur `name` du compte (`gerant`), pas sur typeAccountId (souvent 2 = propriétaire).
+         */
+        isGerant: (state) => {
+            if (!state.accounts?.length) return false
+            return state.accounts.some((acc) => {
+                const accountName = (acc.name || '').toLowerCase().trim()
+                if (accountName === 'gerant' || accountName.includes('gerant')) return true
+                const typeName = (acc.typeAccount?.name || '').toLowerCase()
+                if (typeName.includes('gérant') || typeName.includes('gerant')) return true
+                const tid = acc.typeAccount?.typeAccountId
+                return tid === 3
+            })
+        },
     },
     actions: {
         async login(identifiant: string, password: string): Promise<LoginResponse> {
@@ -129,7 +144,7 @@ export const useAuthStore = defineStore('auth', {
             const propertyStore = usePropertyStore()
             const serviceStore = useServiceStore()
             const currencyStore = useCurrencyStore()
-            
+
             membersStore.reset()
             propertyStore.reset()
             serviceStore.reset()
@@ -150,6 +165,13 @@ export const useAuthStore = defineStore('auth', {
         },
 
         // Helper to check if we have a valid session on load
+        setPremium(premium: boolean) {
+            if (!this.user) return
+            this.user = { ...this.user, premium }
+            const userCookie = useCookie<any>('auth_user', { maxAge: 60 * 60 * 24 * 7, path: '/' })
+            userCookie.value = this.user
+        },
+
         checkSession() {
             const token = useCookie('auth_token').value
             const userCookie = useCookie<any>('auth_user').value

@@ -3,7 +3,8 @@ import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { 
     LayoutDashboard, Users, FileText, Settings, LogOut, 
     Bell, Search, Menu, X, AlertOctagon, Calendar,
-    Plus, Home, Briefcase, ChevronRight, User as UserIcon
+    Plus, Home, Briefcase, ChevronRight, User as UserIcon,
+    CreditCard, Receipt, Wrench, MapPin, Building2, ChevronDown
 } from 'lucide-vue-next'
 import { Button, Sheet } from '@/components/ui'
 import { useAuthStore } from '~/stores/auth'
@@ -29,14 +30,22 @@ watch(() => route.path, () => {
     }
 })
 
-type RailTab = 'main' | 'pubs' | 'admin'
+type RailTab = 'main' | 'pubs' | 'admin' | 'hotel'
 const selectedRailTab = ref<RailTab>('main')
+
+const isGerantOnly = computed(() => auth.isGerant && !auth.isAdmin)
 
 // User Data from Auth Store
 const userProfile = computed(() => ({
     name: auth.profile?.fullName || auth.user?.username || 'Utilisateur',
     firstName: (auth.profile?.fullName || auth.user?.username || 'Utilisateur').split(' ')[0],
-    role: auth.user?.premium ? 'Membre Premium' : 'Administrateur',
+    role: auth.isAdmin
+        ? 'Administrateur'
+        : auth.isGerant
+          ? 'Gérant hôtel'
+          : auth.user?.premium
+            ? 'Membre Premium'
+            : 'Membre',
     avatar: auth.profile?.images || `https://ui-avatars.com/api/?name=${auth.user?.username || 'U'}&background=0F172A&color=fff`
 }))
 
@@ -48,39 +57,111 @@ interface RailItem {
   bg: string
 }
 
-const railItems = computed<RailItem[]>(() => [
-  { id: 'main', label: 'Dashboard', icon: Home, color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
-  { id: 'pubs', label: 'Publications', icon: LayoutDashboard, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-  { id: 'admin', label: 'Utilisateurs', icon: Users, color: 'text-orange-500', bg: 'bg-orange-500/10' },
-])
+const railItems = computed<RailItem[]>(() => {
+  if (isGerantOnly.value) {
+    return [
+      {
+        id: 'hotel',
+        label: 'Hôtel',
+        icon: Building2,
+        color: 'text-blue-600',
+        bg: 'bg-blue-500/10',
+      },
+    ]
+  }
+  return [
+    { id: 'main', label: 'Dashboard', icon: Home, color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
+    { id: 'pubs', label: 'Publications', icon: LayoutDashboard, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+    { id: 'admin', label: 'Utilisateurs', icon: Users, color: 'text-orange-500', bg: 'bg-orange-500/10' },
+  ]
+})
+
+const pubsMoreOpen = ref(false)
 
 // Mapping current items to the new groups
-const menuGroups = computed(() => ({
-  main: [
-    { name: 'Home', path: '/dashboard', icon: Home },
-    { name: 'Mes Réservations', path: '/dashboard/my-reservations', icon: Calendar },
-  ],
-  pubs: [
-    { name: 'Propriétés', path: '/dashboard/publications?tab=properties', icon: Briefcase },
-    { name: 'Services', path: '/dashboard/publications?tab=services', icon: Settings },
-  ],
-  admin: [
-    { name: 'Utilisateurs', path: '/dashboard/users', icon: Users },
-    { name: 'Paramètres', path: '/dashboard/settings', icon: Settings },
-  ]
-}))
+const menuGroups = computed(() => {
+  if (isGerantOnly.value) {
+    return {
+      hotel: [
+        { name: 'Vue d’ensemble', path: '/dashboard/hotel', icon: LayoutDashboard },
+        { name: 'Mes établissements', path: '/dashboard/hotel/hotels', icon: Building2 },
+        { name: 'Réservations reçues', path: '/dashboard/hotel/reservations', icon: Calendar },
+      ],
+    }
+  }
+  const mainDashboardItems = auth.isAdmin
+    ? [{ name: 'Home', path: '/dashboard', icon: Home }]
+    : [
+        { name: 'Home', path: '/dashboard', icon: Home },
+        { name: 'Mes Réservations', path: '/dashboard/my-reservations', icon: Calendar },
+        { name: 'Mes sollicitations', path: '/dashboard/my-solicitations', icon: Wrench },
+        { name: 'Tourisme & agences', path: '/dashboard/agences', icon: MapPin },
+        { name: 'Abonnement', path: '/compte/abonnement', icon: CreditCard },
+        { name: 'Historique paiements', path: '/compte/paiements', icon: Receipt },
+      ]
+  return {
+    main: mainDashboardItems,
+    pubs: [
+      { name: 'Propriétés', path: '/dashboard/publications?tab=properties', icon: Briefcase },
+      { name: 'Services', path: '/dashboard/publications?tab=services', icon: Settings },
+      { name: 'Tourisme & agences', path: '/dashboard/agences', icon: MapPin },
+      { name: 'Hôtels', path: '/dashboard/publications?tab=hotels', icon: Building2 },
+    ],
+    admin: [
+      { name: 'Utilisateurs', path: '/dashboard/users', icon: Users },
+      { name: 'Paiements', path: '/dashboard/payments', icon: Receipt },
+      { name: 'Paramètres', path: '/dashboard/settings', icon: Settings },
+    ],
+  }
+})
+
+const pubsMoreLinks = computed(() => [
+  { name: 'Paiements', path: '/dashboard/payments', icon: Receipt },
+  { name: 'Utilisateurs', path: '/dashboard/users', icon: Users },
+  { name: 'Paramètres', path: '/dashboard/settings', icon: Settings },
+])
 
 // Auto-select rail tab based on path
-watch(() => route.path, (newPath) => {
-    if (newPath.includes('/publications')) selectedRailTab.value = 'pubs'
+watch(
+  () => [route.path, route.query.tab, isGerantOnly.value] as const,
+  () => {
+    if (isGerantOnly.value) {
+      selectedRailTab.value = 'hotel'
+      return
+    }
+    const newPath = route.path
+    if (newPath.startsWith('/dashboard/hotel')) selectedRailTab.value = 'pubs'
+    else if (newPath.includes('/publications')) selectedRailTab.value = 'pubs'
+    else if (newPath === '/dashboard/agences') selectedRailTab.value = 'pubs'
     else if (newPath === '/dashboard/users') selectedRailTab.value = 'admin'
+    else if (newPath === '/dashboard/payments') selectedRailTab.value = 'admin'
     else if (newPath === '/dashboard/settings') selectedRailTab.value = 'admin'
     else selectedRailTab.value = 'main'
-}, { immediate: true })
+  },
+  { immediate: true }
+)
 
 const currentMenuTitle = computed(() => {
     const item = railItems.value.find(i => i.id === selectedRailTab.value)
     return item ? item.label : 'Menu'
+})
+
+const currentMenuItems = computed(() => {
+  const g = menuGroups.value as Record<string, { name: string; path: string; icon: unknown }[]>
+  return g[selectedRailTab.value] ?? []
+})
+
+const flatMobileMenu = computed(() => {
+  if (isGerantOnly.value) {
+    const g = menuGroups.value as { hotel?: { name: string; path: string; icon: unknown }[] }
+    return g.hotel ?? []
+  }
+  const g = menuGroups.value as {
+    main: { name: string; path: string; icon: unknown }[]
+    pubs: { name: string; path: string; icon: unknown }[]
+    admin: { name: string; path: string; icon: unknown }[]
+  }
+  return [...g.main, ...g.pubs, ...g.admin]
 })
 
 function toggleDropdown(name: string) {
@@ -97,6 +178,16 @@ onClickOutside(userMenuRef, () => {
 
 function isItemActive(path: string) {
   if (path === '/dashboard' && route.path === '/dashboard') return true
+  if (path.includes('?')) {
+    const [p, qs] = path.split('?')
+    if (route.path !== p) return false
+    const want = new URLSearchParams(qs)
+    for (const [k, v] of want.entries()) {
+      if (String(route.query[k] ?? '') !== v) return false
+    }
+    return true
+  }
+  if (path === '/dashboard/hotel') return route.path === '/dashboard/hotel'
   if (path !== '/dashboard' && route.path.startsWith(path)) return true
   return false
 }
@@ -214,9 +305,13 @@ onUnmounted(() => {
              <!-- Logout -->
              <button 
                 @click="showLogoutModal = true"
-                class="group flex flex-col items-center gap-2 p-4 text-slate-400 hover:text-red-500 transition-all duration-300"
+                class="group flex flex-col items-center gap-2 p-4 text-slate-400 transition-all duration-300"
+                :class="isGerantOnly ? 'hover:text-blue-600' : 'hover:text-red-500'"
              >
-                <div class="size-10 rounded-xl flex items-center justify-center group-hover:bg-red-50 transition-colors">
+                <div 
+                   class="size-10 rounded-xl flex items-center justify-center transition-colors"
+                   :class="isGerantOnly ? 'group-hover:bg-blue-50' : 'group-hover:bg-red-50'"
+                >
                    <LogOut class="size-5 group-hover:-translate-x-0.5 transition-transform" />
                 </div>
              </button>
@@ -250,7 +345,7 @@ onUnmounted(() => {
             <Transition name="rail-transition" mode="out-in">
                <nav :key="selectedRailTab" class="h-full px-4 py-6 space-y-1.5 overflow-y-auto custom-scrollbar">
                   <NuxtLink 
-                     v-for="item in menuGroups[selectedRailTab]" 
+                     v-for="item in currentMenuItems" 
                      :key="item.name"
                      :to="item.path"
                      class="flex items-center gap-4 px-4 py-3 rounded-2xl text-[13px] font-bold transition-all duration-300 group overflow-hidden relative"
@@ -264,11 +359,30 @@ onUnmounted(() => {
                      <ChevronRight v-if="isItemActive(item.path)" class="ml-auto size-4" />
                   </NuxtLink>
                   
-                  <div class="pt-8 mt-4 border-t border-slate-50/50 px-2">
-                     <button class="flex items-center gap-3 text-slate-400 hover:text-slate-600 text-[11px] font-bold uppercase tracking-wider transition-all group">
-                        <span class="size-1.5 rounded-full bg-slate-200 group-hover:bg-blue-400 group-hover:scale-125 transition-all"></span>
-                        Plus d'options
+                  <div v-if="selectedRailTab === 'pubs' && !isGerantOnly" class="pt-8 mt-4 border-t border-slate-50/50 px-2">
+                     <button
+                        type="button"
+                        class="flex w-full items-center justify-between gap-2 text-slate-500 hover:text-slate-800 text-[11px] font-bold uppercase tracking-wider transition-all group"
+                        @click="pubsMoreOpen = !pubsMoreOpen"
+                     >
+                        <span class="flex items-center gap-3">
+                           <span class="size-1.5 rounded-full bg-slate-200 group-hover:bg-blue-400 group-hover:scale-125 transition-all"></span>
+                           Plus d'options
+                        </span>
+                        <ChevronDown class="size-4 transition-transform shrink-0" :class="{ 'rotate-180': pubsMoreOpen }" />
                      </button>
+                     <div v-show="pubsMoreOpen" class="mt-3 space-y-1 pl-1">
+                        <NuxtLink
+                           v-for="link in pubsMoreLinks"
+                           :key="link.path"
+                           :to="link.path"
+                           class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-[12px] font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                           :class="isItemActive(link.path) ? 'bg-blue-50/80 text-blue-700' : ''"
+                        >
+                           <component :is="link.icon" class="size-4 opacity-70" />
+                           {{ link.name }}
+                        </NuxtLink>
+                     </div>
                   </div>
                </nav>
             </Transition>
@@ -293,8 +407,8 @@ onUnmounted(() => {
                         </div>
                         <nav class="flex-1 space-y-2">
                              <NuxtLink
-                                v-for="item in [...menuGroups.main, ...menuGroups.pubs, ...menuGroups.admin]"
-                                :key="item.path"
+                                v-for="item in flatMobileMenu"
+                                :key="item.path + item.name"
                                 :to="item.path"
                                 @click="isMobileMenuOpen = false"
                                 :class="[
@@ -309,7 +423,12 @@ onUnmounted(() => {
                             </NuxtLink>
                         </nav>
                          <div class="mt-auto pt-4 border-t border-border">
-                            <Button @click="handleLogout" variant="ghost" class="w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-12 rounded-xl font-bold">
+                            <Button 
+                              @click="handleLogout" 
+                              variant="ghost" 
+                              class="w-full justify-start gap-3 text-muted-foreground h-12 rounded-xl font-bold"
+                              :class="isGerantOnly ? 'hover:text-blue-600 hover:bg-blue-50' : 'hover:text-destructive hover:bg-destructive/10'"
+                            >
                                 <LogOut class="size-5" />
                                 Déconnexion
                             </Button>
@@ -336,7 +455,7 @@ onUnmounted(() => {
 
              <Button variant="ghost" size="icon" class="relative rounded-full hover:bg-muted">
                 <Bell class="size-5 text-muted-foreground" />
-                <span class="absolute top-2 right-2 size-2 bg-red-500 rounded-full border-2 border-card"></span>
+                <span class="absolute top-2 right-2 size-2 rounded-full border-2 border-card" :class="isGerantOnly ? 'bg-blue-500' : 'bg-red-500'"></span>
              </Button>
              
              <!-- User Profile Dropdown -->
@@ -367,7 +486,8 @@ onUnmounted(() => {
                         <div class="h-[1px] bg-border my-1"></div>
                         <button 
                             @click="showLogoutModal = true; isUserMenuOpen = false"
-                            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-red-500 hover:bg-red-50 transition-colors"
+                            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-colors"
+                            :class="isGerantOnly ? 'text-blue-600 hover:bg-blue-50' : 'text-red-500 hover:bg-red-50'"
                         >
                             <LogOut class="size-4" />
                             Se déconnecter
@@ -396,8 +516,11 @@ onUnmounted(() => {
             <div class="p-12 text-center">
                 <!-- Icon with radial glow -->
                 <div class="relative size-24 mx-auto mb-10">
-                    <div class="absolute inset-0 bg-red-500/20 rounded-full animate-ping"></div>
-                    <div class="relative size-full rounded-full bg-gradient-to-tr from-red-600 to-red-400 flex items-center justify-center shadow-2xl shadow-red-500/40">
+                    <div class="absolute inset-0 rounded-full animate-ping" :class="isGerantOnly ? 'bg-blue-500/20' : 'bg-red-500/20'"></div>
+                    <div 
+                      class="relative size-full rounded-full flex items-center justify-center shadow-2xl"
+                      :class="isGerantOnly ? 'bg-gradient-to-tr from-blue-600 to-blue-400 shadow-blue-500/40' : 'bg-gradient-to-tr from-red-600 to-red-400 shadow-red-500/40'"
+                    >
                         <AlertOctagon class="size-12 text-white" />
                     </div>
                 </div>
@@ -416,9 +539,9 @@ onUnmounted(() => {
                         Rester
                     </Button>
                     <Button 
-                        variant="destructive" 
                         @click="handleLogout" 
-                        class="h-14 rounded-2xl font-black text-sm uppercase tracking-widest bg-red-600 hover:bg-red-700 shadow-xl shadow-red-600/20 transition-all active:scale-95"
+                        class="h-14 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl transition-all active:scale-95 text-white"
+                        :class="isGerantOnly ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/25' : 'bg-red-600 hover:bg-red-700 shadow-red-600/20'"
                     >
                         Déconnexion
                     </Button>

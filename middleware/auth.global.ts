@@ -2,22 +2,35 @@ export default defineNuxtRouteMiddleware((to) => {
   const auth = useAuthStore()
   const hasSession = auth.checkSession()
 
+  // Espace compte (abonnement, paiements) : tout membre connecté, pas réservé aux admins
+  if (to.path.startsWith('/compte')) {
+    if (!hasSession) {
+      return navigateTo(`/login?redirect=${encodeURIComponent(to.fullPath)}`)
+    }
+  }
+
   // 1. Protect all dashboard routes
   if (to.path.startsWith('/dashboard')) {
     if (!hasSession) {
       return navigateTo('/login')
     }
-    
-    // Check for Admin access (IDs 18 or 19)
-    if (!auth.isAdmin) {
-      console.warn('Accès refusé au Dashboard: Utilisateur non administrateur.')
+
+    if (auth.isAdmin) {
+      // accès complet
+    } else if (auth.isGerant && to.path.startsWith('/dashboard/hotel')) {
+      // gestionnaires d'hôtel : uniquement l'espace /dashboard/hotel
+    } else if (auth.isGerant) {
+      return navigateTo('/dashboard/hotel')
+    } else {
+      console.warn('Accès refusé au Dashboard.')
       return navigateTo('/')
     }
   }
 
   // 2. Redirect from login if already authenticated
   if (to.path === '/login' && hasSession) {
-    // If admin, go to dashboard, otherwise go home
-    return navigateTo(auth.isAdmin ? '/dashboard' : '/')
+    if (auth.isAdmin) return navigateTo('/dashboard')
+    if (auth.isGerant) return navigateTo('/dashboard/hotel')
+    return navigateTo('/')
   }
 })

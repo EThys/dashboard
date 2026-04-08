@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { Menu, X, LayoutDashboard, LogOut, Calendar, User, ChevronDown } from 'lucide-vue-next'
+import { Menu, X, LayoutDashboard, LogOut, Calendar, User, ChevronDown, CreditCard, Receipt, Wrench, Compass, Building2, Palmtree } from 'lucide-vue-next'
 import { Button } from '@/components/ui'
 import { useAuthStore } from '~/stores/auth'
 import { onClickOutside } from '@vueuse/core'
@@ -10,6 +10,9 @@ const route = useRoute()
 const isMobileMenuOpen = ref(false)
 const isDropdownOpen = ref(false)
 const dropdownRef = ref(null)
+const discoverNavRef = ref(null)
+const navDiscoverOpen = ref(false)
+const mobileDiscoverOpen = ref(false)
 const auth = useAuthStore()
 
 const handleLogoClick = (e: Event) => {
@@ -19,10 +22,23 @@ const handleLogoClick = (e: Event) => {
   }
 }
 
-onClickOutside(dropdownRef, () => isDropdownOpen.value = false)
+onClickOutside(dropdownRef, () => (isDropdownOpen.value = false))
+onClickOutside(discoverNavRef, () => (navDiscoverOpen.value = false))
+
+function isNavActive(path: string) {
+  if (path === '/') return route.path === '/'
+  return route.path === path || route.path.startsWith(`${path}/`)
+}
+
+const isDiscoverActive = computed(
+  () =>
+    route.path.startsWith('/agences') ||
+    (route.path.startsWith('/properties') && String(route.query.type ?? '') === 'Hôtel')
+)
 
 const isAuthenticated = computed(() => auth.isAuthenticated)
 const isAdmin = computed(() => auth.isAdmin)
+const isGerant = computed(() => auth.isGerant)
 const userProfile = computed(() => auth.profile)
 const username = computed(() => auth.user?.username || 'Utilisateur')
 
@@ -31,12 +47,11 @@ const handleLogout = () => {
   isDropdownOpen.value = false
 }
 
-const navLinks = [
-  { name: 'Accueil', path: '/' },
-  { name: 'Propriétés', path: '/properties' },
-  { name: 'Services', path: '/services' },
-  { name: 'Contact', path: '/contact' },
-]
+const navPillBase =
+  'relative px-4 py-2.5 text-sm font-semibold tracking-wide rounded-full transition-all duration-300 border border-transparent'
+const navPillIdle = 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/90 hover:border-stone-200/60'
+const navPillActive =
+  'text-stone-50 bg-gradient-to-br from-stone-800 via-stone-900 to-stone-950 border-amber-900/20 shadow-md shadow-stone-900/20 ring-1 ring-white/10'
 </script>
 
 <template>
@@ -56,16 +71,98 @@ const navLinks = [
 
       </div>
 
-      <!-- Desktop Navigation -->
-      <nav class="hidden lg:flex items-center gap-1 bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
-        <NuxtLink 
-          v-for="link in navLinks" 
-          :key="link.name" 
-          :to="link.path"
-          class="px-5 py-2.5 text-sm font-bold text-slate-500 rounded-xl hover:bg-white hover:text-primary hover:shadow-sm transition-all"
+      <!-- Desktop Navigation — style éditorial / chic -->
+      <nav
+        class="hidden lg:flex flex-1 min-w-0 justify-center items-center gap-0.5 px-2"
+        aria-label="Navigation principale"
+      >
+        <div
+          class="inline-flex items-center gap-0.5 rounded-full border border-stone-200/80 bg-gradient-to-b from-stone-50/95 to-white p-1 shadow-sm shadow-stone-200/40 ring-1 ring-stone-100/80"
         >
-          {{ link.name }}
-        </NuxtLink>
+          <NuxtLink
+            to="/"
+            class="shrink-0"
+            :class="[navPillBase, route.path === '/' ? navPillActive : navPillIdle]"
+          >
+            Accueil
+          </NuxtLink>
+          <NuxtLink
+            to="/properties"
+            class="shrink-0"
+            :class="[navPillBase, isNavActive('/properties') ? navPillActive : navPillIdle]"
+          >
+            Propriétés
+          </NuxtLink>
+          <NuxtLink
+            to="/services"
+            class="shrink-0"
+            :class="[navPillBase, isNavActive('/services') ? navPillActive : navPillIdle]"
+          >
+            Services
+          </NuxtLink>
+
+          <div ref="discoverNavRef" class="relative shrink-0">
+            <button
+              type="button"
+              class="flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-semibold tracking-wide transition-all duration-300 border"
+              :class="
+                isDiscoverActive
+                  ? [navPillActive, 'border-amber-900/25']
+                  : [navPillIdle, 'border-transparent']
+              "
+              :aria-expanded="navDiscoverOpen"
+              aria-haspopup="true"
+              @click="navDiscoverOpen = !navDiscoverOpen"
+            >
+              Le bien
+              <ChevronDown
+                class="size-3.5 opacity-80 transition-transform duration-300"
+                :class="{ 'rotate-180': navDiscoverOpen }"
+              />
+            </button>
+            <Transition
+              enter-active-class="transition duration-200 ease-out"
+              enter-from-class="opacity-0 scale-95 -translate-y-1"
+              enter-to-class="opacity-100 scale-100 translate-y-0"
+              leave-active-class="transition duration-150 ease-in"
+              leave-from-class="opacity-100 scale-100"
+              leave-to-class="opacity-0 scale-95"
+            >
+              <div
+                v-if="navDiscoverOpen"
+                class="absolute left-1/2 top-full z-50 mt-3 w-56 -translate-x-1/2 overflow-hidden rounded-2xl border border-stone-200/90 bg-white/95 py-2 shadow-2xl shadow-stone-300/30 backdrop-blur-xl ring-1 ring-stone-100"
+              >
+                <p class="px-4 pb-2 pt-1 text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400">
+                  Explorer
+                </p>
+                <NuxtLink
+                  to="/agences"
+                  class="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-stone-700 transition hover:bg-stone-50 hover:text-stone-950"
+                  @click="navDiscoverOpen = false"
+                >
+                  <Palmtree class="size-4 text-amber-700/90" />
+                  Tourisme
+                </NuxtLink>
+                <NuxtLink
+                  to="/properties?type=Hôtel"
+                  class="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-stone-700 transition hover:bg-stone-50 hover:text-stone-950"
+                  @click="navDiscoverOpen = false"
+                >
+                  <Building2 class="size-4 text-stone-600" />
+                  Hôtels
+                </NuxtLink>
+              </div>
+            </Transition>
+          </div>
+
+          <NuxtLink
+            to="/contact"
+            class="shrink-0"
+            :class="[navPillBase, isNavActive('/contact') ? navPillActive : navPillIdle]"
+          >
+            Contact
+          </NuxtLink>
+        </div>
       </nav>
 
       <!-- User Actions -->
@@ -75,6 +172,13 @@ const navLinks = [
           <Button class="h-11 px-6 font-black text-sm bg-blue-600 border-2 border-blue-600 hover:bg-blue-700 hover:border-blue-700 text-white transition-all rounded-xl shadow-lg flex items-center gap-2">
             <LayoutDashboard class="size-4" />
             Dashboard ADMIN
+          </Button>
+        </NuxtLink>
+
+        <NuxtLink v-else-if="isAuthenticated && isGerant" to="/dashboard/hotel" class="hidden md:block">
+          <Button class="h-11 px-6 font-black text-sm bg-blue-600 border-2 border-blue-600 hover:bg-blue-700 hover:border-blue-700 text-white transition-all rounded-xl shadow-lg flex items-center gap-2">
+            <LayoutDashboard class="size-4" />
+            Dashboard
           </Button>
         </NuxtLink>
 
@@ -106,15 +210,35 @@ const navLinks = [
                 </div>
                 
                 <div class="p-2 space-y-1">
-                    <NuxtLink to="/dashboard/my-reservations" @click="isDropdownOpen = false" class="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-primary/5 hover:text-primary rounded-2xl transition-all">
+                    <NuxtLink to="/compte/reservations" @click="isDropdownOpen = false" class="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-primary/5 hover:text-primary rounded-2xl transition-all">
                         <Calendar class="size-4" />
-                        Mes Réservations
+                        Réservations (biens)
+                    </NuxtLink>
+                    <NuxtLink to="/compte/sollicitations" @click="isDropdownOpen = false" class="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-primary/5 hover:text-primary rounded-2xl transition-all">
+                        <Wrench class="size-4" />
+                        Sollicitations (services)
+                    </NuxtLink>
+                    <NuxtLink to="/compte/agences" @click="isDropdownOpen = false" class="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-primary/5 hover:text-primary rounded-2xl transition-all">
+                        <Compass class="size-4" />
+                        Mes agences (tourisme)
+                    </NuxtLink>
+                    <NuxtLink to="/compte/abonnement" @click="isDropdownOpen = false" class="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-primary/5 hover:text-primary rounded-2xl transition-all">
+                        <CreditCard class="size-4" />
+                        Abonnement Premium
+                    </NuxtLink>
+                    <NuxtLink to="/compte/paiements" @click="isDropdownOpen = false" class="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-primary/5 hover:text-primary rounded-2xl transition-all">
+                        <Receipt class="size-4" />
+                        Historique des paiements
                     </NuxtLink>
                     <NuxtLink to="/profile" @click="isDropdownOpen = false" class="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-2xl transition-all">
                         <User class="size-4" />
                         Mon Profil
                     </NuxtLink>
-                    <button @click="handleLogout" class="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-red-500 hover:bg-red-50 rounded-2xl transition-all">
+                    <button 
+                      @click="handleLogout" 
+                      class="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-2xl transition-all"
+                      :class="isGerant ? 'text-blue-600 hover:bg-blue-50' : 'text-red-500 hover:bg-red-50'"
+                    >
                         <LogOut class="size-4" />
                         Se déconnecter
                     </button>
@@ -189,16 +313,62 @@ const navLinks = [
           </div>
 
           <!-- Main Navigation -->
-          <div class="flex-1 flex flex-col px-8 pt-4 gap-6">
-            <NuxtLink 
-              v-for="link in navLinks" 
-              :key="link.name" 
-              :to="link.path"
+          <div class="flex-1 flex flex-col px-8 pt-4 gap-4">
+            <NuxtLink
+              to="/"
+              class="text-2xl font-black text-slate-800 hover:text-primary transition-colors"
               @click="isMobileMenuOpen = false"
-              class="text-3xl font-black text-slate-800 hover:text-primary transition-colors flex items-center justify-between group"
             >
-              {{ link.name }}
-              <span class="opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 text-primary">→</span>
+              Accueil
+            </NuxtLink>
+            <NuxtLink
+              to="/properties"
+              class="text-2xl font-black text-slate-800 hover:text-primary transition-colors"
+              @click="isMobileMenuOpen = false"
+            >
+              Propriétés
+            </NuxtLink>
+            <NuxtLink
+              to="/services"
+              class="text-2xl font-black text-slate-800 hover:text-primary transition-colors"
+              @click="isMobileMenuOpen = false"
+            >
+              Services
+            </NuxtLink>
+            <div>
+              <button
+                type="button"
+                class="flex w-full items-center justify-between text-2xl font-black text-slate-800"
+                @click="mobileDiscoverOpen = !mobileDiscoverOpen"
+              >
+                Le bien
+                <ChevronDown class="size-6 transition-transform" :class="{ 'rotate-180': mobileDiscoverOpen }" />
+              </button>
+              <div v-show="mobileDiscoverOpen" class="mt-4 flex flex-col gap-3 border-l-2 border-amber-200/80 pl-4">
+                <NuxtLink
+                  to="/agences"
+                  class="flex items-center gap-3 text-lg font-bold text-slate-600"
+                  @click="isMobileMenuOpen = false"
+                >
+                  <Palmtree class="size-5 text-amber-700" />
+                  Tourisme
+                </NuxtLink>
+                <NuxtLink
+                  to="/properties?type=Hôtel"
+                  class="flex items-center gap-3 text-lg font-bold text-slate-600"
+                  @click="isMobileMenuOpen = false"
+                >
+                  <Building2 class="size-5 text-slate-600" />
+                  Hôtels
+                </NuxtLink>
+              </div>
+            </div>
+            <NuxtLink
+              to="/contact"
+              class="text-2xl font-black text-slate-800 hover:text-primary transition-colors"
+              @click="isMobileMenuOpen = false"
+            >
+              Contact
             </NuxtLink>
 
             <div class="border-t border-slate-100 my-4 w-10"></div>
@@ -213,13 +383,40 @@ const navLinks = [
                      </div>
                   </NuxtLink>
                </div>
+
+               <div v-else-if="isGerant" class="space-y-4">
+                  <NuxtLink to="/dashboard/hotel" @click="isMobileMenuOpen = false" class="bg-blue-600 text-white rounded-2xl h-14 flex items-center justify-center gap-3 font-bold shadow-lg shadow-blue-600/20 w-full block">
+                     <div class="flex items-center justify-center gap-2 w-full h-full">
+                        <LayoutDashboard class="w-5 h-5" />
+                        Dashboard
+                     </div>
+                  </NuxtLink>
+               </div>
                
-               <div v-else class="space-y-4">
-                  <NuxtLink to="/dashboard/my-reservations" @click="isMobileMenuOpen = false" class="flex items-center gap-4 text-lg font-bold text-slate-600">
+               <div v-if="!isAdmin" class="space-y-4">
+                  <NuxtLink to="/compte/reservations" @click="isMobileMenuOpen = false" class="flex items-center gap-4 text-lg font-bold text-slate-600">
                      <div class="size-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center">
                         <Calendar class="w-5 h-5" />
                      </div>
-                     Mes Réservations
+                     Réservations (biens)
+                  </NuxtLink>
+                  <NuxtLink to="/compte/sollicitations" @click="isMobileMenuOpen = false" class="flex items-center gap-4 text-lg font-bold text-slate-600">
+                     <div class="size-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center">
+                        <Wrench class="w-5 h-5" />
+                     </div>
+                     Sollicitations (services)
+                  </NuxtLink>
+                  <NuxtLink to="/compte/abonnement" @click="isMobileMenuOpen = false" class="flex items-center gap-4 text-lg font-bold text-slate-600">
+                     <div class="size-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                        <CreditCard class="w-5 h-5" />
+                     </div>
+                     Abonnement Premium
+                  </NuxtLink>
+                  <NuxtLink to="/compte/paiements" @click="isMobileMenuOpen = false" class="flex items-center gap-4 text-lg font-bold text-slate-600">
+                     <div class="size-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center">
+                        <Receipt class="w-5 h-5" />
+                     </div>
+                     Historique des paiements
                   </NuxtLink>
                   <NuxtLink to="/profile" @click="isMobileMenuOpen = false" class="flex items-center gap-4 text-lg font-bold text-slate-600">
                      <div class="size-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
@@ -229,8 +426,15 @@ const navLinks = [
                   </NuxtLink>
                </div>
                
-               <button @click="handleLogout" class="flex items-center gap-4 text-lg font-bold text-red-500 mt-2">
-                  <div class="size-10 rounded-xl bg-red-50 text-red-500 flex items-center justify-center">
+               <button 
+                  @click="handleLogout" 
+                  class="flex items-center gap-4 text-lg font-bold mt-2"
+                  :class="isGerant ? 'text-blue-600' : 'text-red-500'"
+               >
+                  <div 
+                    class="size-10 rounded-xl flex items-center justify-center"
+                    :class="isGerant ? 'bg-blue-50 text-blue-600' : 'bg-red-50 text-red-500'"
+                  >
                      <LogOut class="w-5 h-5" />
                   </div>
                   Se déconnecter

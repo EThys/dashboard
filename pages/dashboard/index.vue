@@ -10,6 +10,7 @@ import {
     Card, CardContent, CardHeader, CardTitle, 
     Button, Badge, Skeleton 
 } from '@/components/ui'
+import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
 
 definePageMeta({
   layout: 'dashboard'
@@ -29,17 +30,20 @@ const statsData = ref({
 const fetchDashboardStats = async () => {
     statsData.value.isLoading = true
     try {
+        const apiBase = config.public.apiBase as string
+        const authHeaders = auth.token ? { Authorization: `Bearer ${auth.token}` } : {}
+        const isAdmin = auth.isAdmin
         const [usersRes, propRes, terrainRes, bureauRes, hotelRes, festiveRes, funeraireRes, servRes]: any = await Promise.all([
-            $fetch(`${config.public.apiBase}/users`, {
-                headers: { 'Authorization': `Bearer ${auth.token}` }
-            }),
-            $fetch(`${config.public.apiBase}/property`),
-            $fetch(`${config.public.apiBase}/property/terrains`),
-            $fetch(`${config.public.apiBase}/property/bureaux`),
-            $fetch(`${config.public.apiBase}/property/hotels`),
-            $fetch(`${config.public.apiBase}/property/festives`),
-            $fetch(`${config.public.apiBase}/property/funeraires`),
-            $fetch(`${config.public.apiBase}/prestations`)
+            auth.token
+                ? $fetch(joinApi(apiBase, ApiEndpoints.allUsers), { headers: authHeaders })
+                : Promise.resolve({ data: [] }),
+            $fetch(joinApi(apiBase, isAdmin ? ApiEndpoints.protectedProperties : ApiEndpoints.properties), isAdmin ? { headers: authHeaders } : undefined),
+            $fetch(joinApi(apiBase, isAdmin ? ApiEndpoints.protectedPropertyTerrains : ApiEndpoints.propertyTerrains), isAdmin ? { headers: authHeaders } : undefined),
+            $fetch(joinApi(apiBase, isAdmin ? ApiEndpoints.protectedPropertyBureaux : ApiEndpoints.propertyBureaux), isAdmin ? { headers: authHeaders } : undefined),
+            $fetch(joinApi(apiBase, isAdmin ? ApiEndpoints.protectedPropertyHotels : ApiEndpoints.propertyHotelsPublic), isAdmin ? { headers: authHeaders } : undefined),
+            $fetch(joinApi(apiBase, isAdmin ? ApiEndpoints.protectedPropertyFestives : ApiEndpoints.propertyFestives), isAdmin ? { headers: authHeaders } : undefined),
+            $fetch(joinApi(apiBase, isAdmin ? ApiEndpoints.protectedPropertyFuneraires : ApiEndpoints.propertyFuneraires), isAdmin ? { headers: authHeaders } : undefined),
+            $fetch(joinApi(apiBase, ApiEndpoints.publicPrestations)),
         ])
 
         statsData.value.users = usersRes.data || usersRes || []
