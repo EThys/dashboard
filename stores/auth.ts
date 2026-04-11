@@ -69,13 +69,23 @@ export const useAuthStore = defineStore('auth', {
          */
         isGerant: (state) => {
             if (!state.accounts?.length) return false
+            
+            const normalize = (str: string | undefined): string => {
+                return (str || '')
+                    .toLowerCase()
+                    .normalize("NFD")
+                    .replace(/\p{Diacritic}/gu, "")
+                    .replace(/\s+/g, '')
+                    .trim()
+            }
+
             return state.accounts.some((acc) => {
-                const accountName = (acc.name || '').toLowerCase().trim()
-                if (accountName === 'gerant' || accountName.includes('gerant')) return true
-                const typeName = (acc.typeAccount?.name || '').toLowerCase()
-                if (typeName.includes('gérant') || typeName.includes('gerant')) return true
-                const tid = acc.typeAccount?.typeAccountId
-                return tid === 3
+                const nName = normalize(acc.name)
+                const nTypeName = normalize(acc.typeAccount?.name)
+                
+                // UNIQUEMENT le mot "gerant" dans le name du compte.
+                // NE PAS vérifier typeAccountId car 3 = "Prestataire de service" aussi.
+                return nName === 'gerant' || nName.startsWith('gerant') || nTypeName === 'gerant'
             })
         },
     },

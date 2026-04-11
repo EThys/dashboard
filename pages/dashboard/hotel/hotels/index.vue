@@ -10,6 +10,17 @@ definePageMeta({ layout: 'dashboard' })
 const router = useRouter()
 const config = useRuntimeConfig()
 const auth = useAuthStore()
+import { toast } from 'vue-sonner'
+
+function handleNewHotel() {
+    if (!auth.user?.premium) {
+        toast.info("Abonnement requis", { 
+            description: "Un abonnement Premium est nécessaire pour publier un hôtel." 
+        })
+        return navigateTo('/compte/abonnement')
+    }
+    router.push('/dashboard/hotel/hotels/new')
+}
 
 const { data: rows, pending, refresh } = await useAsyncData(
   'my-hotels-list',
@@ -50,7 +61,7 @@ function hotelCard(row: any) {
       </div>
       <div class="flex gap-2">
         <Button variant="outline" size="sm" :disabled="pending" @click="refresh()">Actualiser</Button>
-        <Button class="rounded-full" @click="router.push('/dashboard/hotel/hotels/new')">
+        <Button class="rounded-full" @click="handleNewHotel">
           <Plus class="mr-2 h-4 w-4" />
           Nouvel hôtel
         </Button>
@@ -64,7 +75,7 @@ function hotelCard(row: any) {
       <Building2 class="mx-auto h-12 w-12 text-muted-foreground opacity-40" />
       <p class="mt-4 font-medium text-foreground">Aucun hôtel pour l’instant</p>
       <p class="mt-1 text-sm text-muted-foreground">Créez votre premier établissement pour proposer des chambres.</p>
-      <Button class="mt-6 rounded-full" @click="router.push('/dashboard/hotel/hotels/new')">Créer un hôtel</Button>
+      <Button class="mt-6 rounded-full" @click="handleNewHotel">Créer un hôtel</Button>
     </div>
     <div v-else class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       <button

@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useReservationStore } from '@/stores/reservations'
 import VueEasyLightbox from 'vue-easy-lightbox'
 import { normalizeBureau, normalizeFestive, normalizeFuneraire, normalizeTerrain, normalizeHotel, normalizeStandardProperty } from '@/utils/propertyNormalizer'
+import { toast } from 'vue-sonner'
 import type { AnyPropertyResponse, NormalizedProperty } from '@/types/property'
 
 type HotelChambreItem = NonNullable<NormalizedProperty['hotelChambres']>[number]
@@ -187,6 +188,12 @@ const contactAgent = () => {
     if (!authStore.isAuthenticated) {
         return navigateTo(`/login?reason=reservation&redirect=${route.fullPath}`)
     }
+    if (!authStore.user?.premium) {
+        toast.info("Abonnement requis", { 
+            description: "Un abonnement Premium est nécessaire pour effectuer une réservation." 
+        })
+        return navigateTo('/compte/abonnement')
+    }
     visitChambreId.value = null
     visitChambreTitleStr.value = ''
     isVisitModalOpen.value = true
@@ -210,6 +217,13 @@ function openChambreReservation() {
     if (!authStore.isAuthenticated) {
         closeChambreDetail()
         return navigateTo(`/login?reason=reservation&redirect=${route.fullPath}`)
+    }
+    if (!authStore.user?.premium) {
+        closeChambreDetail()
+        toast.info("Abonnement requis", { 
+            description: "Un abonnement Premium est nécessaire pour réserver cette chambre." 
+        })
+        return navigateTo('/compte/abonnement')
     }
     visitChambreId.value = ch.id
     visitChambreTitleStr.value = ch.title
@@ -570,22 +584,23 @@ function openChambreLightboxFromDetail() {
                         </div>
 
                      <!-- Utilities (pas pour les hôtels — non pertinent) -->
-                     <div v-if="!property.isHotel" class="grid grid-cols-1 gap-6 md:grid-cols-2">
-                         <div class="bg-card rounded-3xl p-6 border border-border/50 shadow-sm flex items-center gap-4">
+                     <!-- Utilities -->
+                     <div v-if="!property.isHotel && (property.electricity > 0 || property.water > 0)" class="grid grid-cols-1 gap-6 md:grid-cols-2">
+                         <div v-if="property.electricity > 0" class="bg-card rounded-3xl p-6 border border-border/50 shadow-sm flex items-center gap-4">
                              <div class="w-14 h-14 rounded-full bg-yellow-500/10 flex items-center justify-center">
                                  <Zap class="h-7 w-7 text-yellow-600" />
                              </div>
                              <div>
-                                 <p class="text-sm text-muted-foreground font-medium uppercase tracking-wide">ÉLECTRICITÉ</p>
+                                 <p class="text-sm text-muted-foreground font-medium uppercase tracking-wide">ÉLECTRICITÉ ({{property.electricity}}%)</p>
                                  <p class="text-lg font-bold" :class="property.electricityColor">{{ property.electricityInfo }}</p>
                              </div>
                          </div>
-                         <div class="bg-card rounded-3xl p-6 border border-border/50 shadow-sm flex items-center gap-4">
+                         <div v-if="property.water > 0" class="bg-card rounded-3xl p-6 border border-border/50 shadow-sm flex items-center gap-4">
                              <div class="w-14 h-14 rounded-full bg-blue-500/10 flex items-center justify-center">
                                  <Droplets class="h-7 w-7 text-blue-600" />
                              </div>
                              <div>
-                                 <p class="text-sm text-muted-foreground font-medium uppercase tracking-wide">EAU</p>
+                                 <p class="text-sm text-muted-foreground font-medium uppercase tracking-wide">EAU ({{property.water}}%)</p>
                                  <p class="text-lg font-bold" :class="property.waterColor">{{ property.waterInfo }}</p>
                              </div>
                          </div>

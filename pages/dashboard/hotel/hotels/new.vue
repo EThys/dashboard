@@ -14,7 +14,6 @@ const config = useRuntimeConfig()
 const auth = useAuthStore()
 
 const submitting = ref(false)
-/** Types depuis `GET /public/property/types` (ex. Hotels → propertyTypeId 5). */
 const propertyTypeReady = ref(false)
 const hotelTypeLabel = ref('')
 
@@ -67,7 +66,6 @@ onBeforeUnmount(() => {
   revokeGalleryPreviews()
 })
 
-/** Ex. API https://migration.casanayo.com/api/v1/public/property/types — entrée « Hotels », propertyTypeId 5 */
 function pickHotelFromPropertyTypes(list: { propertyTypeId?: number; id?: number; name?: string }[]) {
   const found = list.find((t) => /h[oô]tel/i.test(String(t.name || '').trim()))
   if (!found) return null
@@ -77,6 +75,12 @@ function pickHotelFromPropertyTypes(list: { propertyTypeId?: number; id?: number
 }
 
 onMounted(async () => {
+  if (!auth.user?.premium) {
+     toast.info("Abonnement requis", { 
+        description: "Un abonnement Premium est nécessaire pour publier un hôtel." 
+     })
+     return navigateTo('/compte/abonnement')
+  }
   propertyTypeReady.value = false
   hotelTypeLabel.value = ''
   try {
@@ -179,10 +183,6 @@ async function submit() {
         </div>
         <div class="space-y-2 md:col-span-2">
           <Label>Type de bien</Label>
-          <p class="text-xs text-muted-foreground">
-            Défini automatiquement depuis l’API des types (ex. Hotels →
-            <span class="font-mono">propertyTypeId</span>).
-          </p>
           <div
             class="flex min-h-12 items-center rounded-xl border border-input bg-muted/50 px-4 text-sm text-foreground"
             role="status"
@@ -190,8 +190,6 @@ async function submit() {
           >
             <template v-if="propertyTypeReady && form.propertyTypeId > 0">
               <span class="font-medium">{{ hotelTypeLabel || 'Hotels' }}</span>
-              <span class="ml-2 text-muted-foreground" aria-hidden="true">·</span>
-              <span class="ml-2 font-mono text-xs text-muted-foreground">propertyTypeId {{ form.propertyTypeId }}</span>
             </template>
             <span v-else class="text-muted-foreground">Chargement du type…</span>
           </div>
@@ -208,11 +206,7 @@ async function submit() {
         </div>
         <div class="space-y-2 md:col-span-2">
           <Label for="gallery-files">Photos de l’établissement</Label>
-          <p class="text-xs text-muted-foreground">
-            Plusieurs images possibles. Envoi : <span class="font-mono">image</span> (1ʳᵉ) et
-            <span class="font-mono">images[]</span> — chaînes Base64 pures (sans préfixe
-            <span class="font-mono">data:image/…</span>).
-          </p>
+          <p class="text-xs text-muted-foreground">Plusieurs images possibles.</p>
           <div class="flex flex-wrap items-start gap-4">
             <label
               class="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-input bg-muted/30 px-4 py-3 text-sm font-medium transition hover:bg-muted/50"
