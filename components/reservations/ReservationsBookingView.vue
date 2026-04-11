@@ -15,6 +15,9 @@ import {
     Sparkles,
     Download,
     User,
+    X,
+    ChevronLeft,
+    ChevronRight,
 } from 'lucide-vue-next'
 import { Button, Badge } from '@/components/ui'
 import { useReservationStore, type ReservationListItem } from '@/stores/reservations'
@@ -39,11 +42,26 @@ const props = withDefaults(
     { embedded: false, initialPerspective: 'mine', hostReservationScope: 'all' }
 )
 
+const showBannerSubtitle = ref(true)
+
+onMounted(() => {
+    const seen = localStorage.getItem('casanayo_res_banner_seen')
+    if (seen) {
+        showBannerSubtitle.value = false
+    } else {
+        localStorage.setItem('casanayo_res_banner_seen', 'true')
+    }
+})
+
 const resStore = useReservationStore()
 const auth = useAuthStore()
 const list = ref<ReservationListItem[]>([])
 const loading = ref(true)
 const activeTab = ref(0)
+/** Pagination */
+const currentPage = ref(1)
+const itemsPerPage = 6
+
 /** Mes demandes (client) vs demandes reçues sur mes biens (hôte, endpoints `.../user/host/`) */
 const perspective = ref<'mine' | 'host'>(props.initialPerspective)
 
@@ -55,27 +73,30 @@ const tabs = [
 ] as const
 
 /**
- * @param keepPreviousList — `true` = actualiser en gardant les cartes visibles (spinner bouton) ;
- *   `false` = changement de vue : liste vidée tout de suite + squelettes (pas de données « autres »).
+ * @param force — `true` = forcer le refresh API (ignore le cache Pinia)
  */
-async function load(keepPreviousList = false) {
-    if (!keepPreviousList) {
-        list.value = []
+async function load(force = false) {
+    // Si on a déjà des données dans le store et qu'on ne force pas, la fluidité est prioritaire
+    const hasData = perspective.value === 'mine' 
+        ? resStore.userReservations.length > 0 
+        : resStore.hostReservations.length > 0
+
+    if (!hasData || force) {
+        loading.value = true
     }
-    loading.value = true
-    await nextTick()
+
     try {
         const data =
             perspective.value === 'mine'
-                ? await resStore.fetchUserReservations()
+                ? await resStore.fetchUserReservations(force)
                 : props.hostReservationScope === 'chambre'
-                  ? await resStore.fetchHostChambreReservationsOnly()
-                  : await resStore.fetchHostReservations()
+                  ? await resStore.fetchHostChambreReservationsOnly(force)
+                  : await resStore.fetchHostReservations(force)
         list.value = data
+        // Reset pagination on load
+        currentPage.value = 1
     } catch (e) {
         console.error(e)
-        toast.error('Impossible de charger les réservations.')
-        list.value = []
     } finally {
         loading.value = false
     }
@@ -100,15 +121,26 @@ onUnmounted(() => {
 
 watch(perspective, () => {
     activeTab.value = 0
+    currentPage.value = 1
     closeDetail()
     load(false)
+})
+
+watch(activeTab, () => {
+    currentPage.value = 1
 })
 
 const counts = computed(() => resStore.countByStatus(list.value))
 
 function filterByTab(items: ReservationListItem[], tabKey: string) {
     return items
-        .filter((r) => r.status === tabKey)
+        .filter((r) => {
+            const s = r.status.toUpperCase()
+            if (tabKey === 'CONFIRMED') return s === 'CONFIRMED' || s === 'ACCEPTED'
+            if (tabKey === 'COMPLETED') return s === 'COMPLETED' || s === 'FINISHED'
+            if (tabKey === 'CANCELLED') return s === 'CANCELLED' || s === 'REJECTED'
+            return s === tabKey
+        })
         .sort((a, b) => {
             const da = new Date(a.createdAt || a.startDate || 0).getTime()
             const db = new Date(b.createdAt || b.startDate || 0).getTime()
@@ -116,10 +148,17 @@ function filterByTab(items: ReservationListItem[], tabKey: string) {
         })
 }
 
-const displayed = computed(() => {
+const filteredList = computed(() => {
     const key = tabs[activeTab.value]?.key
     if (!key) return []
     return filterByTab(list.value, key)
+})
+
+const totalPages = computed(() => Math.ceil(filteredList.value.length / itemsPerPage))
+
+const displayed = computed(() => {
+    const start = (currentPage.value - 1) * itemsPerPage
+    return filteredList.value.slice(start, start + itemsPerPage)
 })
 
 function formatDate(dateStr?: string) {
@@ -154,12 +193,15 @@ function categoryIcon(cat: string) {
 }
 
 function statusBadgeClass(status: string) {
-    switch (status) {
+    const s = status.toUpperCase()
+    switch (s) {
         case 'PENDING':
             return 'bg-amber-50 text-amber-800 border-amber-200'
         case 'CONFIRMED':
+        case 'ACCEPTED':
             return 'bg-blue-50 text-blue-800 border-blue-200'
         case 'COMPLETED':
+        case 'FINISHED':
             return 'bg-slate-100 text-slate-800 border-slate-200'
         case 'CANCELLED':
         case 'REJECTED':
@@ -182,7 +224,7 @@ async function handleDownloadReservationPdf() {
     try {
         const username = auth.user?.username || auth.profile?.fullName || 'Client CasaNayo'
         await downloadReservationDocumentPdf(r, username, perspective.value)
-        toast.success('PDF téléchargé (mise en forme type app mobile).')
+        toast.success('PDF téléchargé.')
     } catch (e) {
         console.error(e)
         toast.error('Impossible de générer le PDF.')
@@ -209,12 +251,10 @@ async function hostValidate(accept: boolean) {
         const out = await resStore.validateReservationNotification(r.reservationId, accept)
         if (out.success) {
             toast.success(accept ? 'Réservation acceptée' : 'Demande refusée', {
-                description:
-                    'Le serveur notifie l’autre partie (push + STOMP). La liste se met à jour automatiquement ; sinon actualisez ou rouvrez l’onglet.',
+                description: 'Confirmation envoyée immédiatement.',
             })
             closeDetail()
             await load(true)
-            window.setTimeout(() => load(true), 1800)
         } else {
             toast.error(out.message || 'Action impossible')
         }
@@ -234,13 +274,9 @@ async function guestCancelReservation() {
     try {
         const out = await resStore.cancelReservation(r.reservationId, reason)
         if (out.success) {
-            toast.success('Réservation annulée', {
-                description:
-                    'Le serveur notifie l’autre partie. Actualisation dans quelques secondes…',
-            })
+            toast.success('Réservation annulée')
             closeDetail()
             await load(true)
-            window.setTimeout(() => load(true), 1800)
         } else {
             toast.error(out.message || 'Annulation impossible')
         }
@@ -259,8 +295,7 @@ const shellClass = computed(() =>
     <div :class="embedded ? '' : 'mx-auto max-w-6xl px-4 sm:px-6'">
       <!-- En-tête type BookingHistory (bleu #1976D2) -->
       <div
-        class="overflow-hidden rounded-3xl bg-gradient-to-br from-[#1976D2] to-[#1565C0] p-6 text-white shadow-xl sm:p-8"
-        :class="embedded ? 'mb-8' : 'mb-8'"
+        class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1976D2] to-[#1565C0] p-6 text-white shadow-xl sm:p-8 mb-8"
       >
         <div class="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
           <div class="flex items-start gap-4">
@@ -272,19 +307,18 @@ const shellClass = computed(() =>
             <div>
               <h1
                 class="text-2xl font-bold tracking-tight sm:text-3xl"
-                :class="embedded ? '' : ''"
               >
                 {{
                   perspective === 'mine'
-                    ? 'Mes réservations (biens)'
-                    : 'Réservations sur mes annonces'
+                    ? 'Mes réservations'
+                    : 'Réservations reçues'
                 }}
               </h1>
-              <p class="mt-1 max-w-xl text-sm text-blue-100">
+              <p v-if="showBannerSubtitle" class="mt-1 max-w-xl text-sm text-blue-100 italic opacity-90 transition-all duration-700">
                 {{
                   perspective === 'mine'
-                    ? 'Vos demandes sur des propriétés : standards, terrains, bureaux, salles festives, séjours, chambres…'
-                    : 'Demandes des autres utilisateurs sur les biens que vous publiez (endpoints hôte /user/host/).'
+                    ? 'Retrouvez l’historique de vos demandes de réservation sur CasaNayo.'
+                    : 'Gérez les demandes reçues sur vos publications.'
                 }}
               </p>
             </div>
@@ -327,7 +361,7 @@ const shellClass = computed(() =>
 
       <!-- Client / Hôte (biens) -->
       <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Vue</p>
+        <p class="text-xs font-bold uppercase tracking-wider text-slate-500"></p>
         <div
           class="inline-flex rounded-2xl border border-slate-200 bg-white p-1 shadow-sm"
           role="tablist"
@@ -398,13 +432,11 @@ const shellClass = computed(() =>
         </div>
       </div>
 
-      <!-- Changement de vue : liste vidée → shimmer jusqu’à la réponse API (pas d’anciennes cartes) -->
       <div v-if="loading && list.length === 0" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         <UiCasaListCardShimmer v-for="i in 6" :key="i" />
       </div>
 
       <div v-else class="relative">
-        <!-- Actualiser : garde les cartes, overlay de chargement -->
         <div
           v-if="loading && list.length > 0"
           class="pointer-events-auto absolute inset-0 z-20 flex items-start justify-center rounded-3xl bg-white/80 pt-24 backdrop-blur-sm"
@@ -422,16 +454,16 @@ const shellClass = computed(() =>
           />
           <template v-else>
             <Calendar class="mb-4 size-14 text-[#1976D2]/30" />
-            <p class="text-lg font-bold text-slate-800">Aucune réservation dans cette catégorie</p>
+            <p class="text-lg font-bold text-slate-800">Aucune réservation</p>
             <p class="mt-2 max-w-sm text-sm text-slate-500">
-              Changez d’onglet ou explorez les biens pour créer une nouvelle demande.
+              Aucune donnée à afficher pour ce statut.
             </p>
             <NuxtLink
               v-if="!embedded"
               to="/properties"
               class="mt-8 inline-flex h-12 items-center rounded-xl bg-[#1976D2] px-8 text-sm font-bold text-white shadow-lg shadow-blue-600/25 transition hover:bg-[#1565C0]"
             >
-              Voir les propriétés
+              Explorer les biens
             </NuxtLink>
           </template>
         </div>
@@ -465,13 +497,13 @@ const shellClass = computed(() =>
                 class="rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-wide"
                 :class="statusBadgeClass(res.status)"
               >
-                {{ res.status }}
+                {{ res.displayStatus }}
               </Badge>
             </div>
           </div>
 
           <div class="flex flex-1 flex-col gap-3 p-5">
-            <div class="flex items-start gap-3">
+            <div class="flex items-start gap-4">
               <div
                 class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#E3F2FD] text-[#1976D2]"
               >
@@ -479,10 +511,10 @@ const shellClass = computed(() =>
               </div>
               <div class="min-w-0 flex-1">
                 <p class="text-[10px] font-bold uppercase tracking-wider text-[#1976D2]">
-                  {{ res.type || res.sourceCategory }} · #{{ res.reservationId }}
+                  REFR : #{{ res.reservationId }}
                 </p>
                 <h3 class="line-clamp-2 font-bold leading-snug text-slate-900">
-                  {{ res.propertyTitle }}
+                  {{ res.propertyType ? res.propertyType + ' — ' : '' }}{{ res.propertyTitle }}
                 </h3>
               </div>
             </div>
@@ -499,81 +531,103 @@ const shellClass = computed(() =>
                 <Clock class="size-4 shrink-0 text-slate-400" />
                 <span>{{ res.reservationHeure }}</span>
               </div>
-              <div class="flex items-center gap-2 text-xs text-slate-500">
-                <MapPin class="size-3.5 shrink-0" />
-                <span class="capitalize">{{ res.sourceCategory }}</span>
-              </div>
-            </div>
-
-            <div
-              v-if="res.message"
-              class="rounded-xl border border-slate-100 bg-slate-50/80 p-3 text-xs italic text-slate-600 line-clamp-3"
-            >
-              « {{ res.message }} »
-            </div>
-            <div
-              v-if="res.cancellationReason"
-              class="rounded-xl border border-red-100 bg-red-50/80 p-3 text-xs text-red-800"
-            >
-              Mot d’annulation : {{ res.cancellationReason }}
             </div>
 
             <div
               v-if="
                 perspective === 'mine' &&
-                (res.hostDisplayName !== '—' || res.hostUserId != null || res.hostProfileImage)
+                (res.hostDisplayName !== '—' || res.hostProfileImage)
               "
-              class="flex items-center gap-3 rounded-xl border border-slate-200/80 bg-slate-50 p-3 text-left"
+              class="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/50 p-3 text-left"
               @click.stop
             >
               <img
                 v-if="res.hostProfileImage"
                 :src="res.hostProfileImage"
                 alt=""
-                class="size-10 shrink-0 rounded-full object-cover ring-2 ring-white"
+                class="size-9 shrink-0 rounded-full object-cover ring-2 ring-white shadow-sm"
               />
               <div
                 v-else
-                class="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#E3F2FD] text-[#1976D2]"
+                class="flex size-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-400"
               >
-                <User class="size-5" />
+                <User class="size-4" />
               </div>
               <div class="min-w-0">
-                <p class="text-[10px] font-bold uppercase tracking-wide text-slate-500">Hôte / annonceur</p>
-                <p class="truncate font-semibold text-slate-900">{{ res.hostDisplayName }}</p>
+                <p class="text-[9px] font-bold uppercase tracking-wide text-slate-400">Hôte</p>
+                <p class="truncate text-xs font-bold text-slate-800">{{ res.hostDisplayName }}</p>
               </div>
             </div>
             <div
               v-else-if="
                 perspective === 'host' &&
-                (res.guestDisplayName !== '—' || res.guestUserId != null || res.guestProfileImage)
+                (res.guestDisplayName !== '—' || res.guestProfileImage)
               "
-              class="flex items-center gap-3 rounded-xl border border-slate-200/80 bg-slate-50 p-3 text-left"
+              class="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/50 p-3 text-left"
               @click.stop
             >
               <img
                 v-if="res.guestProfileImage"
                 :src="res.guestProfileImage"
                 alt=""
-                class="size-10 shrink-0 rounded-full object-cover ring-2 ring-white"
+                class="size-9 shrink-0 rounded-full object-cover ring-2 ring-white shadow-sm"
               />
               <div
                 v-else
-                class="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#E3F2FD] text-[#1976D2]"
+                class="flex size-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-400"
               >
-                <User class="size-5" />
+                <User class="size-4" />
               </div>
               <div class="min-w-0">
-                <p class="text-[10px] font-bold uppercase tracking-wide text-slate-500">Demandeur</p>
-                <p class="truncate font-semibold text-slate-900">{{ res.guestDisplayName }}</p>
+                <p class="text-[9px] font-bold uppercase tracking-wide text-slate-400">Demandeur</p>
+                <p class="truncate text-xs font-bold text-slate-800">{{ res.guestDisplayName }}</p>
               </div>
             </div>
-
-            <p class="pt-2 text-center text-xs font-bold text-[#1976D2]">Toucher pour détails et actions</p>
           </div>
         </article>
         </div>
-      </div>
+
+        <!-- Pagination Controls -->
+        <div v-if="totalPages > 1" class="mt-10 flex items-center justify-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            class="h-10 w-10 rounded-xl border-slate-200 bg-white p-0 text-slate-600 hover:bg-slate-50 disabled:opacity-30"
+            :disabled="currentPage === 1"
+            @click="currentPage--"
+          >
+            <ChevronLeft class="size-4" />
+          </Button>
+
+          <div class="flex items-center gap-1.5">
+            <Button
+              v-for="p in totalPages"
+              :key="p"
+              variant="outline"
+              size="sm"
+              class="h-10 w-10 rounded-xl font-bold transition-all"
+              :class="
+                currentPage === p
+                  ? 'border-[#1976D2] bg-[#1976D2] text-white shadow-md'
+                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+              "
+              @click="currentPage = p"
+            >
+              {{ p }}
+            </Button>
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            class="h-10 w-10 rounded-xl border-slate-200 bg-white p-0 text-slate-600 hover:bg-slate-50 disabled:opacity-30"
+            :disabled="currentPage === totalPages"
+            @click="currentPage++"
+          >
+            <ChevronRight class="size-4" />
+          </Button>
+        </div>
+        </div>
     </div>
 
     <Teleport to="body">
@@ -601,163 +655,152 @@ const shellClass = computed(() =>
             </div>
             <button
               type="button"
-              class="absolute right-3 top-3 rounded-full bg-black/50 px-3 py-1.5 text-xs font-bold text-white backdrop-blur-sm"
+              class="absolute right-3 top-3 rounded-full bg-black/50 p-2 text-white backdrop-blur-sm"
               @click="closeDetail"
             >
-              Fermer
+              <X class="size-5" />
             </button>
             <Badge
               class="absolute left-3 top-3 rounded-full border px-3 py-1 text-[10px] font-bold uppercase"
               :class="statusBadgeClass(detailRes.status)"
             >
-              {{ detailRes.status }}
+              {{ detailRes.displayStatus }}
             </Badge>
           </div>
 
           <div class="space-y-4 p-6">
             <div>
               <p class="text-[10px] font-bold uppercase tracking-wider text-[#1976D2]">
-                {{ detailRes.type || detailRes.sourceCategory }} · #{{ detailRes.reservationId }}
+                REFR : #{{ detailRes.reservationId }} · {{ detailRes.propertyType || 'Bien' }}
               </p>
-              <h2 class="text-xl font-black text-slate-900">{{ detailRes.propertyTitle }}</h2>
+              <h2 class="text-xl font-black text-slate-900 leading-tight">{{ detailRes.propertyTitle }}</h2>
             </div>
 
             <div
               v-if="
                 perspective === 'mine' &&
-                (detailRes.hostDisplayName !== '—' ||
-                  detailRes.hostUserId != null ||
-                  detailRes.hostProfileImage)
+                (detailRes.hostDisplayName !== '—' || detailRes.hostProfileImage)
               "
-              class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4"
+              class="flex items-center gap-4 rounded-2xl border border-slate-100 bg-slate-50/50 p-4"
             >
               <img
                 v-if="detailRes.hostProfileImage"
                 :src="detailRes.hostProfileImage"
                 alt=""
-                class="size-12 shrink-0 rounded-full object-cover ring-2 ring-white"
+                class="size-14 shrink-0 rounded-full object-cover ring-4 ring-white shadow-sm"
               />
               <div
                 v-else
-                class="flex size-12 shrink-0 items-center justify-center rounded-full bg-[#E3F2FD] text-[#1976D2]"
+                class="flex size-14 shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-400"
               >
-                <User class="size-6" />
+                <User class="size-7" />
               </div>
               <div class="min-w-0">
-                <p class="text-[10px] font-bold uppercase text-slate-500">Hôte / annonceur du bien</p>
-                <p class="font-bold text-slate-900">{{ detailRes.hostDisplayName }}</p>
-                <p v-if="detailRes.hostUserId != null" class="text-xs text-slate-500">
-                  ID membre {{ detailRes.hostUserId }}
-                </p>
+                <p class="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Hôte / publié par</p>
+                <p class="text-lg font-black text-slate-900">{{ detailRes.hostDisplayName }}</p>
               </div>
             </div>
             <div
               v-else-if="
                 perspective === 'host' &&
-                (detailRes.guestDisplayName !== '—' ||
-                  detailRes.guestUserId != null ||
-                  detailRes.guestProfileImage)
+                (detailRes.guestDisplayName !== '—' || detailRes.guestProfileImage)
               "
-              class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4"
+              class="flex items-center gap-4 rounded-2xl border border-slate-100 bg-slate-50/50 p-4"
             >
               <img
                 v-if="detailRes.guestProfileImage"
                 :src="detailRes.guestProfileImage"
                 alt=""
-                class="size-12 shrink-0 rounded-full object-cover ring-2 ring-white"
+                class="size-14 shrink-0 rounded-full object-cover ring-4 ring-white shadow-sm"
               />
               <div
                 v-else
-                class="flex size-12 shrink-0 items-center justify-center rounded-full bg-[#E3F2FD] text-[#1976D2]"
+                class="flex size-14 shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-400"
               >
-                <User class="size-6" />
+                <User class="size-7" />
               </div>
               <div class="min-w-0">
-                <p class="text-[10px] font-bold uppercase text-slate-500">Personne ayant demandé la réservation</p>
-                <p class="font-bold text-slate-900">{{ detailRes.guestDisplayName }}</p>
-                <p v-if="detailRes.guestUserId != null" class="text-xs text-slate-500">
-                  ID membre {{ detailRes.guestUserId }}
-                </p>
+                <p class="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Demandeur</p>
+                <p class="text-lg font-black text-slate-900">{{ detailRes.guestDisplayName }}</p>
               </div>
             </div>
 
-            <div class="space-y-2 text-sm text-slate-600">
-              <div class="flex items-center gap-2">
-                <Calendar class="size-4 text-slate-400" />
-                <span>{{ formatDate(detailRes.startDate) }}</span>
-                <span v-if="detailRes.endDate && detailRes.endDate !== detailRes.startDate" class="text-slate-400"
-                  >→ {{ formatDate(detailRes.endDate) }}</span
-                >
+            <div class="grid grid-cols-2 gap-4">
+              <div class="rounded-2xl bg-slate-50 p-3">
+                <p class="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1">Date</p>
+                <div class="flex items-center gap-2 text-sm font-bold text-slate-700">
+                    <Calendar class="size-4 text-[#1976D2]" />
+                    <span>{{ formatDate(detailRes.startDate) }}</span>
+                </div>
               </div>
-              <div v-if="detailRes.reservationHeure" class="flex items-center gap-2">
-                <Clock class="size-4 text-slate-400" />
-                <span>{{ detailRes.reservationHeure }}</span>
-              </div>
-              <div class="flex items-center gap-2 text-xs text-slate-500">
-                <MapPin class="size-3.5" />
-                <span class="capitalize">{{ detailRes.sourceCategory }}</span>
+              <div v-if="detailRes.reservationHeure" class="rounded-2xl bg-slate-50 p-3">
+                 <p class="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1">Heure</p>
+                 <div class="flex items-center gap-2 text-sm font-bold text-slate-700">
+                    <Clock class="size-4 text-[#1976D2]" />
+                    <span>{{ detailRes.reservationHeure }}</span>
+                 </div>
               </div>
             </div>
 
             <div
               v-if="detailRes.message"
-              class="rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm text-slate-700"
+              class="rounded-2xl border border-slate-100 bg-slate-50/30 p-4 text-sm text-slate-700"
             >
-              <p class="text-[10px] font-bold uppercase text-slate-400">Message</p>
-              <p class="mt-1 whitespace-pre-wrap">{{ detailRes.message }}</p>
+              <p class="text-[10px] font-black uppercase text-slate-400 mb-1 tracking-wider">Message</p>
+              <p class="italic text-slate-600 leading-relaxed">« {{ detailRes.message }} »</p>
             </div>
             <div
               v-if="detailRes.cancellationReason"
               class="rounded-2xl border border-red-100 bg-red-50 p-4 text-sm text-red-900"
             >
-              <p class="text-[10px] font-bold uppercase">Annulation</p>
-              <p class="mt-1">{{ detailRes.cancellationReason }}</p>
+              <p class="text-[10px] font-bold uppercase mb-1">Motif d'annulation</p>
+              <p class="font-medium">{{ detailRes.cancellationReason }}</p>
             </div>
 
-            <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <div class="flex flex-col gap-3 sm:flex-row pt-2">
               <Button
                 type="button"
                 variant="outline"
-                class="h-12 flex-1 min-w-[140px] rounded-xl border-[#1976D2]/40 bg-[#E3F2FD] font-bold text-[#1565C0] hover:bg-[#BBDEFB]"
+                class="h-12 flex-1 rounded-xl border-[#1976D2]/20 bg-white font-bold text-[#1976D2] hover:bg-slate-50 shadow-sm"
                 :disabled="downloadingPdf"
                 @click="handleDownloadReservationPdf"
               >
                 <Loader2 v-if="downloadingPdf" class="mr-2 size-4 animate-spin" />
                 <Download v-else class="mr-2 size-4" />
-                Télécharger PDF
+                Dossier PDF
               </Button>
               <NuxtLink
                 v-if="detailRes.propertyDetailId != null"
                 :to="`/properties/${encodeId(detailRes.propertyDetailId)}`"
-                class="inline-flex h-12 flex-1 min-w-[140px] items-center justify-center rounded-xl bg-[#1976D2] text-sm font-bold text-white shadow-lg hover:bg-[#1565C0]"
+                class="inline-flex h-12 flex-1 items-center justify-center rounded-xl bg-[#1976D2] text-sm font-bold text-white shadow-lg hover:bg-[#1565C0] active:scale-95 transition-transform"
                 @click="closeDetail"
               >
-                Voir le bien
+                Consulter le bien
               </NuxtLink>
             </div>
 
             <div
               v-if="perspective === 'host' && detailRes.status === 'PENDING'"
-              class="flex flex-col gap-2 border-t border-slate-100 pt-4"
+              class="flex flex-col gap-3 border-t border-slate-100 pt-6"
             >
-              <p class="text-xs font-bold uppercase text-slate-500">Réponse hôte</p>
-              <p class="text-[11px] text-slate-500">
-                Comme sur l’app mobile : validation HTTP puis notification STOMP vers l’autre partie.
-              </p>
-              <div class="flex gap-2">
+              <div class="flex items-center gap-2 mb-2">
+                  <div class="size-2 rounded-full bg-amber-400 animate-pulse"></div>
+                  <p class="text-xs font-black uppercase text-slate-500 tracking-wider">Action requise</p>
+              </div>
+              <div class="flex gap-3">
                 <Button
                   type="button"
-                  class="h-12 flex-1 rounded-xl bg-emerald-600 font-bold text-white hover:bg-emerald-700"
+                  class="h-14 flex-[2] rounded-2xl bg-emerald-600 font-black text-white hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition-all hover:-translate-y-0.5"
                   :disabled="validating"
                   @click="hostValidate(true)"
                 >
-                  <Loader2 v-if="validating" class="mr-2 size-4 animate-spin" />
+                  <Loader2 v-if="validating" class="mr-2 size-5 animate-spin" />
                   Valider
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
-                  class="h-12 flex-1 rounded-xl border-red-200 font-bold text-red-700 hover:bg-red-50"
+                  class="h-14 flex-1 rounded-2xl border-red-200 font-bold text-red-700 hover:bg-red-50 transition-colors"
                   :disabled="validating"
                   @click="hostValidate(false)"
                 >
@@ -771,18 +814,17 @@ const shellClass = computed(() =>
                 perspective === 'mine' &&
                 (detailRes.status === 'PENDING' || detailRes.status === 'CONFIRMED')
               "
-              class="flex flex-col gap-2 border-t border-slate-100 pt-4"
+              class="border-t border-slate-100 pt-6"
             >
-              <p class="text-xs font-bold uppercase text-slate-500">Annuler ma demande</p>
               <Button
                 type="button"
-                variant="outline"
-                class="h-12 w-full rounded-xl border-red-200 font-bold text-red-700 hover:bg-red-50"
+                variant="ghost"
+                class="h-12 w-full rounded-xl font-bold text-red-500 hover:text-red-700 hover:bg-red-50"
                 :disabled="cancelling"
                 @click="guestCancelReservation"
               >
                 <Loader2 v-if="cancelling" class="mr-2 size-4 animate-spin" />
-                Annuler la réservation
+                Annuler ma réservation
               </Button>
             </div>
           </div>

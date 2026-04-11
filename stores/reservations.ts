@@ -17,6 +17,7 @@ import {
 export interface ReservationListItem {
     reservationId: number
     status: string
+    displayStatus: string
     type?: string
     message?: string
     startDate?: string
@@ -29,6 +30,8 @@ export interface ReservationListItem {
     propertyImage?: string
     /** Id du bien pour lien `/properties/:id`. */
     propertyDetailId?: number
+    /** Type du bien (Studio, Appartement, Terrain, etc.) */
+    propertyType?: string
     /** Demandeur (réservation) — surtout utile en vue hôte. */
     guestDisplayName?: string
     guestProfileImage?: string
@@ -38,7 +41,17 @@ export interface ReservationListItem {
     hostProfileImage?: string
     hostUserId?: number
     sourceCategory: string
+    userImage?: string
     raw: Record<string, unknown>
+}
+
+function getStatusLabel(status: string): string {
+    const s = String(status || '').toUpperCase()
+    if (s === 'PENDING') return 'En attente'
+    if (s === 'CONFIRMED' || s === 'ACCEPTED') return 'Confirmé'
+    if (s === 'COMPLETED' || s === 'FINISHED') return 'Terminé'
+    if (s === 'CANCELLED' || s === 'REJECTED') return 'Annulé'
+    return s || 'Inconnu'
 }
 
 function extractReservationArray(payload: unknown): unknown[] {
@@ -89,6 +102,15 @@ function normalizeReservation(raw: unknown, sourceCategory: string): Reservation
 
     const propertyDetailId = resolveReservationPropertyDetailId(merged)
 
+    let propertyType = (listingEnt?.type as string) || (merged?.typeProperty as string) || (prop?.type as string)
+    if (!propertyType && (listingEnt as any)?.category) {
+        propertyType = (listingEnt as any).category
+    }
+    // UX Cleanup: Avoid 'STANDARD' as a label
+    if (propertyType && String(propertyType).toUpperCase() === 'STANDARD') {
+        propertyType = 'Propriété'
+    }
+
     const guestUserRec = pickMemberRecord(
         merged.user,
         merged.member,
@@ -121,10 +143,15 @@ function normalizeReservation(raw: unknown, sourceCategory: string): Reservation
         return Number.isFinite(p) ? p : undefined
     })()
 
+    // Extract userImage from root or sub-objects
+    const userImage = (r.userImage || merged.userImage || guestUserRec?.userImage) as string | undefined
+
     return {
         reservationId: numId,
         status: String(merged.status ?? 'UNKNOWN').toUpperCase(),
+        displayStatus: getStatusLabel(String(merged.status ?? 'UNKNOWN')),
         type: merged.type as string | undefined,
+        propertyType,
         message: merged.message as string | undefined,
         startDate: merged.startDate as string | undefined,
         endDate: merged.endDate as string | undefined,
@@ -135,12 +162,13 @@ function normalizeReservation(raw: unknown, sourceCategory: string): Reservation
         propertyImage,
         propertyDetailId,
         guestDisplayName: memberDisplayName(guestUserRec, guestUserId),
-        guestProfileImage: memberAvatar(guestUserRec),
+        guestProfileImage: userImage || memberAvatar(guestUserRec),
         guestUserId,
         hostDisplayName: memberDisplayName(hostUserRec, hostUserId),
         hostProfileImage: memberAvatar(hostUserRec),
         hostUserId,
         sourceCategory,
+        userImage,
         raw: r,
     }
 }
@@ -167,7 +195,9 @@ export interface ReservationRequest {
 export const useReservationStore = defineStore('reservations', {
     state: () => ({
         isSubmitting: false,
-        lastError: null as string | null
+        lastError: null as string | null,
+        userReservations: [] as ReservationListItem[],
+        hostReservations: [] as ReservationListItem[],
     }),
 
     actions: {
@@ -202,7 +232,7 @@ export const useReservationStore = defineStore('reservations', {
             this.isSubmitting = true
             this.lastError = null
 
-            let path = ApiEndpoints.createReservation
+            let path: string = ApiEndpoints.createReservation
             const userId = auth.user.userId || (auth.user as any).id || (auth.user as any).userId
             
             const body: any = {
@@ -258,6 +288,8 @@ export const useReservationStore = defineStore('reservations', {
                 })
 
                 this.isSubmitting = false
+                // Trigger refresh after creation
+                this.fetchUserReservations(true)
                 return { success: true, data: response }
             } catch (error: any) {
                 this.isSubmitting = false
@@ -275,7 +307,9 @@ export const useReservationStore = defineStore('reservations', {
         /**
          * Toutes les réservations du membre (standard + spécialisées), comme ReservationController.getMyReservations().
          */
-        async fetchUserReservations(): Promise<ReservationListItem[]> {
+        async fetchUserReservations(force = false): Promise<ReservationListItem[]> {
+            if (!force && this.userReservations.length > 0) return this.userReservations
+
             const auth = useAuthStore()
             const config = useRuntimeConfig()
 
@@ -339,6 +373,7 @@ export const useReservationStore = defineStore('reservations', {
                 return db.localeCompare(da)
             })
 
+            this.userReservations = deduped
             return deduped
         },
 
@@ -346,7 +381,9 @@ export const useReservationStore = defineStore('reservations', {
          * Réservations reçues en tant qu’hôte (sur vos annonces) — aligné sur
          * ReservationController.getHostReservations() (endpoints `.../user/host/{id}`).
          */
-        async fetchHostReservations(): Promise<ReservationListItem[]> {
+        async fetchHostReservations(force = false): Promise<ReservationListItem[]> {
+            if (!force && this.hostReservations.length > 0) return this.hostReservations
+
             const auth = useAuthStore()
             const config = useRuntimeConfig()
 
@@ -404,6 +441,7 @@ export const useReservationStore = defineStore('reservations', {
                 return db.localeCompare(da)
             })
 
+            this.hostReservations = deduped
             return deduped
         },
 
@@ -411,8 +449,15 @@ export const useReservationStore = defineStore('reservations', {
          * Réservations chambre / hôtel reçues en tant qu’hôte uniquement
          * (`GET .../protected/reservations/chambre/user/host/{userId}`).
          */
-        async fetchHostChambreReservationsOnly(): Promise<ReservationListItem[]> {
+        async fetchHostChambreReservationsOnly(force = false): Promise<ReservationListItem[]> {
             const auth = useAuthStore()
+            const userId = auth.user?.userId || (auth.user as { id?: number })?.id
+            
+            if (!force && this.hostReservations.length > 0) {
+                 const cached = this.hostReservations.filter(r => r.sourceCategory === 'chambre')
+                 if (cached.length > 0) return cached
+            }
+
             const config = useRuntimeConfig()
 
             if (!auth.isAuthenticated || !auth.user) {
@@ -424,7 +469,6 @@ export const useReservationStore = defineStore('reservations', {
             const user = auth.user
             if (!user) return []
 
-            const userId = user.userId || (user as { id?: number }).id
             if (userId == null) return []
 
             const apiBase = config.public.apiBase as string
@@ -456,9 +500,9 @@ export const useReservationStore = defineStore('reservations', {
             return {
                 all: list.length,
                 pending: list.filter((r) => norm(r.status) === 'PENDING').length,
-                confirmed: list.filter((r) => norm(r.status) === 'CONFIRMED').length,
-                completed: list.filter((r) => norm(r.status) === 'COMPLETED').length,
-                cancelled: list.filter((r) => norm(r.status) === 'CANCELLED').length,
+                confirmed: list.filter((r) => norm(r.status) === 'CONFIRMED' || norm(r.status) === 'ACCEPTED').length,
+                completed: list.filter((r) => norm(r.status) === 'COMPLETED' || norm(r.status) === 'FINISHED').length,
+                cancelled: list.filter((r) => norm(r.status) === 'CANCELLED' || norm(r.status) === 'REJECTED').length,
             }
         },
 

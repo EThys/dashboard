@@ -79,6 +79,19 @@ export function isSolicitationLikeNotification(data: Record<string, unknown>): b
     return false
 }
 
+export function isSubscriptionNotification(data: Record<string, unknown>): boolean {
+    for (const d of notificationBlobs(data)) {
+        const type = String(d.type ?? d.notificationType ?? '').toUpperCase()
+        const text = blobText(d)
+        const tag = String(d.tag ?? '').toUpperCase()
+        if (type.includes('SUBSCRIPTION') || type.includes('PAYMENT')) return true
+        if (text.includes('abonnement') || text.includes('paiement') || text.includes('subscription')) return true
+        if (d.subscriptionStatus != null || d.paymentStatus != null) return true
+        if (tag.includes('SUBSCRIPTION')) return true
+    }
+    return false
+}
+
 export function addStompNotificationHandler(handler: StompHandler): () => void {
     handlers.add(handler)
     return () => handlers.delete(handler)
@@ -138,12 +151,14 @@ export function syncStompUserQueue(
         reconnectDelay: 5000,
         heartbeatIncoming: 30000,
         heartbeatOutgoing: 30000,
-        debug: () => {
-            /* désactivé en prod */
+        debug: (str) => {
+            // console.log('[WS Debug]', str)
         },
         onConnect: () => {
+            console.log('[WS Connected]')
             c.subscribe(STOMP_USER_NOTIFICATIONS_DESTINATION, (message: IMessage) => {
                 if (!message.body) return
+                console.log('[Message Received]', message.body)
                 try {
                     const data = JSON.parse(message.body) as Record<string, unknown>
                     dispatchToHandlers(data)

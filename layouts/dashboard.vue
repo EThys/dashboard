@@ -83,9 +83,11 @@ const menuGroups = computed(() => {
   if (isGerantOnly.value) {
     return {
       hotel: [
-        { name: 'Vue d’ensemble', path: '/dashboard/hotel', icon: LayoutDashboard },
+        { name: 'Aperçu', path: '/dashboard/hotel', icon: LayoutDashboard },
         { name: 'Mes établissements', path: '/dashboard/hotel/hotels', icon: Building2 },
         { name: 'Réservations reçues', path: '/dashboard/hotel/reservations', icon: Calendar },
+        { name: 'Abonnement', path: '/compte/abonnement', icon: CreditCard },
+        { name: 'Historique paiements', path: '/compte/paiements', icon: Receipt },
       ],
     }
   }
@@ -147,7 +149,7 @@ const currentMenuTitle = computed(() => {
 })
 
 const currentMenuItems = computed(() => {
-  const g = menuGroups.value as Record<string, { name: string; path: string; icon: unknown }[]>
+  const g = menuGroups.value as unknown as Record<string, { name: string; path: string; icon: unknown }[]>
   return g[selectedRailTab.value] ?? []
 })
 

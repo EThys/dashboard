@@ -9,6 +9,9 @@ import {
     User,
     Banknote,
     Download,
+    X,
+    ChevronLeft,
+    ChevronRight,
 } from 'lucide-vue-next'
 import { Button, Badge } from '@/components/ui'
 import { useSolicitationStore, type SolicitationListItem } from '@/stores/solicitations'
@@ -30,6 +33,17 @@ const solStore = useSolicitationStore()
 const auth = useAuthStore()
 const list = ref<SolicitationListItem[]>([])
 const loading = ref(true)
+const showBannerSubtitle = ref(true)
+
+onMounted(() => {
+    const seen = localStorage.getItem('casanayo_sol_banner_seen')
+    if (seen) {
+        showBannerSubtitle.value = false
+    } else {
+        localStorage.setItem('casanayo_sol_banner_seen', 'true')
+    }
+})
+
 const activeTab = ref(0)
 const perspective = ref<'mine' | 'host'>('mine')
 
@@ -44,22 +58,28 @@ function getCurrencyCode(deviseId?: number): 'CDF' | 'USD' {
     return deviseId === 1 ? 'CDF' : 'USD'
 }
 
-async function load(keepPreviousList = false) {
-    if (!keepPreviousList) {
-        list.value = []
+/** Pagination */
+const currentPage = ref(1)
+const itemsPerPage = 6
+
+async function load(force = false) {
+    const hasData = perspective.value === 'mine' 
+        ? solStore.userSolicitations.length > 0 
+        : solStore.hostSolicitations.length > 0
+
+    if (!hasData || force) {
+        loading.value = true
     }
-    loading.value = true
-    await nextTick()
+
     try {
         const data =
             perspective.value === 'mine'
-                ? await solStore.fetchUserSolicitations()
-                : await solStore.fetchHostSolicitations()
+                ? await solStore.fetchUserSolicitations(force)
+                : await solStore.fetchHostSolicitations(force)
         list.value = data
+        currentPage.value = 1
     } catch (e) {
         console.error(e)
-        toast.error('Impossible de charger les sollicitations.')
-        list.value = []
     } finally {
         loading.value = false
     }
@@ -80,8 +100,13 @@ onUnmounted(() => {
 
 watch(perspective, () => {
     activeTab.value = 0
+    currentPage.value = 1
     closeDetail()
     load(false)
+})
+
+watch(activeTab, () => {
+    currentPage.value = 1
 })
 
 const statsLoading = computed(() => loading.value && list.value.length === 0)
@@ -98,10 +123,17 @@ function filterByTab(items: SolicitationListItem[], tabKey: string) {
     return sorted.filter((s) => s.status === tabKey)
 }
 
-const displayed = computed(() => {
+const filteredList = computed(() => {
     const key = tabs[activeTab.value]?.key
     if (!key) return []
     return filterByTab(list.value, key)
+})
+
+const totalPages = computed(() => Math.ceil(filteredList.value.length / itemsPerPage))
+
+const displayed = computed(() => {
+    const start = (currentPage.value - 1) * itemsPerPage
+    return filteredList.value.slice(start, start + itemsPerPage)
 })
 
 function formatDate(dateStr?: string) {
@@ -118,12 +150,15 @@ function formatDate(dateStr?: string) {
 }
 
 function statusBadgeClass(status: string) {
-    switch (status) {
+    const s = String(status || '').toUpperCase()
+    switch (s) {
         case 'PENDING':
             return 'bg-amber-50 text-amber-800 border-amber-200'
         case 'ACCEPTED':
+        case 'CONFIRMED':
             return 'bg-emerald-50 text-emerald-800 border-emerald-200'
         case 'REJECTED':
+        case 'CANCELLED':
             return 'bg-red-50 text-red-800 border-red-200'
         default:
             return 'bg-slate-50 text-slate-700 border-slate-200'
@@ -139,7 +174,7 @@ async function setStatus(item: SolicitationListItem, status: 'ACCEPTED' | 'REJEC
     if (r.success) {
         toast.success(status === 'ACCEPTED' ? 'Sollicitation acceptée' : 'Sollicitation refusée', {
             description:
-                'Le serveur notifie l’autre partie en temps réel (file STOMP, comme sur l’app mobile).',
+                'Confirmation envoyée à l’autre partie.',
         })
         closeDetail()
         await load(true)
@@ -182,7 +217,6 @@ function counterpartySubline(item: SolicitationListItem): string | null {
             return `@${item.providerUsername}`
         return null
     }
-    if (item.userId != null) return `ID demandeur : ${item.userId}`
     if (item.requesterUsername && item.requesterDisplayName && item.requesterDisplayName !== item.requesterUsername)
         return `@${item.requesterUsername}`
     return null
@@ -211,8 +245,7 @@ async function handleDownloadSolicitationPdf() {
   <div :class="shellClass">
     <div :class="embedded ? '' : 'mx-auto max-w-6xl px-4 sm:px-6'">
       <div
-        class="overflow-hidden rounded-3xl bg-gradient-to-br from-[#1976D2] to-[#1565C0] p-6 text-white shadow-xl sm:p-8"
-        :class="embedded ? 'mb-8' : 'mb-8'"
+        class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1976D2] to-[#1565C0] p-6 text-white shadow-xl sm:p-8 mb-8"
       >
         <div class="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
           <div class="flex items-start gap-4">
@@ -229,7 +262,7 @@ async function handleDownloadSolicitationPdf() {
                     : 'Sollicitations sur mes prestations'
                 }}
               </h1>
-              <p class="mt-1 max-w-xl text-sm text-blue-100">
+              <p v-if="showBannerSubtitle" class="mt-1 max-w-xl text-sm text-blue-100 italic opacity-90 transition-all duration-700">
                 {{
                   perspective === 'mine'
                     ? 'Vos demandes auprès des prestataires (endpoint utilisateur).'
@@ -275,7 +308,7 @@ async function handleDownloadSolicitationPdf() {
       </div>
 
       <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Vue</p>
+        <p class="text-xs font-bold uppercase tracking-wider text-slate-500"></p>
         <div
           class="inline-flex rounded-2xl border border-slate-200 bg-white p-1 shadow-sm"
           role="tablist"
@@ -361,7 +394,7 @@ async function handleDownloadSolicitationPdf() {
             <Wrench class="mb-4 size-14 text-[#1976D2]/30" />
             <p class="text-lg font-bold text-slate-800">Aucune sollicitation ici</p>
             <p class="mt-2 max-w-sm text-sm text-slate-500">
-              Changez d’onglet ou de vue (mes demandes / hôte).
+              Changez d’onglet ou de liste (mes demandes / hôte).
             </p>
             <NuxtLink
               v-if="!embedded && perspective === 'mine'"
@@ -402,7 +435,7 @@ async function handleDownloadSolicitationPdf() {
                 class="rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-wide"
                 :class="statusBadgeClass(item.status)"
               >
-                {{ item.status }}
+                {{ item.displayStatus }}
               </Badge>
             </div>
             <!-- Prestataire (mes sollicitations) ou demandeur (sur mes prestations) -->
@@ -441,8 +474,7 @@ async function handleDownloadSolicitationPdf() {
               </div>
               <div class="min-w-0 flex-1">
                 <p class="text-[10px] font-bold uppercase tracking-wider text-[#1976D2]">
-                  #{{ item.id }}
-                  <span v-if="item.prestationId"> · Prestation {{ item.prestationId }}</span>
+                  REFR : #{{ item.id }}
                 </p>
                 <h3 class="line-clamp-2 font-bold leading-snug text-slate-900">
                   {{ item.prestationTitle || 'Service' }}
@@ -507,7 +539,48 @@ async function handleDownloadSolicitationPdf() {
           </div>
         </article>
         </div>
-      </div>
+
+        <!-- Pagination Controls -->
+        <div v-if="totalPages > 1" class="mt-10 flex items-center justify-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            class="h-10 w-10 rounded-xl border-slate-200 bg-white p-0 text-slate-600 hover:bg-slate-50 disabled:opacity-30"
+            :disabled="currentPage === 1"
+            @click="currentPage--"
+          >
+            <ChevronLeft class="size-4" />
+          </Button>
+
+          <div class="flex items-center gap-1.5">
+            <Button
+              v-for="p in totalPages"
+              :key="p"
+              variant="outline"
+              size="sm"
+              class="h-10 w-10 rounded-xl font-bold transition-all"
+              :class="
+                currentPage === p
+                  ? 'border-[#1976D2] bg-[#1976D2] text-white shadow-md'
+                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+              "
+              @click="currentPage = p"
+            >
+              {{ p }}
+            </Button>
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            class="h-10 w-10 rounded-xl border-slate-200 bg-white p-0 text-slate-600 hover:bg-slate-50 disabled:opacity-30"
+            :disabled="currentPage === totalPages"
+            @click="currentPage++"
+          >
+            <ChevronRight class="size-4" />
+          </Button>
+        </div>
+        </div>
     </div>
 
     <Teleport to="body">
@@ -541,7 +614,7 @@ async function handleDownloadSolicitationPdf() {
               class="absolute left-3 top-3 rounded-full border px-3 py-1 text-[10px] font-bold uppercase"
               :class="statusBadgeClass(detailItem.status)"
             >
-              {{ detailItem.status }}
+              {{ detailItem.displayStatus }}
             </Badge>
             <div
               v-if="counterpartyAvatar(detailItem)"
@@ -557,7 +630,7 @@ async function handleDownloadSolicitationPdf() {
 
           <div class="space-y-4 p-6">
             <div>
-              <p class="text-[10px] font-bold uppercase tracking-wider text-[#1976D2]">#{{ detailItem.id }}</p>
+              <p class="text-[10px] font-bold uppercase tracking-wider text-[#1976D2]">REFR : #{{ detailItem.id }}</p>
               <h2 class="text-xl font-black text-slate-900">{{ detailItem.prestationTitle || 'Service' }}</h2>
               <p class="mt-1 text-sm font-semibold text-slate-800">{{ counterpartyLabel(detailItem) }}</p>
               <p v-if="counterpartySubline(detailItem)" class="mt-0.5 text-xs text-slate-500">
@@ -620,7 +693,7 @@ async function handleDownloadSolicitationPdf() {
             >
               <p class="mb-1 text-xs font-bold uppercase text-slate-500">Réponse prestataire</p>
               <p class="mb-3 text-[11px] text-slate-500">
-                Comme sur l’app mobile : réponse HTTP puis notification STOMP vers l’autre partie.
+                Comme sur l’app mobile : réponse HTTP puis notification immédiate vers l’autre partie.
               </p>
               <div class="flex gap-2">
                 <Button
