@@ -7,6 +7,7 @@ export interface DeviseRow {
     name?: string
     code: string
     tauxLocal?: number
+    taux?: number
 }
 
 export interface PaymentRow {
@@ -18,6 +19,8 @@ export interface PaymentRow {
     typePayment?: string
     status?: string
     dateCreated?: string
+    dateUpdated?: string
+    userId?: number
 }
 
 function convertAmount(devises: DeviseRow[], amount: number, fromCode: string, toCode: string): number {
@@ -104,7 +107,7 @@ export const usePaymentStore = defineStore('payment', {
                 })
                 if (data && typeof data === 'object' && 'code' in data) {
                     const code = (data as any).code
-                    if (code !== 200 && code !== 201 && code !== '200' && code !== '201' && code !== 0) {
+                    if (code !== 200 && code !== 201 && code !== '200' && code !== '201' && code !== 0 && code !== '0') {
                         return {
                             success: false as const,
                             message: String((data as any).message ?? 'Erreur lors du paiement'),
@@ -118,6 +121,43 @@ export const usePaymentStore = defineStore('payment', {
                     error?.data?.error ||
                     error?.message ||
                     'Impossible de contacter le serveur de paiement.'
+                return { success: false as const, message: String(msg) }
+            } finally {
+                this.isLoadingSubscribe = false
+            }
+        },
+
+        async payWithCard(apiBase: string, deviseId: number) {
+            const auth = useAuthStore()
+            if (!auth.token) {
+                return { success: false as const, message: 'Session expirée. Reconnectez-vous.' }
+            }
+            this.isLoadingSubscribe = true
+            try {
+                const data: any = await $fetch(joinApi(apiBase, ApiEndpoints.paymentCard), {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${auth.token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: { deviseId },
+                })
+                if (data && typeof data === 'object' && 'code' in data) {
+                    const code = (data as any).code
+                    if (code !== 200 && code !== 201 && code !== '200' && code !== '201' && code !== 0 && code !== '0') {
+                        return {
+                            success: false as const,
+                            message: String((data as any).message ?? 'Erreur lors du paiement par carte'),
+                        }
+                    }
+                }
+                return { success: true as const, data }
+            } catch (error: any) {
+                const msg =
+                    error?.data?.message ||
+                    error?.data?.error ||
+                    error?.message ||
+                    'Impossible de contacter le serveur de paiement par carte.'
                 return { success: false as const, message: String(msg) }
             } finally {
                 this.isLoadingSubscribe = false

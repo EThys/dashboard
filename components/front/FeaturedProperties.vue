@@ -41,12 +41,12 @@ const properties = computed(() => {
 
     const typeStr = (p.propertyType?.name || '').toLowerCase()
     const titleStr = (p.title || '').toLowerCase()
-    const isSpecial = ['hotel', 'hôtels', 'salle de fête', 'salles de fête', 'espace funéraire', 'espaces funéraires', 'hôtel'].some(keyword => typeStr.includes(keyword) || titleStr.includes(keyword)) || item.hotel || item.funeraire || item.festive
+    const isSpecial = ['hotel', 'hôtels', 'salle de fête', 'salles de fête', 'espace funéraire', 'espaces funéraires', 'hôtel', 'bureau', 'terrain'].some(keyword => typeStr.includes(keyword) || titleStr.includes(keyword)) || item.hotel || item.funeraire || item.festive || item.bureau || item.terrain
 
     if (isSpecial) {
         if (isLocationTransactionType(p.transactionType)) {
             frequency = ''
-            priceLabel = 'Prix de la location'
+            priceLabel = 'Prix'
         } else {
             priceLabel = 'Montant de la vente'
         }

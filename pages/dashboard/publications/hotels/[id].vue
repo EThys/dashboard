@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { ArrowLeft, MapPin, Building2, Loader2 } from 'lucide-vue-next'
+import { ArrowLeft, MapPin, Building2, Loader2, BedDouble } from 'lucide-vue-next'
 import { Button, Badge } from '@/components/ui'
 import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
 import { useAuthStore } from '@/stores/auth'
@@ -28,6 +28,21 @@ const { data, pending, error, refresh } = await useAsyncData(
       return Number(hid) === id.value
     })
     return found ?? null
+  },
+  { watch: [id] }
+)
+
+const { data: roomsRes, pending: pendingRooms } = await useAsyncData(
+  'admin-hotel-rooms',
+  async () => {
+    const apiBase = config.public.apiBase as string
+    const url = joinApi(apiBase, ApiEndpoints.propertyHotelRoomsPublic)
+    const res: any = await $fetch(url).catch(() => null)
+    const list = res?.data ?? res?.chambre ?? res?.chambres ?? res ?? []
+    const arr = Array.isArray(list) ? list : []
+    return arr
+      .map((x: any) => x.chambre ?? x)
+      .filter((ch: any) => Number(ch.hotelId ?? ch.hotel?.id) === id.value)
   },
   { watch: [id] }
 )
@@ -94,6 +109,48 @@ const address = computed(() => {
           <div class="flex justify-between gap-4"><dt class="text-muted-foreground">Ville</dt><dd>{{ hotel?.cityValue ?? '—' }}</dd></div>
           <div class="flex justify-between gap-4"><dt class="text-muted-foreground">Pays</dt><dd>{{ hotel?.countryValue ?? '—' }}</dd></div>
         </dl>
+      </div>
+    </div>
+
+    <!-- Chambres -->
+    <div v-if="!pending && data" class="space-y-4">
+      <div class="flex items-center justify-between">
+        <h2 class="text-xl font-black">Chambres disponibles</h2>
+        <Badge variant="outline" class="rounded-full">{{ roomsRes?.length || 0 }} type(s)</Badge>
+      </div>
+
+      <div v-if="pendingRooms" class="flex justify-center py-12">
+        <Loader2 class="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+      <div v-else-if="!roomsRes?.length" class="rounded-3xl border border-dashed p-12 text-center text-sm text-muted-foreground">
+        Aucune chambre enregistrée pour cet hôtel.
+      </div>
+      <div v-else class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div 
+          v-for="r in roomsRes" 
+          :key="r.id"
+          class="group overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition hover:shadow-md"
+        >
+          <div class="aspect-[4/3] bg-muted relative overflow-hidden">
+            <img 
+              v-if="r.image" 
+              :src="r.image" 
+              class="h-full w-full object-cover transition group-hover:scale-105" 
+            />
+            <div v-else class="flex h-full items-center justify-center text-muted-foreground/30">
+              <BedDouble class="h-10 w-10" />
+            </div>
+            <div class="absolute bottom-2 left-2 px-2 py-1 rounded-lg bg-black/60 backdrop-blur-md text-[10px] font-bold text-white">
+              {{ r.price }} {{ r.deviseId === 1 ? 'CDF' : 'USD' }}
+            </div>
+          </div>
+          <div class="p-4 space-y-1">
+            <h4 class="font-bold text-sm truncate">{{ r.title }}</h4>
+            <p class="text-[10px] text-muted-foreground line-clamp-2 leading-relaxed">
+              {{ r.description || 'Pas de description.' }}
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   </div>

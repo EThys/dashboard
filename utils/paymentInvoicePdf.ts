@@ -59,7 +59,8 @@ export async function downloadPaymentReceiptPdf(payment: PaymentRow, username: s
     doc.setTextColor(230, 240, 255)
     doc.text('Confirmation Officielle de Transaction', M + 20, y + 52)
 
-    const logoData = await loadImageDataUrl('https://casanayo.com/logoCasa.png')
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://casanayo.com'
+    const logoData = await loadImageDataUrl(`${origin}/logoCasa.png`)
     if (logoData) {
         try {
             doc.addImage(logoData, 'PNG', W - M - 52, y + 12, 40, 40)
@@ -166,6 +167,7 @@ export async function downloadPaymentReceiptPdf(payment: PaymentRow, username: s
     doc.setFontSize(8)
     doc.text('CasaNayo Support : +243 836 323 805', M, y)
     doc.text('Email : contact@casanayo.com', M, y + 12)
+    doc.text('Adresse : 14 Avenue Pumbu, Gombe, Kinshasa - RDC', W - M, y + 12, { align: 'right' })
     doc.text('Généré par CasaNayo - www.casanayo.com', W - M, y, { align: 'right' })
 
     const gen = new Date().toLocaleString('fr-FR').replace(/[/:,\s]/g, '_')

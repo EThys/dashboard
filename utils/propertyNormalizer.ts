@@ -153,7 +153,7 @@ export function normalizeBureau(item: BureauResponse): NormalizedProperty {
         location,
         fullAddress: `${item.address.address}, ${location}`,
         price: priceDisplay,
-        frequency: item.bureau.transactionType === 'location' ? '/mois' : '',
+        frequency: '',
         currencyCode: currencyCode,
         currencySymbol: symbol,
         currencyLabel: currencyCode === 'USD' ? 'Dollars américains' : 'Franc congolais',
@@ -232,7 +232,7 @@ export function normalizeFestive(item: FestiveResponse): NormalizedProperty {
         location,
         fullAddress: `${item.address.address}, ${location}`,
         price: priceDisplay,
-        frequency: item.festive.transactionType === 'location' ? '/mois' : '',
+        frequency: '',
         currencyCode: currencyCode,
         currencySymbol: symbol,
         currencyLabel: currencyCode === 'USD' ? 'Dollars américains' : 'Franc congolais',
@@ -313,7 +313,7 @@ export function normalizeFuneraire(item: FuneraireResponse): NormalizedProperty 
         location,
         fullAddress: `${item.address.address}, ${location}`,
         price: priceDisplay,
-        frequency: item.funeraire.transactionType === 'location' ? '/mois' : '',
+        frequency: '',
         currencyCode: currencyCode,
         currencySymbol: symbol,
         currencyLabel: currencyCode === 'USD' ? 'Dollars américains' : 'Franc congolais',
@@ -389,7 +389,7 @@ export function normalizeTerrain(item: TerrainResponse): NormalizedProperty {
         location,
         fullAddress: `${item.address.address}, ${location}`,
         price: priceDisplay,
-        frequency: item.terrain.transactionType === 'location' ? '/mois' : '',
+        frequency: '',
         currencyCode: currencyCode,
         currencySymbol: symbol,
         currencyLabel: currencyCode === 'USD' ? 'Dollars américains' : 'Franc congolais',
@@ -552,7 +552,7 @@ export function normalizeHotel(item: HotelResponse): NormalizedProperty {
 }
 
 function hotelAgentName(item: HotelResponse): string {
-    const raw = item as Record<string, unknown>
+    const raw = item as unknown as Record<string, unknown>
     const post = typeof item.postBy === 'string' ? item.postBy.replace('@@', '@').trim() : ''
     if (post) return post
     const mem = raw.member as { fullName?: string; username?: string } | undefined

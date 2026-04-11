@@ -1,6 +1,7 @@
 import { watch } from 'vue'
 import { useAuthStore } from '~/stores/auth'
-import { syncStompUserQueue } from '~/utils/stompUserQueue'
+import { useNotificationStore } from '~/stores/notifications'
+import { syncStompUserQueue, addStompNotificationHandler } from '~/utils/stompUserQueue'
 
 /**
  * Même principe que NotificationController + StompService (Flutter) :
@@ -8,7 +9,15 @@ import { syncStompUserQueue } from '~/utils/stompUserQueue'
  */
 export default defineNuxtPlugin(() => {
     const auth = useAuthStore()
+    const notifStore = useNotificationStore()
     const config = useRuntimeConfig()
+
+    // Enregistre les notifications arrivant en temps réel dans le store
+    if (import.meta.client) {
+        addStompNotificationHandler((data) => {
+            notifStore.addNotification(data)
+        })
+    }
 
     watch(
         () => auth.token,

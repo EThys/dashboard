@@ -72,38 +72,38 @@ watch(totalPages, (tp) => {
 
 <template>
   <div class="min-h-screen">
-    <!-- Hero (aligné propriétés / services) -->
-    <section class="relative overflow-hidden bg-slate-900 py-24">
+    <!-- Hero -->
+    <section class="relative overflow-hidden bg-slate-900">
       <div class="absolute inset-0 z-0">
-        <img src="@/assets/congo.jpg" class="h-full w-full object-cover opacity-40" alt="Tourisme Congo" />
-        <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent" />
+        <img src="@/assets/congo.jpg" class="h-full w-full object-cover opacity-20" alt="Tourisme Congo" loading="eager" fetchpriority="high" decoding="async" />
+        <div class="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-900/85 to-slate-900/40" />
       </div>
-      <div class="absolute inset-0 z-0 bg-gradient-to-r from-primary/20 to-blue-600/20" />
-      <div class="absolute right-0 top-0 z-0 h-96 w-96 rounded-full bg-primary/20 opacity-50 blur-3xl" />
 
-      <div class="container relative z-10 mx-auto px-4 text-center">
-        <h1 class="mb-6 text-4xl font-black text-white md:text-5xl">
-          Tourisme &amp; agences
-          <span class="mt-2 block text-primary">Le Congo à portée de main</span>
-        </h1>
-        <p class="mx-auto mb-10 max-w-2xl text-lg text-white/80">
-          Explorez les lieux idéaux et voyez à quel point le Congo est grand et beau — des agences de confiance pour
-          imaginer votre prochain voyage.
-        </p>
-
-        <div class="group relative mx-auto max-w-2xl">
-          <div
-            class="absolute -inset-1 rounded-xl bg-gradient-to-r from-primary to-blue-500 opacity-75 blur transition duration-200 group-hover:opacity-100"
-          />
-          <div class="relative flex items-center rounded-xl bg-white p-2 shadow-2xl dark:bg-slate-800">
-            <Search class="ml-3 h-5 w-5 text-muted-foreground" />
+      <div class="container relative z-10 mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10 text-center">
+        <div class="max-w-2xl mx-auto mb-6">
+          <span class="inline-flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-[0.25em] text-primary/80 mb-3">
+            <span class="w-5 h-px bg-primary" />
+            CasaNayo — Tourisme Congo
+            <span class="w-5 h-px bg-primary" />
+          </span>
+          <h1 class="text-3xl md:text-4xl lg:text-5xl font-black text-white leading-tight">
+            Tourisme &amp; Agences
+            <span class="block text-primary">Le Congo à portée de main</span>
+          </h1>
+          <p class="mt-3 text-slate-300/80 text-sm md:text-base">
+            Des agences de confiance pour imaginer votre prochain voyage au Congo.
+          </p>
+        </div>
+        <div class="max-w-2xl mx-auto">
+          <div class="flex items-center bg-white rounded-2xl shadow-xl overflow-hidden">
+            <Search class="ml-4 h-5 w-5 shrink-0 text-slate-400" />
             <input
               v-model="searchQuery"
               type="text"
-              placeholder="Rechercher une agence, une ville…"
-              class="h-12 flex-1 border-none bg-transparent px-4 font-outfit text-foreground focus:ring-0"
+              placeholder="Nom d'agence, ville..."
+              class="h-12 flex-1 border-none bg-transparent px-3 text-sm font-medium text-slate-800 focus:ring-0 placeholder:text-slate-400"
             />
-            <Button size="lg" class="hidden rounded-lg px-8 sm:flex"> Rechercher </Button>
+            <Button class="h-10 m-1 shrink-0 rounded-xl px-5 font-bold text-sm">Rechercher</Button>
           </div>
         </div>
       </div>

@@ -174,10 +174,8 @@ export async function downloadReservationDocumentPdf(
     y = sectionTitle(doc, M, y, '1. BIEN ET CONTEXTE')
     const partyRows: { label: string; value: string }[] = [
         { label: 'Utilisateur (export)', value: username || '—' },
-        { label: 'Vue', value: perspective === 'mine' ? 'Mes demandes' : 'Hôte — demande reçue' },
         { label: 'Bien / titre', value: item.propertyTitle || '—' },
-        { label: 'Catégorie', value: item.sourceCategory || '—' },
-        { label: 'Type', value: item.type || item.sourceCategory || '—' },
+        { label: 'Type du bien', value: item.propertyType || item.sourceCategory || '—' },
     ]
     if (item.hostDisplayName && item.hostDisplayName !== '—')
         partyRows.push({ label: 'Hôte / annonceur', value: item.hostDisplayName })
@@ -283,7 +281,6 @@ export async function downloadSolicitationDocumentPdf(
         item.budget != null && Number.isFinite(item.budget) ? `${item.budget} ${deviseLabel}` : '—'
     const solRows: { label: string; value: string }[] = [
         { label: 'Utilisateur (export)', value: username || '—' },
-        { label: 'Vue', value: perspective === 'mine' ? 'Mes demandes' : 'Prestataire — demande reçue' },
         { label: 'Prestation', value: item.prestationTitle || '—' },
         { label: 'ID prestation', value: item.prestationId != null ? String(item.prestationId) : '—' },
         { label: 'Prestataire (nom affiché)', value: item.providerDisplayName && item.providerDisplayName !== '—' ? item.providerDisplayName : counterparty },

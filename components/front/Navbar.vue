@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { Menu, X, LayoutDashboard, LogOut, Calendar, User, ChevronDown, CreditCard, Receipt, Wrench, Compass, Building2, Palmtree } from 'lucide-vue-next'
+import { Menu, X, LayoutDashboard, LogOut, Calendar, User, ChevronDown, CreditCard, Receipt, Wrench, Compass, Building2, Palmtree, Bell } from 'lucide-vue-next'
 import { Button } from '@/components/ui'
 import { useAuthStore } from '~/stores/auth'
+import { useNotificationStore } from '~/stores/notifications'
 import { onClickOutside } from '@vueuse/core'
 import { useRoute } from 'vue-router'
 
@@ -14,6 +15,15 @@ const discoverNavRef = ref(null)
 const navDiscoverOpen = ref(false)
 const mobileDiscoverOpen = ref(false)
 const auth = useAuthStore()
+const notifStore = useNotificationStore()
+
+onMounted(() => {
+    if (auth.isAuthenticated) {
+        notifStore.fetchNotifications()
+    }
+})
+
+const unreadCount = computed(() => notifStore.unreadCount)
 
 const handleLogoClick = (e: Event) => {
   if (route.path === '/') {
@@ -182,6 +192,18 @@ const navPillActive =
           </Button>
         </NuxtLink>
 
+        <!-- Notifications Bell -->
+        <NuxtLink 
+          v-if="isAuthenticated" 
+          to="/compte/notifications" 
+          class="relative hidden sm:flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 shadow-sm transition-all hover:border-[#1976D2]/30 hover:bg-blue-50 hover:text-[#1976D2] group"
+        >
+          <Bell class="size-5 transition-transform group-hover:scale-110" />
+          <span v-if="unreadCount > 0" class="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-black text-white ring-2 ring-white animate-in zoom-in-50">
+            {{ unreadCount > 9 ? '9+' : unreadCount }}
+          </span>
+        </NuxtLink>
+
         <!-- Normal User Profile / Login -->
         <div v-if="isAuthenticated && !isAdmin" class="relative" ref="dropdownRef">
              <button 
@@ -210,6 +232,13 @@ const navPillActive =
                 </div>
                 
                 <div class="p-2 space-y-1">
+                    <NuxtLink to="/compte/notifications" @click="isDropdownOpen = false" class="flex items-center justify-between px-4 py-3 text-sm font-bold text-slate-600 hover:bg-primary/5 hover:text-primary rounded-2xl transition-all">
+                        <div class="flex items-center gap-3">
+                            <Bell class="size-4" />
+                            Notifications
+                        </div>
+                        <Badge v-if="unreadCount > 0" variant="destructive" class="h-5 px-1.5 text-[10px] font-black">{{ unreadCount }}</Badge>
+                    </NuxtLink>
                     <NuxtLink to="/compte/reservations" @click="isDropdownOpen = false" class="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-primary/5 hover:text-primary rounded-2xl transition-all">
                         <Calendar class="size-4" />
                         Réservations (biens)
@@ -218,15 +247,15 @@ const navPillActive =
                         <Wrench class="size-4" />
                         Sollicitations (services)
                     </NuxtLink>
-                    <NuxtLink to="/compte/agences" @click="isDropdownOpen = false" class="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-primary/5 hover:text-primary rounded-2xl transition-all">
+                    <NuxtLink v-if="isGerant" to="/compte/agences" @click="isDropdownOpen = false" class="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-primary/5 hover:text-primary rounded-2xl transition-all">
                         <Compass class="size-4" />
                         Mes agences (tourisme)
                     </NuxtLink>
-                    <NuxtLink to="/compte/abonnement" @click="isDropdownOpen = false" class="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-primary/5 hover:text-primary rounded-2xl transition-all">
+                    <NuxtLink v-if="!auth.user?.premium" to="/compte/abonnement" @click="isDropdownOpen = false" class="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-primary/5 hover:text-primary rounded-2xl transition-all">
                         <CreditCard class="size-4" />
                         Abonnement Premium
                     </NuxtLink>
-                    <NuxtLink to="/compte/paiements" @click="isDropdownOpen = false" class="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-primary/5 hover:text-primary rounded-2xl transition-all">
+                    <NuxtLink v-else to="/compte/paiements" @click="isDropdownOpen = false" class="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-primary/5 hover:text-primary rounded-2xl transition-all">
                         <Receipt class="size-4" />
                         Historique des paiements
                     </NuxtLink>
@@ -393,7 +422,16 @@ const navPillActive =
                   </NuxtLink>
                </div>
                
-               <div v-if="!isAdmin" class="space-y-4">
+                <div v-if="!isAdmin" class="space-y-4">
+                  <NuxtLink to="/compte/notifications" @click="isMobileMenuOpen = false" class="flex items-center justify-between text-lg font-bold text-slate-600">
+                     <div class="flex items-center gap-4">
+                        <div class="size-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                           <Bell class="w-5 h-5" />
+                        </div>
+                        Notifications
+                     </div>
+                     <Badge v-if="unreadCount > 0" variant="destructive" class="h-6 px-2 text-xs font-black">{{ unreadCount }}</Badge>
+                  </NuxtLink>
                   <NuxtLink to="/compte/reservations" @click="isMobileMenuOpen = false" class="flex items-center gap-4 text-lg font-bold text-slate-600">
                      <div class="size-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center">
                         <Calendar class="w-5 h-5" />
@@ -406,13 +444,13 @@ const navPillActive =
                      </div>
                      Sollicitations (services)
                   </NuxtLink>
-                  <NuxtLink to="/compte/abonnement" @click="isMobileMenuOpen = false" class="flex items-center gap-4 text-lg font-bold text-slate-600">
+                  <NuxtLink v-if="!auth.user?.premium" to="/compte/abonnement" @click="isMobileMenuOpen = false" class="flex items-center gap-4 text-lg font-bold text-slate-600">
                      <div class="size-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
                         <CreditCard class="w-5 h-5" />
                      </div>
                      Abonnement Premium
                   </NuxtLink>
-                  <NuxtLink to="/compte/paiements" @click="isMobileMenuOpen = false" class="flex items-center gap-4 text-lg font-bold text-slate-600">
+                  <NuxtLink v-else to="/compte/paiements" @click="isMobileMenuOpen = false" class="flex items-center gap-4 text-lg font-bold text-slate-600">
                      <div class="size-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center">
                         <Receipt class="w-5 h-5" />
                      </div>

@@ -91,7 +91,7 @@ export const useMembersStore = defineStore('members', {
       const config = useRuntimeConfig()
       
       try {
-        await $fetch(`${config.public.apiBase}/certification/${userId}`, {
+        await $fetch(joinApi(config.public.apiBase as string, `${ApiEndpoints.certification}${userId}`), {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${auth.token}`

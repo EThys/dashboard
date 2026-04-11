@@ -314,41 +314,40 @@ watch([searchQuery, selectedType, selectedTransaction, minPrice, maxPrice, selec
 <template>
   <div class="min-h-screen">
     <!-- Hero Section -->
-    <section class="relative py-24 bg-slate-900 overflow-hidden">
-      <!-- Background Image -->
+    <section class="relative overflow-hidden bg-slate-900">
       <div class="absolute inset-0 z-0">
-        <img src="@/assets/congo.jpg" class="w-full h-full object-cover opacity-40" alt="Properties background" />
-        <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent"></div>
+        <img src="@/assets/congo.jpg" class="w-full h-full object-cover opacity-20" alt="Properties" loading="eager" fetchpriority="high" decoding="async" />
+        <div class="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-900/85 to-slate-900/40"></div>
       </div>
-      
-      <!-- Decorators -->
-      <div class="absolute inset-0 bg-gradient-to-r from-primary/20 to-blue-600/20 z-0"></div>
-      <div class="absolute top-0 right-0 w-96 h-96 bg-primary/20 rounded-full blur-3xl opacity-50 z-0"></div>
-      
-      <div class="container mx-auto px-4 relative z-10 text-center">
-        <h1 class="text-4xl md:text-5xl font-black text-white mb-6">
-          Découvrez Votre Prochain
-          <span class="text-primary block mt-2">Chez-Vous</span>
-        </h1>
-        <p class="text-lg text-white/80 max-w-2xl mx-auto mb-10">
-          Parcourez notre sélection exclusive de propriétés à Kinshasa.
-        </p>
 
-        <!-- Search Bar -->
-        <div class="max-w-2xl mx-auto relative group">
-          <div class="absolute -inset-1 bg-gradient-to-r from-primary to-blue-500 rounded-xl opacity-75 group-hover:opacity-100 blur transition duration-200"></div>
-          <div class="relative flex items-center bg-white dark:bg-slate-800 rounded-xl p-2 shadow-2xl">
-            <Search class="h-5 w-5 text-muted-foreground ml-3" />
-            <input 
+      <div class="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10 py-8 md:py-10 text-center">
+        <!-- Text -->
+        <div class="max-w-2xl mx-auto mb-6">
+          <span class="inline-flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-[0.25em] text-primary/80 mb-3">
+            <span class="w-5 h-px bg-primary"></span>
+            CasaNayo — Immobilier RDC
+            <span class="w-5 h-px bg-primary"></span>
+          </span>
+          <h1 class="text-3xl md:text-4xl lg:text-5xl font-black text-white leading-tight">
+            Découvrez Votre
+            <span class="text-primary"> Prochain Chez-Vous</span>
+          </h1>
+          <p class="mt-3 text-slate-300/80 text-sm md:text-base">
+            Maisons, appartements, terrains et hôtels — tout le marché immobilier congolais.
+          </p>
+        </div>
+        <!-- Search bar -->
+        <div class="max-w-2xl mx-auto">
+          <div class="flex items-center bg-white rounded-2xl shadow-xl overflow-hidden">
+            <Search class="h-5 w-5 text-slate-400 ml-4 shrink-0" />
+            <input
               v-model="searchInputText"
               @keyup.enter="applySearch"
-              type="text" 
-              placeholder="Que recherchez-vous ? (ex: Gombe, Matadi...)"
-              class="flex-1 h-12 bg-transparent border-none focus:ring-0 text-foreground px-4 font-outfit"
+              type="text"
+              placeholder="Gombe, Matadi, Kinshasa..."
+              class="flex-1 h-12 bg-transparent border-none focus:ring-0 text-slate-800 px-3 text-sm font-medium placeholder:text-slate-400"
             />
-            <Button size="lg" class="hidden sm:flex rounded-lg px-8" @click="applySearch">
-              Rechercher
-            </Button>
+            <Button class="h-10 rounded-xl m-1 px-5 font-bold text-sm shrink-0" @click="applySearch">Rechercher</Button>
           </div>
         </div>
       </div>

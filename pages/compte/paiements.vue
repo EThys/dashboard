@@ -40,7 +40,11 @@ async function loadHistory() {
     pending.value = true
     try {
         const r = await payment.fetchPaymentHistory(config.public.apiBase as string, uid)
-        payments.value = r.payments
+        payments.value = (r.payments || []).sort((a, b) => {
+            const dA = a.dateCreated ? new Date(a.dateCreated).getTime() : 0;
+            const dB = b.dateCreated ? new Date(b.dateCreated).getTime() : 0;
+            return dB - dA;
+        })
         if (r.isPremium === true) auth.setPremium(true)
     } finally {
         pending.value = false
@@ -73,9 +77,9 @@ const totals = computed(() => {
 function statusMeta(status: string | undefined) {
     const s = (status || '').toUpperCase()
     if (s === 'SUCCESS')
-        return { label: 'Réussi', class: 'text-[#1565C0] bg-[#E3F2FD] border-[#BBDEFB]' }
+        return { label: 'Réussi', class: 'text-emerald-700 bg-emerald-50 border-emerald-200' }
     if (s === 'PENDING')
-        return { label: 'En cours', class: 'text-amber-800 bg-amber-50 border-amber-200' }
+        return { label: 'En cours', class: 'text-[#1565C0] bg-[#E3F2FD] border-[#BBDEFB]' }
     return { label: 'Échoué', class: 'text-red-800 bg-red-50 border-red-200' }
 }
 

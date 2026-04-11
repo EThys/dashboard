@@ -7,7 +7,7 @@ import {
   ArrowLeft, MapPin, BedDouble, Bath, Maximize, Home, 
   CheckCircle, Calendar, MessageSquare, Info, ShieldCheck,
   Loader2, ShieldAlert, EyeOff, Eye, Tag, Trash2,
-  Ban, Building2,
+  Ban, Building2, Users, Zap, Droplets,
 } from 'lucide-vue-next'
 import { Button, Badge, Skeleton, Sheet, Input, Label } from '@/components/ui'
 import { usePropertyStore, type PublicationCategory } from '@/stores/properties'
@@ -540,6 +540,11 @@ const property = computed(() => {
     guarantee,
     category: n.type,
     createdAt: n.createdAt,
+    capacity: n.capacity,
+    electricity: n.electricity,
+    electricityInfo: n.electricityInfo,
+    water: n.water,
+    waterInfo: n.waterInfo,
     address: {
       full: addr.address,
       commune: addr.communeValue,
@@ -715,32 +720,53 @@ const goBack = () => router.push('/dashboard/publications?tab=properties')
             
             <!-- Highlights -->
             <div class="flex flex-wrap items-center gap-6 py-6 border-y border-border/50">
-                 <div class="flex items-center gap-3 pr-6 border-r border-border/50 last:border-0 lg:last:border-0 last:pr-0">
+                 <div v-if="property?.surface && property.surface !== '-'" class="flex items-center gap-3 pr-6 border-r border-border/50 last:border-0 lg:last:border-0 last:pr-0">
                     <Maximize class="h-5 w-5 text-foreground" />
                     <div>
-                        <span class="block font-bold text-lg leading-none">{{ property?.surface || '-' }} m²</span>
+                        <span class="block font-bold text-lg leading-none">{{ property?.surface }}</span>
                         <span class="text-xs text-muted-foreground uppercase">Surface</span>
                     </div>
                 </div>
-                 <div class="flex items-center gap-3 pr-6 border-r border-border/50 last:border-0 lg:last:border-0 last:pr-0">
+                 <div v-if="property?.capacity > 0" class="flex items-center gap-3 pr-6 border-r border-border/50 last:border-0 lg:last:border-0 last:pr-0">
+                    <Users class="h-5 w-5 text-foreground" />
+                    <div>
+                        <span class="block font-bold text-lg leading-none">{{ property.capacity }} pers.</span>
+                        <span class="text-xs text-muted-foreground uppercase">Capacité</span>
+                    </div>
+                </div>
+                 <div v-if="property?.rooms && property.rooms !== '-'" class="flex items-center gap-3 pr-6 border-r border-border/50 last:border-0 lg:last:border-0 last:pr-0">
                     <Home class="h-5 w-5 text-foreground" />
                     <div>
-                        <span class="block font-bold text-lg leading-none">{{ property?.rooms || '-' }}</span>
+                        <span class="block font-bold text-lg leading-none">{{ property.rooms }}</span>
                         <span class="text-xs text-muted-foreground uppercase">Pièces</span>
                     </div>
                 </div>
-                 <div class="flex items-center gap-3 pr-6 border-r border-border/50 last:border-0 lg:last:border-0 last:pr-0">
+                 <div v-if="property?.bedrooms && property.bedrooms !== '-'" class="flex items-center gap-3 pr-6 border-r border-border/50 last:border-0 lg:last:border-0 last:pr-0">
                     <BedDouble class="h-5 w-5 text-foreground" />
                     <div>
-                        <span class="block font-bold text-lg leading-none">{{ property?.bedrooms || '-' }}</span>
+                        <span class="block font-bold text-lg leading-none">{{ property.bedrooms }}</span>
                         <span class="text-xs text-muted-foreground uppercase">Chambres</span>
                     </div>
                 </div>
-                 <div class="flex items-center gap-3 pr-6 border-r-0 lg:border-r border-border/50 last:border-0 last:pr-0">
+                 <div v-if="property?.bathrooms && property.bathrooms !== '-'" class="flex items-center gap-3 pr-6 border-r border-border/50 last:border-0 lg:last:border-0 last:pr-0">
                     <Bath class="h-5 w-5 text-foreground" />
                     <div>
-                        <span class="block font-bold text-lg leading-none">{{ property?.bathrooms || '-' }}</span>
+                        <span class="block font-bold text-lg leading-none">{{ property.bathrooms }}</span>
                         <span class="text-xs text-muted-foreground uppercase">Salles de bain</span>
+                    </div>
+                </div>
+                 <div v-if="property?.electricity > 0" class="flex items-center gap-3 pr-6 border-r border-border/50 last:border-0 lg:last:border-0 last:pr-0">
+                    <Zap class="h-5 w-5 text-foreground" />
+                    <div>
+                        <span class="block font-bold text-lg leading-none">{{ property.electricityInfo }}</span>
+                        <span class="text-xs text-muted-foreground uppercase">Électricité ({{property.electricity}}%)</span>
+                    </div>
+                </div>
+                 <div v-if="property?.water > 0" class="flex items-center gap-3 pr-6 border-r border-border/50 last:border-0 lg:last:border-0 last:pr-0">
+                    <Droplets class="h-5 w-5 text-foreground" />
+                    <div>
+                        <span class="block font-bold text-lg leading-none">{{ property.waterInfo }}</span>
+                        <span class="text-xs text-muted-foreground uppercase">Eau ({{property.water}}%)</span>
                     </div>
                 </div>
             </div>

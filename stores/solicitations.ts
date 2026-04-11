@@ -12,6 +12,7 @@ export interface SolicitationListItem {
     budget?: number
     description?: string
     status: string
+    displayStatus: string
     startDate?: string
     endDate?: string
     createdAt?: string
@@ -28,6 +29,14 @@ export interface SolicitationListItem {
     requesterDisplayName?: string
     providerDisplayName?: string
     raw: Record<string, unknown>
+}
+
+function getStatusLabel(status: string): string {
+    const s = String(status || '').toUpperCase()
+    if (s === 'PENDING') return 'En attente'
+    if (s === 'ACCEPTED' || s === 'CONFIRMED') return 'Acceptée'
+    if (s === 'REJECTED' || s === 'CANCELLED') return 'Refusée'
+    return s || 'Inconnu'
 }
 
 function extractSollicitationArray(payload: unknown): unknown[] {
@@ -124,6 +133,8 @@ function normalizeSolicitation(raw: unknown): SolicitationListItem | null {
     const requesterDisplayName = memberDisplayName(requesterRec, requesterUid)
     const providerDisplayName = memberDisplayName(providerUser, undefined)
 
+    const status = String(inner.status ?? 'PENDING').toUpperCase()
+
     return {
         id: numId,
         userId: typeof inner.userId === 'number' ? inner.userId : parseInt(String(inner.userId), 10) || undefined,
@@ -135,7 +146,8 @@ function normalizeSolicitation(raw: unknown): SolicitationListItem | null {
             typeof inner.deviseId === 'number' ? inner.deviseId : parseInt(String(inner.deviseId), 10) || undefined,
         budget: typeof inner.budget === 'number' ? inner.budget : parseFloat(String(inner.budget || 0)) || undefined,
         description: inner.description as string | undefined,
-        status: String(inner.status ?? 'PENDING').toUpperCase(),
+        status,
+        displayStatus: getStatusLabel(status),
         startDate: inner.startDate as string | undefined,
         endDate: inner.endDate as string | undefined,
         createdAt: inner.createdAt as string | undefined,
@@ -154,10 +166,14 @@ function normalizeSolicitation(raw: unknown): SolicitationListItem | null {
 export const useSolicitationStore = defineStore('solicitations', {
     state: () => ({
         isUpdating: false,
+        userSolicitations: [] as SolicitationListItem[],
+        hostSolicitations: [] as SolicitationListItem[],
     }),
 
     actions: {
-        async fetchUserSolicitations(): Promise<SolicitationListItem[]> {
+        async fetchUserSolicitations(force = false): Promise<SolicitationListItem[]> {
+            if (!force && this.userSolicitations.length > 0) return this.userSolicitations
+
             const auth = useAuthStore()
             const config = useRuntimeConfig()
             if (!auth.isAuthenticated || !auth.user) auth.checkSession()
@@ -179,6 +195,7 @@ export const useSolicitationStore = defineStore('solicitations', {
                     if (n) out.push(n)
                 }
                 out.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+                this.userSolicitations = out
                 return out
             } catch (e) {
                 console.warn('[solicitations user]', e)
@@ -186,7 +203,9 @@ export const useSolicitationStore = defineStore('solicitations', {
             }
         },
 
-        async fetchHostSolicitations(): Promise<SolicitationListItem[]> {
+        async fetchHostSolicitations(force = false): Promise<SolicitationListItem[]> {
+            if (!force && this.hostSolicitations.length > 0) return this.hostSolicitations
+
             const auth = useAuthStore()
             const config = useRuntimeConfig()
             if (!auth.isAuthenticated || !auth.user) auth.checkSession()
@@ -208,6 +227,7 @@ export const useSolicitationStore = defineStore('solicitations', {
                     if (n) out.push(n)
                 }
                 out.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+                this.hostSolicitations = out
                 return out
             } catch (e) {
                 console.warn('[solicitations host]', e)
@@ -247,8 +267,8 @@ export const useSolicitationStore = defineStore('solicitations', {
             return {
                 all: list.length,
                 pending: list.filter((x) => norm(x.status) === 'PENDING').length,
-                accepted: list.filter((x) => norm(x.status) === 'ACCEPTED').length,
-                rejected: list.filter((x) => norm(x.status) === 'REJECTED').length,
+                accepted: list.filter((x) => norm(x.status) === 'ACCEPTED' || norm(x.status) === 'CONFIRMED').length,
+                rejected: list.filter((x) => norm(x.status) === 'REJECTED' || norm(x.status) === 'CANCELLED').length,
             }
         },
     },

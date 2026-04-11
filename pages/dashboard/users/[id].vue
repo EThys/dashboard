@@ -95,13 +95,37 @@ const userServices = computed(() => {
 
 const loadData = async () => {
     isLoading.value = true
+    const apiBase = config.public.apiBase as string
+    const authH = { Authorization: `Bearer ${auth.token}` }
+
+    // Si le store est vide (après un refresh sur la page directe), on recharge la liste globale
+    if (!membersStore.users.length) {
+        try {
+            const [usersRes, membersRes, cardsRes]: any = await Promise.all([
+                $fetch(joinApi(apiBase, ApiEndpoints.allUsers), { headers: authH }),
+                $fetch(joinApi(apiBase, ApiEndpoints.protectedMembers), { headers: authH }),
+                $fetch(joinApi(apiBase, ApiEndpoints.cards), { headers: authH }),
+            ])
+            
+            if (usersRes?.data) membersStore.setUsers(usersRes.data)
+            else if (Array.isArray(usersRes)) membersStore.setUsers(usersRes)
+
+            if (membersRes?.data) membersStore.setMembers(membersRes.data)
+            else if (Array.isArray(membersRes)) membersStore.setMembers(membersRes)
+
+            if (cardsRes?.data) membersStore.setCardTypes(cardsRes.data)
+            else if (Array.isArray(cardsRes)) membersStore.setCardTypes(cardsRes)
+        } catch (e) {
+            console.error("Erreur chargement users/members:", e)
+        }
+    }
     
     // Get basic user info from store
     user.value = membersStore.getUserById(userId.toString())
     // Get certification member info
     member.value = membersStore.getMemberByUserId(userId.toString())
     
-    // Fetch user-generated content in background if not already there
+    // Fetch user-generated content in background
     try {
         await Promise.all([
             propertyStore.fetchProperties(config.public.apiBase),
@@ -318,7 +342,7 @@ const downloadPDF = async () => {
                                     <label class="text-[10px] font-bold text-muted-foreground uppercase opacity-70">Numéro de Carte</label>
                                     <div class="flex items-center gap-2 font-mono bg-background px-2 py-1.5 rounded border text-[11px] mt-1">
                                         <CreditCard class="h-3 w-3 text-muted-foreground" />
-                                        {{ (member?.numberCard && member?.numberCard !== 'string') ? member.numberCard : 'Non spécifié' }}
+                                        {{ (member?.numberCard && member.numberCard !== 'string') ? member.numberCard : (member?.number_card && member.number_card !== 'string' ? member.number_card : 'Non spécifié') }}
                                     </div>
                                 </div>
                             </div>

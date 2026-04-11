@@ -11,6 +11,11 @@ import {
     Button, Badge, Skeleton 
 } from '@/components/ui'
 import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
+import { useDashboardStore } from '@/stores/dashboard'
+import { Bar } from 'vue-chartjs'
+import { Chart as ChartJS, Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale } from 'chart.js'
+
+ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale)
 
 definePageMeta({
   layout: 'dashboard'
@@ -19,56 +24,26 @@ definePageMeta({
 const router = useRouter()
 const auth = useAuthStore()
 const config = useRuntimeConfig()
+const dashboard = useDashboardStore()
 
-const statsData = ref({
-    users: [] as any[],
-    properties: [] as any[],
-    services: [] as any[],
-    isLoading: true
-})
+const statsData = computed(() => ({
+    users: dashboard.users,
+    properties: dashboard.properties,
+    services: dashboard.services,
+    isLoading: dashboard.isLoading,
+    payments: dashboard.payments,
+    flatPayments: dashboard.flatPayments,
+    devises: dashboard.devises
+}))
 
 const fetchDashboardStats = async () => {
-    statsData.value.isLoading = true
-    try {
-        const apiBase = config.public.apiBase as string
-        const authHeaders = auth.token ? { Authorization: `Bearer ${auth.token}` } : {}
-        const isAdmin = auth.isAdmin
-        const [usersRes, propRes, terrainRes, bureauRes, hotelRes, festiveRes, funeraireRes, servRes]: any = await Promise.all([
-            auth.token
-                ? $fetch(joinApi(apiBase, ApiEndpoints.allUsers), { headers: authHeaders })
-                : Promise.resolve({ data: [] }),
-            $fetch(joinApi(apiBase, isAdmin ? ApiEndpoints.protectedProperties : ApiEndpoints.properties), isAdmin ? { headers: authHeaders } : undefined),
-            $fetch(joinApi(apiBase, isAdmin ? ApiEndpoints.protectedPropertyTerrains : ApiEndpoints.propertyTerrains), isAdmin ? { headers: authHeaders } : undefined),
-            $fetch(joinApi(apiBase, isAdmin ? ApiEndpoints.protectedPropertyBureaux : ApiEndpoints.propertyBureaux), isAdmin ? { headers: authHeaders } : undefined),
-            $fetch(joinApi(apiBase, isAdmin ? ApiEndpoints.protectedPropertyHotels : ApiEndpoints.propertyHotelsPublic), isAdmin ? { headers: authHeaders } : undefined),
-            $fetch(joinApi(apiBase, isAdmin ? ApiEndpoints.protectedPropertyFestives : ApiEndpoints.propertyFestives), isAdmin ? { headers: authHeaders } : undefined),
-            $fetch(joinApi(apiBase, isAdmin ? ApiEndpoints.protectedPropertyFuneraires : ApiEndpoints.propertyFuneraires), isAdmin ? { headers: authHeaders } : undefined),
-            $fetch(joinApi(apiBase, ApiEndpoints.publicPrestations)),
-        ])
-
-        statsData.value.users = usersRes.data || usersRes || []
-        
-        // Consolidate all property types
-        const allProps = [
-            ...(propRes.properties || []),
-            ...(terrainRes.terrain || []),
-            ...(bureauRes.bureaux || []),
-            ...(hotelRes.data || []),
-            ...(festiveRes.festives || []),
-            ...(funeraireRes.funeraires || [])
-        ]
-        
-        statsData.value.properties = allProps
-        statsData.value.services = servRes.prestations || servRes || []
-    } catch (error) {
-        console.error('Error fetching dashboard stats:', error)
-    } finally {
-        statsData.value.isLoading = false
-    }
+    const apiBase = config.public.apiBase as string
+    await dashboard.fetchStats(apiBase, true)
 }
 
 onMounted(() => {
-    fetchDashboardStats()
+    const apiBase = config.public.apiBase as string
+    dashboard.fetchStats(apiBase)
 })
 
 const recentUsers = computed(() => {
@@ -112,12 +87,116 @@ const stats = computed(() => [
   }
 ])
 
-const revenueEst = computed(() => {
-    // Just a placeholder since no API for revenue yet
-    return (statsData.value.users.filter(u => u.premium).length * 29.99).toLocaleString('fr-FR', {
-        style: 'currency',
-        currency: 'USD'
+const revenueData = computed(() => {
+    const totals: Record<string, number> = {}
+    statsData.value.flatPayments.forEach((fp: any) => {
+        const p = fp.payment
+        const status = (p.status || '').toUpperCase()
+        if (status === 'SUCCESS' || status === 'COMPLETED' || status === 'PAID') {
+            const cur = p.devise || 'USD'
+            const val = typeof p.amount === 'string' ? parseFloat(p.amount) : Number(p.amount)
+            if (!Number.isNaN(val)) {
+                totals[cur] = (totals[cur] || 0) + val
+            }
+        }
     })
+    return totals
+})
+
+
+
+const chartData = computed(() => {
+    const devises = statsData.value.devises || [];
+    const cdfRate = devises.find((d: any) => d.code === 'CDF')?.taux 
+        || devises.find((d: any) => d.code === 'CDF')?.tauxLocal 
+        || 2200;
+        
+    const dailyTotals: Record<string, number> = {};
+    
+    statsData.value.flatPayments.forEach((fp: any) => {
+        const p = fp.payment
+        const status = (p.status || '').toUpperCase()
+        if (status === 'SUCCESS' || status === 'COMPLETED' || status === 'PAID') {
+            const dateStr = p.dateCreated ? String(p.dateCreated).substring(0, 10) : 'Inconnu';
+            const cur = p.devise || 'USD'
+            const val = typeof p.amount === 'string' ? parseFloat(p.amount) : Number(p.amount)
+            if (!Number.isNaN(val)) {
+                let amountInUsd = val;
+                if (cur === 'CDF') {
+                    amountInUsd = val / cdfRate;
+                }
+                dailyTotals[dateStr] = (dailyTotals[dateStr] || 0) + amountInUsd;
+            }
+        }
+    });
+
+    let dates = Object.keys(dailyTotals).sort();
+    
+    if (dates.length > 0 && dates[0] === 'Inconnu') {
+        const elem = dates.shift();
+        dates.push(elem!);
+    }
+
+    const recentDates = dates.slice(-14); 
+    
+    if (recentDates.length === 0) return { data: [], max: 1 };
+
+    let maxAmount = 0;
+    const res = recentDates.map(date => {
+        maxAmount = Math.max(maxAmount, dailyTotals[date]);
+        let label = date;
+        if (date !== 'Inconnu') {
+            label = new Date(date).toLocaleDateString('fr-CD', { day: 'numeric', month: 'short' });
+        }
+        return {
+            date,
+            amount: dailyTotals[date],
+            label
+        };
+    });
+
+    return { data: res, max: maxAmount || 1 };
+});
+
+const chartDataObj = computed(() => {
+    return {
+        labels: chartData.value.data.map((d: any) => d.label),
+        datasets: [{
+            label: 'Volume (USD)',
+            data: chartData.value.data.map((d: any) => d.amount),
+            backgroundColor: '#10b981',
+            borderRadius: 6,
+            hoverBackgroundColor: '#059669',
+        }]
+    }
+})
+
+const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+        legend: { display: false },
+        tooltip: {
+            callbacks: {
+                label: (ctx: any) => `${ctx.raw.toFixed(2)} USD`
+            }
+        }
+    },
+    scales: {
+        y: { beginAtZero: true, border: { display: false } },
+        x: { grid: { display: false } }
+    }
+}
+
+const revenueEst = computed(() => {
+    const entries = Object.entries(revenueData.value)
+    if (entries.length === 0) return '0,00 $'
+    return entries.map(([cur, val]) => {
+        return val.toLocaleString('fr-CD', {
+            style: 'currency',
+            currency: cur === 'CDF' ? 'CDF' : 'USD'
+        }).replace('CDF', 'FC')
+    }).join(' / ')
 })
 </script>
 
@@ -174,18 +253,28 @@ const revenueEst = computed(() => {
                     <p class="text-sm text-muted-foreground">Estimation basée sur les abonnements Premium actifs.</p>
                 </div>
                 <div class="text-right">
-                    <p class="text-xs font-bold text-muted-foreground uppercase tracking-tighter">Volume Estimé (IDR/USD)</p>
-                    <p class="text-2xl font-black text-primary">{{ revenueEst }}</p>
+                    <p class="text-xs font-bold text-muted-foreground uppercase tracking-tighter">Volume Réel encaissé (Reussite)</p>
+                    <div class="flex flex-col items-end gap-1">
+                         <p class="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+                             {{ (revenueData['USD'] || 0).toLocaleString('fr-CD', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) }} USD
+                         </p>
+                         <p class="text-sm font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-md">
+                             {{ (revenueData['CDF'] || 0).toLocaleString('fr-CD', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) }} FC
+                         </p>
+                    </div>
                 </div>
             </div>
         </CardHeader>
-        <CardContent class="p-0">
-          <div class="h-[350px] flex flex-col items-center justify-center text-muted-foreground bg-gradient-to-b from-transparent to-muted/10">
+        <CardContent class="p-6">
+          <div v-if="chartData.data.length === 0" class="h-[300px] flex flex-col items-center justify-center text-muted-foreground bg-gradient-to-b from-transparent to-muted/10 rounded-xl">
              <Activity class="h-16 w-16 text-primary/20 mb-4 animate-bounce" />
              <div class="text-center px-10">
-                 <p class="font-black text-foreground text-lg mb-1">Analyse des flux en cours</p>
-                 <p class="text-sm max-w-sm mx-auto italic">Nous synchronisons les graphiques de transactions bancaires avec notre compte administrateur.</p>
+                 <p class="font-black text-foreground text-lg mb-1">Aucune donnée disponible</p>
+                 <p class="text-sm max-w-sm mx-auto italic">Les paiements apparaîtront ici pour former un graphique de vos performances.</p>
              </div>
+          </div>
+          <div v-else class="h-[300px] pt-4">
+              <Bar :data="chartDataObj" :options="chartOptions" />
           </div>
         </CardContent>
       </Card>

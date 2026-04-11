@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch, onMounted } from 'vue'
 import {
   Loader2,
   RefreshCw,
@@ -7,6 +7,9 @@ import {
   Eye,
   X,
   TrendingUp,
+  FileText,
+  DollarSign,
+  Check,
 } from 'lucide-vue-next'
 import {
   Table,
@@ -20,9 +23,10 @@ import {
   Input,
 } from '@/components/ui'
 import { useAuthStore } from '@/stores/auth'
-import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
+import { useDashboardStore } from '@/stores/dashboard'
 import type { DeviseRow, PaymentRow } from '@/stores/payment'
 import { toast } from 'vue-sonner'
+import { downloadPaymentReportPdf } from '@/utils/paymentReportPdf'
 
 definePageMeta({ layout: 'dashboard' })
 
@@ -52,66 +56,33 @@ interface FlatPaymentRow {
 }
 
 const auth = useAuthStore()
+const dashboard = useDashboardStore()
 const config = useRuntimeConfig()
 const apiBase = config.public.apiBase as string
 
-const pending = ref(true)
+const pending = computed(() => dashboard.isLoading)
 const errorMsg = ref<string | null>(null)
-const flatRows = ref<FlatPaymentRow[]>([])
-const devises = ref<DeviseRow[]>([])
+const flatRows = computed(() => dashboard.flatPayments)
+const devises = computed(() => dashboard.devises)
 
 const searchQuery = ref('')
 const statusFilter = ref<'all' | string>('all')
 const selected = ref<FlatPaymentRow | null>(null)
 
-const authHeaders = () =>
-  auth.token ? { Authorization: `Bearer ${auth.token}` } : {}
-
-function mergePaymentRows(groups: PaymentGroup[]): FlatPaymentRow[] {
-  const seen = new Set<string>()
-  const out: FlatPaymentRow[] = []
-  for (const g of groups) {
-    const u = g.user
-    const list = Array.isArray(g.payment) ? g.payment : []
-    for (const p of list) {
-      const uid = p.userId ?? u.userId
-      const key = `${uid}-${p.id}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      out.push({ user: u, payment: { ...p, userId: uid } })
-    }
-  }
-  out.sort((a, b) => {
-    const da = a.payment.dateCreated || ''
-    const db = b.payment.dateCreated || ''
-    return db.localeCompare(da)
-  })
-  return out
-}
-
-const load = async () => {
-  pending.value = true
+const load = async (force = false) => {
   errorMsg.value = null
   try {
-    const h = authHeaders()
-    const [payRes, devRes]: [PaymentUsersResponse, { devises?: DeviseRow[] }] = await Promise.all([
-      $fetch<PaymentUsersResponse>(joinApi(apiBase, ApiEndpoints.paymentUsers), { headers: h }),
-      $fetch<{ devises?: DeviseRow[] }>(joinApi(apiBase, ApiEndpoints.devises), { headers: h }),
-    ])
-    const groups = Array.isArray(payRes?.payments) ? payRes.payments : []
-    flatRows.value = mergePaymentRows(groups)
-    if (devRes?.devises?.length) devises.value = devRes.devises
-    else devises.value = []
+    await dashboard.fetchStats(apiBase, force)
   } catch (e: any) {
     console.error(e)
     errorMsg.value = e?.data?.message || e?.message || 'Impossible de charger les paiements'
     toast.error('Erreur lors du chargement des paiements')
-  } finally {
-    pending.value = false
   }
 }
 
-await load()
+onMounted(() => {
+  load()
+})
 
 const statusOptions = computed(() => {
   const s = new Set<string>()
@@ -143,13 +114,45 @@ const filteredRows = computed(() => {
   return list
 })
 
+
+const itemsPerPage = 10
+const currentPage = ref(1)
+
+const totalPages = computed(() => Math.ceil(filteredRows.value.length / itemsPerPage))
+
+const paginatedRows = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage
+  const end = start + itemsPerPage
+  return filteredRows.value.slice(start, end)
+})
+
+watch(filteredRows, () => {
+  currentPage.value = 1
+})
+
 function statusBadgeVariant(st: string | undefined) {
   const v = (st || '').toUpperCase()
   if (v === 'PENDING' || v === 'PROCESSING') return 'default' as const
-  if (v === 'SUCCESS' || v === 'COMPLETED' || v === 'PAID') return 'default' as const
+  if (v === 'SUCCESS' || v === 'COMPLETED' || v === 'PAID') return 'success' as const
   if (v === 'CANCELLED' || v === 'FAILED') return 'destructive' as const
   return 'secondary' as const
 }
+
+const successTotals = computed(() => {
+  const totals: Record<string, number> = {}
+  for (const r of filteredRows.value) {
+    const p = r.payment
+    const st = (p.status || '').toUpperCase()
+    if (st === 'SUCCESS' || st === 'COMPLETED' || st === 'PAID') {
+      const cur = p.devise || 'USD'
+      const val = typeof p.amount === 'string' ? parseFloat(p.amount) : Number(p.amount)
+      if (!Number.isNaN(val)) {
+        totals[cur] = (totals[cur] || 0) + val
+      }
+    }
+  }
+  return totals
+})
 
 function formatAmount(amount: string | number | undefined, code: string | undefined) {
   const n = typeof amount === 'string' ? parseFloat(amount) : Number(amount)
@@ -169,39 +172,70 @@ function formatAmount(amount: string | number | undefined, code: string | undefi
           Données issues de l’API protégée — références, statuts et utilisateurs associés.
         </p>
       </div>
-      <Button variant="outline" size="sm" :disabled="pending" class="shrink-0 gap-2" @click="load">
-        <RefreshCw class="h-4 w-4" :class="{ 'animate-spin': pending }" />
-        Actualiser
-      </Button>
+      <div class="flex items-center gap-2">
+        <Button variant="outline" size="sm" :disabled="pending" class="shrink-0 gap-2" @click="() => downloadPaymentReportPdf(filteredRows)">
+          <FileText class="h-4 w-4" />
+          Télécharger PDF
+        </Button>
+        <Button variant="outline" size="sm" :disabled="pending" class="shrink-0 gap-2" @click="() => load(true)">
+          <RefreshCw class="h-4 w-4" :class="{ 'animate-spin': pending }" />
+          Actualiser
+        </Button>
+      </div>
     </div>
 
-    <!-- Taux de change -->
-    <div class="rounded-2xl border border-border bg-card p-6 shadow-sm">
-      <div class="mb-4 flex items-center gap-2">
-        <TrendingUp class="h-5 w-5 text-primary" />
-        <h2 class="text-lg font-bold">Taux de référence (devises)</h2>
-      </div>
-      <p class="mb-4 text-sm text-muted-foreground">
-        Source : <code class="rounded bg-muted px-1 py-0.5 text-xs">GET {{ ApiEndpoints.devises }}</code> — le champ
-        <span class="font-medium">tauxLocal</span> sert de base aux conversions côté application.
-      </p>
-      <div v-if="!devises.length && !pending" class="text-sm text-muted-foreground">
-        Aucune devise chargée.
-      </div>
-      <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div
-          v-for="d in devises"
-          :key="d.id ?? d.code"
-          class="rounded-xl border border-border bg-background/80 p-4"
-        >
-          <div class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{{ d.name }}</div>
-          <div class="mt-1 flex items-baseline justify-between gap-2">
-            <span class="text-2xl font-black">{{ d.code }}</span>
-            <Badge variant="outline" class="font-mono text-xs">tauxLocal = {{ d.tauxLocal }}</Badge>
+    <div class="grid gap-4 lg:grid-cols-2">
+      <!-- Taux de change -->
+      <div class="rounded-2xl border border-border bg-card p-6 shadow-sm">
+        <div class="mb-4 flex items-center gap-2">
+          <TrendingUp class="h-5 w-5 text-primary" />
+          <h2 class="text-lg font-bold">Taux de référence</h2>
+        </div>
+        <p class="mb-4 text-sm text-muted-foreground">
+          Le champ <span class="font-medium">taux</span> sert de base aux conversions côté application.
+        </p>
+        <div v-if="!devises.length && !pending" class="text-sm text-muted-foreground">
+          Aucune devise chargée.
+        </div>
+        <div v-else class="space-y-3">
+          <div v-if="devises.length > 0" class="flex flex-col items-center justify-center rounded-xl bg-primary/10 p-6 text-center shadow-inner">
+            <p class="text-xs font-semibold uppercase text-muted-foreground mb-2">Conversion courante de la plateforme</p>
+            <span class="text-2xl font-black text-primary">
+              1 USD = {{ devises.find((d: any) => d.code === 'CDF')?.taux || devises.find((d: any) => d.code === 'CDF')?.tauxLocal || 2200 }} FC
+            </span>
           </div>
         </div>
       </div>
+
+      <!-- Totaux Succès -->
+      <div class="rounded-2xl border border-border bg-card p-6 shadow-sm">
+        <div class="mb-4 flex items-center gap-2">
+          <DollarSign class="h-5 w-5 text-emerald-500" />
+          <h2 class="text-lg font-bold">Volume Total Encaissé (Succès)</h2>
+        </div>
+        <div v-if="Object.keys(successTotals).length > 0" class="grid gap-4 sm:grid-cols-2">
+          <div 
+            v-for="(val, cur) in successTotals" 
+            :key="cur"
+            class="flex items-center justify-between rounded-xl border border-emerald-100 bg-emerald-50/30 p-4 dark:border-emerald-900/30 dark:bg-emerald-950/20"
+          >
+            <div>
+               <p class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Total {{ cur }}</p>
+               <p class="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+                 {{ val.toLocaleString('fr-CD') }} <span class="text-sm font-bold">{{ cur }}</span>
+               </p>
+            </div>
+            <div class="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 dark:bg-emerald-900 dark:text-emerald-400">
+               <Check class="h-5 w-5" />
+            </div>
+          </div>
+        </div>
+        <div v-else class="text-sm text-muted-foreground py-4">
+          Aucun paiement réussi pour l'instant avec les filtres actuels.
+        </div>
+      </div>
     </div>
+
 
     <!-- Filtres -->
     <div class="rounded-2xl border border-border bg-card p-6 shadow-sm">
@@ -252,7 +286,7 @@ function formatAmount(amount: string | number | undefined, code: string | undefi
           </TableRow>
         </TableHeader>
         <TableBody>
-          <TableRow v-for="row in filteredRows" :key="`${row.payment.userId}-${row.payment.id}`" class="hover:bg-muted/40">
+          <TableRow v-for="row in paginatedRows" :key="`${row.payment.userId}-${row.payment.id}`" class="hover:bg-muted/40">
             <TableCell class="font-mono text-xs">{{ row.payment.id }}</TableCell>
             <TableCell class="whitespace-nowrap text-sm">
               {{ row.payment.dateCreated || '—' }}
@@ -281,6 +315,31 @@ function formatAmount(amount: string | number | undefined, code: string | undefi
           </TableRow>
         </TableBody>
       </Table>
+    </div>
+
+    <!-- Pagination -->
+    <div v-if="totalPages > 1" class="flex items-center justify-between gap-4">
+      <div class="text-sm text-muted-foreground">
+        Page {{ currentPage }} sur {{ totalPages }}
+      </div>
+      <div class="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          :disabled="currentPage === 1"
+          @click="currentPage--"
+        >
+          Précédent
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          :disabled="currentPage === totalPages"
+          @click="currentPage++"
+        >
+          Suivant
+        </Button>
+      </div>
     </div>
 
     <!-- Détail -->

@@ -49,21 +49,28 @@ const faqs = [
 <template>
   <div class="min-h-screen bg-slate-50">
     <!-- Hero Section -->
-    <section class="relative py-24 overflow-hidden bg-slate-900 border-b border-white/5">
+    <section class="relative overflow-hidden bg-slate-900">
       <div class="absolute inset-0 z-0">
-        <img src="@/assets/lingwala.jpg" class="w-full h-full object-cover opacity-40" alt="Contact background" />
-        <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent"></div>
-        <div class="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.1),transparent_70%)]"></div>
-        <div class="absolute -top-24 -right-24 size-96 bg-primary/20 rounded-full blur-[120px]"></div>
+        <img src="@/assets/lingwala.jpg" class="w-full h-full object-cover opacity-20" alt="Contact" loading="eager" fetchpriority="high" decoding="async" />
+        <div class="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-900/85 to-slate-900/40"></div>
+        <div class="absolute -top-24 -right-24 size-96 bg-primary/15 rounded-full blur-[120px]"></div>
       </div>
 
       <div class="container mx-auto px-4 sm:px-6 lg:px-12 relative z-10 text-center">
-        <h1 class="text-4xl md:text-5xl lg:text-6xl font-black text-white mb-6 tracking-tight">
-          Contactez <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-400">CasaNayo</span>
-        </h1>
-        <p class="text-slate-400 text-lg md:text-xl max-w-3xl mx-auto leading-relaxed">
-          Une question sur notre application web ? Un projet immobilier à concrétiser ? Notre équipe d'experts et nos outils digitaux sont là pour vous offrir l'expérience la plus fluide de RDC.
-        </p>
+        <div class="py-8 md:py-10 max-w-2xl mx-auto">
+          <span class="inline-flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-[0.25em] text-primary/80 mb-3">
+            <span class="w-5 h-px bg-primary"></span>
+            CasaNayo — Support &amp; Contact
+            <span class="w-5 h-px bg-primary"></span>
+          </span>
+          <h1 class="text-3xl md:text-4xl lg:text-5xl font-black text-white leading-tight">
+            Contactez
+            <span class="text-primary"> CasaNayo</span>
+          </h1>
+          <p class="mt-3 text-slate-300/80 text-sm md:text-base max-w-xl mx-auto">
+            Une question, un projet immobilier ? Notre équipe est disponible 24h/24 sur WhatsApp.
+          </p>
+        </div>
       </div>
     </section>
 

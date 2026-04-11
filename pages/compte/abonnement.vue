@@ -11,9 +11,11 @@ import {
 } from 'lucide-vue-next'
 import { Button, Input, Label } from '@/components/ui'
 import { useAuthStore } from '@/stores/auth'
-import { usePaymentStore } from '@/stores/payment'
+import { usePaymentStore, type PaymentRow } from '@/stores/payment'
+import { downloadPaymentReceiptPdf } from '@/utils/paymentInvoicePdf'
 import { toast } from 'vue-sonner'
-import { h } from 'vue'
+import { h, ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { addStompNotificationHandler, isSubscriptionNotification } from '@/utils/stompUserQueue'
 
 definePageMeta({
     layout: 'default',
@@ -27,6 +29,9 @@ const config = useRuntimeConfig()
 const auth = useAuthStore()
 const payment = usePaymentStore()
 
+const latestPayment = ref<PaymentRow | null>(null)
+const isDownloading = ref(false)
+
 const SUBSCRIPTION_USD = 5
 
 const selectedMethod = ref<'mobile' | 'card'>('mobile')
@@ -38,6 +43,8 @@ const cardCvv = ref('')
 
 const paymentStep = ref(0)
 const isProcessing = ref(false)
+
+const unsubStomp = ref<(() => void) | null>(null)
 
 const detectedNetwork = computed(() => {
     let text = phoneLocal.value.replace(/\D/g, '')
@@ -86,70 +93,113 @@ watch(phoneLocal, (v) => {
 
 onMounted(() => {
     payment.fetchDevises(config.public.apiBase as string)
+
+    const route = useRoute()
+    const status = route.query.status || route.query.state || route.query.payment_status || route.query.error
+    if (status) {
+        const s = String(status).toLowerCase()
+        setTimeout(async () => {
+            if (s === 'success' || s === 'successful' || s === 'approved') {
+                auth.setPremium(true)
+                toast.success('Paiement réussi !')
+            } else if (s === 'cancel' || s === 'cancelled' || s === 'canceled') {
+                toast.info('Paiement annulé')
+            } else {
+                toast.error('Paiement échoué')
+            }
+        }, 100)
+    }
+
+    // WebSocket listener
+    unsubStomp.value = addStompNotificationHandler((data: any) => {
+        if (!isSubscriptionNotification(data)) return
+        const tag = String(data.tag || '').toUpperCase()
+        const msg = String(data.message || data.body || '').toLowerCase()
+        const userData = data.user as any
+
+        // Si l'objet user est renvoyé avec premium: false, c'est un échec
+        if (userData && userData.premium === false && tag.includes('SUBSCRIPTION')) {
+            toast.error('Paiement non validé', { description: 'Votre statut est resté non-premium.' })
+            paymentStep.value = 0
+            isProcessing.value = false
+            return
+        }
+
+        if (tag.includes('CANCEL') || msg.includes('annul') || msg.includes('échou')) {
+            toast.error('Paiement annulé ou échoué')
+            paymentStep.value = 0
+            isProcessing.value = false
+            return
+        }
+
+        // Succès si message positif, tag success OU si l'objet user confirme premium: true
+        if (msg.includes('succès') || msg.includes('activé') || tag.includes('SUCCESS') || tag.includes('CONFIRMED') || (userData && userData.premium === true)) {
+            auth.setPremium(true)
+            paymentStep.value = 3
+            toast.success('Abonnement Premium activé !', {
+                description: 'Vous pouvez maintenant profiter de tous les services.',
+                icon: h(CheckCircle2, { class: 'size-5 text-[#1976D2]' }),
+            })
+            setTimeout(() => navigateTo('/properties'), 2000)
+        }
+    })
+})
+
+onUnmounted(() => {
+    if (unsubStomp.value) unsubStomp.value()
 })
 
 async function processPayment() {
-    if (selectedMethod.value === 'mobile') {
-        if (!isPhoneValid.value) {
-            toast.error('Numéro invalide', {
-                description: '9 chiffres sans le 0, réseau mobile RDC reconnu.',
-            })
-            return
-        }
-    } else {
-        if (!cardNumber.value.trim() || !cardExpiry.value.trim() || !cardCvv.value.trim()) {
-            toast.error('Carte incomplète', { description: 'Renseignez tous les champs.' })
-            return
-        }
+    if (isProcessing.value) return
+    if (selectedMethod.value === 'mobile' && !isPhoneValid.value) {
+        toast.error('Numéro invalide')
+        return
     }
 
     isProcessing.value = true
     paymentStep.value = 1
-
+    
     try {
+        const deviseId = payment.resolveDeviseId(selectedCurrency.value)
         if (selectedMethod.value === 'mobile') {
-            const digits = phoneLocal.value.replace(/\D/g, '')
-            const finalPhone = `243${digits}`
-            await new Promise((r) => setTimeout(r, 800))
-            paymentStep.value = 2
-
-            const deviseId = payment.resolveDeviseId(selectedCurrency.value)
+            const finalPhone = `243${phoneLocal.value.replace(/\D/g, '')}`
             const res = await payment.subscribe(config.public.apiBase as string, finalPhone, deviseId)
-
-            if (!res.success) {
-                toast.error('Paiement', { description: res.message })
+            if (res.success) {
+                paymentStep.value = 2 // Attente du push
+                toast.info('Validation requise', { description: 'Validez le message push sur votre téléphone.' })
+            } else {
+                toast.error('Erreur', { description: res.message })
                 paymentStep.value = 0
-                return
+                isProcessing.value = false
             }
-
-            paymentStep.value = 3
-            await new Promise((r) => setTimeout(r, 600))
-            auth.setPremium(true)
-            toast.success('Abonnement activé', {
-                description: 'Vous pouvez désormais effectuer des réservations.',
-                icon: h(CheckCircle2, { class: 'size-5 text-[#1976D2]' }),
-            })
-            await navigateTo('/properties')
         } else {
-            await new Promise((r) => setTimeout(r, 1200))
-            paymentStep.value = 2
-            await new Promise((r) => setTimeout(r, 1500))
-            paymentStep.value = 3
-            await new Promise((r) => setTimeout(r, 500))
-            auth.setPremium(true)
-            toast.success('Abonnement activé (démo carte)', {
-                description: 'Comportement aligné sur l’application mobile.',
-                icon: h(CheckCircle2, { class: 'size-5 text-[#1976D2]' }),
-            })
-            await navigateTo('/properties')
+            const res = await payment.payWithCard(config.public.apiBase as string, deviseId)
+            if (res.success && (res.data?.url || res.data?.data?.url)) {
+                window.location.href = res.data?.url || res.data?.data?.url
+            } else {
+                toast.error('Erreur technique')
+                paymentStep.value = 0
+                isProcessing.value = false
+            }
         }
     } catch (e) {
-        console.error(e)
-        toast.error('Erreur', { description: 'Une erreur est survenue.' })
+        toast.error('Erreur de connexion')
         paymentStep.value = 0
-    } finally {
         isProcessing.value = false
-        if (paymentStep.value !== 3) paymentStep.value = 0
+    }
+}
+
+async function handleDownloadLatest() {
+    if (!latestPayment.value) return
+    isDownloading.value = true
+    try {
+        const username = auth.user?.username || auth.profile?.fullName || 'Client CasaNayo'
+        await downloadPaymentReceiptPdf(latestPayment.value, username)
+        toast.success('Reçu téléchargé.')
+    } catch (e) {
+        toast.error('Erreur téléchargement.')
+    } finally {
+        isDownloading.value = false
     }
 }
 
@@ -201,10 +251,31 @@ const perks = [
           bancaire en démonstration (comme sur l’app).
         </p>
         <div
-          v-if="auth.user?.premium"
+          v-if="auth.user?.premium && !latestPayment"
           class="mt-6 inline-flex rounded-xl bg-white/15 px-4 py-2 text-sm font-semibold backdrop-blur-sm"
         >
           Vous êtes déjà Premium — consultez vos reçus dans l’historique.
+        </div>
+        <div
+          v-else-if="latestPayment"
+          class="mt-6 inline-flex flex-col gap-3 rounded-2xl border border-white/20 bg-white/15 px-6 py-5 backdrop-blur-sm shadow-xl"
+        >
+          <div class="flex items-center gap-3">
+             <CheckCircle2 class="text-white size-8" />
+             <div>
+                <p class="font-black text-lg">Paiement validé !</p>
+                <p class="text-sm text-blue-50/90">Transaction #{{ latestPayment.reference ?? latestPayment.id }}</p>
+             </div>
+          </div>
+          <button
+              @click="handleDownloadLatest"
+              :disabled="isDownloading"
+              class="mt-2 inline-flex items-center justify-center gap-2 rounded-xl bg-white text-[#1976D2] font-bold py-2.5 px-6 shadow-md transition hover:bg-blue-50 disabled:opacity-50"
+          >
+             <Loader2 v-if="isDownloading" class="size-4 animate-spin" />
+             <FileText v-else class="size-4" />
+             Télécharger ma facture pro
+          </button>
         </div>
       </div>
 
@@ -300,7 +371,7 @@ const perks = [
                         v-model="phoneLocal"
                         type="tel"
                         class="border-0 text-lg font-semibold focus-visible:ring-0"
-                        placeholder="854434602"
+                        placeholder="*********"
                       />
                     </div>
                     <p class="text-xs text-slate-500">9 chiffres sans le 0 initial.</p>
@@ -308,16 +379,16 @@ const perks = [
                 </template>
 
                 <template v-else>
-                  <Label class="text-xs font-bold uppercase text-slate-500">Carte (démo)</Label>
-                  <Input v-model="cardNumber" placeholder="Numéro" class="rounded-xl" />
-                  <div class="grid grid-cols-2 gap-3">
-                    <Input v-model="cardExpiry" placeholder="MM/AA" class="rounded-xl" />
-                    <Input v-model="cardCvv" placeholder="CVV" class="rounded-xl" />
+                  <div class="overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-b from-blue-50/50 to-white p-6 text-center shadow-sm">
+                    <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-blue-100/50 shadow-inner">
+                        <CreditCard class="h-6 w-6 text-[#1976D2]" />
+                    </div>
+                    <h3 class="mb-2 text-sm font-extrabold text-slate-800 uppercase tracking-tight">Environnement sécurisé</h3>
+                    <p class="mx-auto max-w-sm text-xs leading-relaxed text-slate-500">
+                        Pour garantir la protection de vos données bancaires, le paiement s'effectue directement sur la plateforme de notre partenaire financier certifié. <br/><br/>
+                        <b>Vous y accèderez à l'étape suivante.</b>
+                    </p>
                   </div>
-                  <p class="rounded-xl border border-blue-100 bg-[#E3F2FD] px-3 py-2 text-xs text-slate-700">
-                    La carte ne débite pas réellement sur le web — uniquement Mobile Money appelle
-                    l’API de paiement.
-                  </p>
                 </template>
               </div>
             </div>

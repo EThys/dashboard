@@ -96,11 +96,11 @@ const normalizeItem = (item: any) => {
     let frequency = isLocationTransactionType(tType) ? '/mois' : ''
     let priceLabel = isLocationTransactionType(tType) ? 'Loyer' : 'Montant de la vente'
 
-    const isSpecial = ['hotel', 'hôtels', 'salle de fête', 'salles de fête', 'espace funéraire', 'espaces funéraires'].includes(props.title.toLowerCase())
+    const isSpecial = Boolean(item.hotel || item.funeraire || item.festive || item.bureau || item.terrain) || ['hotel', 'hôtels', 'salle de fête', 'salles de fête', 'espace funéraire', 'espaces funéraires'].includes(props.title.toLowerCase())
     if (isSpecial) {
         if (isLocationTransactionType(tType)) {
             frequency = ''
-            priceLabel = 'Prix de la location'
+            priceLabel = 'Prix'
         } else {
             priceLabel = 'Montant de la vente'
         }

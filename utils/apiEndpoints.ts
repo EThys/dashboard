@@ -28,6 +28,7 @@ export const ApiEndpoints = {
     resetPassword: `${v}/protected/reset/password`,
     updateProfilePicture: `${v}/protected/members`,
     protectedMembers: `${v}/protected/members`,
+    certification: `${v}/protected/certification/`,
 
     otpGenerate: `${v}/public/otp/generate`,
     otpVerify: `${v}/public/otp/verify`,
@@ -284,6 +285,7 @@ export const ApiEndpoints = {
 
     cards: `${v}/public/cards`,
     paymentSubscription: `${v}/protected/payment/subscription`,
+    paymentCard: `${v}/protected/payment/card`,
     paymentHistory: `${v}/protected/payment/owner/`,
     /** Liste admin : paiements groupés par utilisateur — Bearer obligatoire */
     paymentUsers: `${v}/protected/payment/users`,
