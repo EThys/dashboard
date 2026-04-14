@@ -240,7 +240,7 @@ export const useReservationStore = defineStore('reservations', {
                 startDate: details.startDate,
                 endDate: details.endDate,
                 message: details.message || 'Demande de réservation via Dashboard',
-                type: details.type || 'VIP',
+                type: details.type || 'STANDARD',
                 reservationHeure: details.reservationHeure || new Date().toLocaleTimeString('fr-FR', { hour12: false })
             }
 
@@ -264,8 +264,7 @@ export const useReservationStore = defineStore('reservations', {
                 path = ApiEndpoints.addReservationFuneraire
                 body.funeraireId = id
             } else if (type === 'chambre' || (type.includes('chambre') && !type.includes('vacance'))) {
-                /** Réservation hôtel : une chambre — `POST …/public/property/hotels/chambre/{chambreId}` (relatif, joint une seule fois ci-dessous) */
-                path = `${ApiEndpoints.publicPropertyHotelChambreReservation}/${id}`
+                path = ApiEndpoints.addReservationRoom
                 body.chambreId = id
             } else if (type.includes('vacance')) {
                 path = ApiEndpoints.addReservationVacance
