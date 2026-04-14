@@ -687,15 +687,7 @@ async function handleDownloadSolicitationPdf() {
               </NuxtLink>
             </div>
 
-            <div
-              v-if="perspective === 'host' && detailItem.status === 'PENDING'"
-              class="border-t border-slate-100 pt-4"
-            >
-              <p class="mb-1 text-xs font-bold uppercase text-slate-500">Réponse prestataire</p>
-              <p class="mb-3 text-[11px] text-slate-500">
-                Comme sur l’app mobile : réponse HTTP puis notification immédiate vers l’autre partie.
-              </p>
-              <div class="flex gap-2">
+            <div v-if="perspective === 'host' && detailItem.status === 'PENDING'" class="flex gap-2 pt-4 border-t border-slate-100">
                 <Button
                   type="button"
                   class="h-12 flex-1 rounded-xl bg-emerald-600 font-bold text-white hover:bg-emerald-700"
@@ -713,7 +705,6 @@ async function handleDownloadSolicitationPdf() {
                 >
                   Refuser
                 </Button>
-              </div>
             </div>
           </div>
         </div>
