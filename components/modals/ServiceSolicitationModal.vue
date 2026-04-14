@@ -15,6 +15,8 @@ const props = defineProps<{
 
 const emit = defineEmits(['close', 'success'])
 
+import { toast } from 'vue-sonner'
+
 const config = useRuntimeConfig()
 const authStore = useAuthStore()
 
@@ -28,7 +30,7 @@ const form = reactive({
 
 const handleSubmit = async () => {
     if (!authStore.isAuthenticated || !authStore.user) {
-        alert("Veuillez vous connecter pour faire une demande.")
+        toast.error("Veuillez vous connecter pour faire une demande.")
         return
     }
 
@@ -53,10 +55,13 @@ const handleSubmit = async () => {
 
         emit('success')
         emit('close')
-        alert("Votre demande a été envoyée avec succès !")
-    } catch (e) {
+        
+        toast.success("Demande envoyée avec succès !", {
+            description: "Votre demande a bien été transmise au prestataire. Vous recevrez une réponse dans votre espace client très prochainement."
+        })
+    } catch (e: any) {
         console.error(e)
-        alert("Une erreur est survenue lors de l'envoi.")
+        toast.error("Une erreur est survenue lors de l'envoi de votre demande.")
     } finally {
         isLoading.value = false
     }
