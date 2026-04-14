@@ -38,7 +38,7 @@ const rawProperty = computed<AnyPropertyResponse | undefined>(() =>
   fetchedProperty.value || propertyStore.getPropertyById(propertyId.value)
 )
 
-const { pending: isLoading } = await useAsyncData(
+const { pending: isLoading } = useAsyncData(
   `property-${propertyId.value}`,
   async () => {
     // 1. If we already have it in store, we're good for immediate display
@@ -211,6 +211,11 @@ function onVisitModalClose() {
     visitChambreTitleStr.value = ''
 }
 
+const isResModalOpen = ref(false)
+const resTargetType = ref<'vacance'|'chambre'|'standard'>('vacance')
+const resTargetId = ref(0)
+const resTargetTitle = ref('')
+
 function openChambreReservation() {
     const ch = selectedChambre.value
     if (!ch) return
@@ -218,17 +223,12 @@ function openChambreReservation() {
         closeChambreDetail()
         return navigateTo(`/login?reason=reservation&redirect=${route.fullPath}`)
     }
-    if (!authStore.user?.premium) {
-        closeChambreDetail()
-        toast.info("Abonnement requis", { 
-            description: "Un abonnement Premium est nécessaire pour réserver cette chambre." 
-        })
-        return navigateTo('/compte/abonnement')
-    }
-    visitChambreId.value = ch.id
-    visitChambreTitleStr.value = ch.title
+    
+    resTargetId.value = ch.id
+    resTargetTitle.value = ch.title
+    resTargetType.value = 'chambre'
     closeChambreDetail()
-    isVisitModalOpen.value = true
+    isResModalOpen.value = true
 }
 
 const chambreDetailOpen = ref(false)
@@ -777,21 +777,9 @@ function openChambreLightboxFromDetail() {
                   <p class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Infos horaires</p>
                   <p class="mt-1 text-foreground">{{ selectedChambre.priceHeure }}</p>
                 </div>
-                <div>
-                  <p class="text-xs font-bold uppercase tracking-wider text-muted-foreground">ID chambre</p>
-                  <p class="mt-1 font-mono text-sm">{{ selectedChambre.id }}</p>
-                </div>
-                <div>
-                  <p class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Hôtel</p>
-                  <p class="mt-1 font-mono text-sm">#{{ selectedChambre.hotelId }}</p>
-                </div>
                 <div v-if="selectedChambre.createdAt">
-                  <p class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Créée le</p>
+                  <p class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Publié le</p>
                   <p class="mt-1 text-sm">{{ selectedChambre.createdAt }}</p>
-                </div>
-                <div v-if="selectedChambre.updatedAt">
-                  <p class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Mise à jour</p>
-                  <p class="mt-1 text-sm">{{ selectedChambre.updatedAt }}</p>
                 </div>
               </div>
 
@@ -826,13 +814,23 @@ function openChambreLightboxFromDetail() {
         @hide="lightboxVisible = false"
       />
 
-      <PropertyVisitModal
-        :isOpen="isVisitModalOpen"
-        :propertyId="propertyId"
-        :chambre-id="visitChambreId"
-        :property-title="visitChambreId != null ? visitChambreTitleStr : property?.title || ''"
-        :property-type="property?.type || ''"
-        @close="onVisitModalClose"
+      <!-- Visit Modal -->
+      <PropertyVisitModal 
+         :isOpen="isVisitModalOpen"
+         :propertyId="propertyId"
+         :chambre-id="visitChambreId"
+         :property-title="visitChambreId != null ? visitChambreTitleStr : property?.title || ''"
+         :property-type="property?.type || ''"
+         @close="onVisitModalClose"
+      />
+
+      <!-- Reservation Modal (Chambres/Vacances) -->
+      <ListingReservationModal 
+         :isOpen="isResModalOpen"
+         :listingId="resTargetId"
+         :listingTitle="resTargetTitle"
+         :type="resTargetType"
+         @close="isResModalOpen = false"
       />
   </div>
 </template>

@@ -47,7 +47,7 @@ const route = useRoute()
 const propertyStore = usePropertyStore()
 
 // Fetch properties with lazy loading for instant navigation
-const { pending: isLoading } = await useAsyncData('all-properties', async () => {
+const { pending: isLoading } = useAsyncData('all-properties', async () => {
     await Promise.all([
         propertyStore.fetchTypes(config.public.apiBase),
         propertyStore.fetchTerrains(config.public.apiBase),
@@ -314,23 +314,18 @@ watch([searchQuery, selectedType, selectedTransaction, minPrice, maxPrice, selec
 <template>
   <div class="min-h-screen">
     <!-- Hero Section -->
-    <section class="relative overflow-hidden bg-slate-900">
+    <section class="relative overflow-hidden bg-slate-800">
       <div class="absolute inset-0 z-0">
-        <img src="@/assets/congo.jpg" class="w-full h-full object-cover opacity-20" alt="Properties" loading="eager" fetchpriority="high" decoding="async" />
-        <div class="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-900/85 to-slate-900/40"></div>
+        <img src="@/assets/congo.jpg" class="w-full h-full object-cover opacity-40" alt="Properties" loading="eager" fetchpriority="high" decoding="async" />
+        <div class="absolute inset-0 bg-gradient-to-r from-slate-800 via-slate-800/70 to-transparent"></div>
       </div>
 
-      <div class="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10 py-8 md:py-10 text-center">
+      <div class="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10 py-10 md:py-14 text-center">
         <!-- Text -->
         <div class="max-w-2xl mx-auto mb-6">
-          <span class="inline-flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-[0.25em] text-primary/80 mb-3">
-            <span class="w-5 h-px bg-primary"></span>
-            CasaNayo — Immobilier RDC
-            <span class="w-5 h-px bg-primary"></span>
-          </span>
           <h1 class="text-3xl md:text-4xl lg:text-5xl font-black text-white leading-tight">
-            Découvrez Votre
-            <span class="text-primary"> Prochain Chez-Vous</span>
+            Découvrez votre
+            <span class="text-primary"> prochain chez-vous</span>
           </h1>
           <p class="mt-3 text-slate-300/80 text-sm md:text-base">
             Maisons, appartements, terrains et hôtels — tout le marché immobilier congolais.

@@ -31,7 +31,7 @@ const getCurrencyCode = (deviseId: number): 'CDF' | 'USD' => {
 }
 
 // Fetch logic
-const { pending: isLoading } = await useAsyncData(
+const { pending: isLoading } = useAsyncData(
   `service-${serviceId.value}`,
   async () => {
     // 1. Try to fetch specific service first
@@ -311,7 +311,7 @@ const contactProvider = () => {
                             <h2 class="text-2xl font-bold mb-6">Réalisations précédentes</h2>
                             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 <div v-for="(img, idx) in service.images" :key="idx" 
-                                    @click="showImg(idx)"
+                                    @click="showImg(idx as number)"
                                     class="aspect-square rounded-2xl overflow-hidden cursor-pointer hover:opacity-90 transition-opacity relative group"
                                 >
                                     <img :src="img" class="w-full h-full object-cover" />

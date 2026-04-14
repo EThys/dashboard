@@ -49,20 +49,15 @@ const faqs = [
 <template>
   <div class="min-h-screen bg-slate-50">
     <!-- Hero Section -->
-    <section class="relative overflow-hidden bg-slate-900">
+    <section class="relative overflow-hidden bg-slate-800">
       <div class="absolute inset-0 z-0">
-        <img src="@/assets/lingwala.jpg" class="w-full h-full object-cover opacity-20" alt="Contact" loading="eager" fetchpriority="high" decoding="async" />
-        <div class="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-900/85 to-slate-900/40"></div>
+        <img src="@/assets/lingwala.jpg" class="w-full h-full object-cover opacity-40" alt="Contact" loading="eager" fetchpriority="high" decoding="async" />
+        <div class="absolute inset-0 bg-gradient-to-r from-slate-800 via-slate-800/70 to-transparent"></div>
         <div class="absolute -top-24 -right-24 size-96 bg-primary/15 rounded-full blur-[120px]"></div>
       </div>
 
       <div class="container mx-auto px-4 sm:px-6 lg:px-12 relative z-10 text-center">
-        <div class="py-8 md:py-10 max-w-2xl mx-auto">
-          <span class="inline-flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-[0.25em] text-primary/80 mb-3">
-            <span class="w-5 h-px bg-primary"></span>
-            CasaNayo — Support &amp; Contact
-            <span class="w-5 h-px bg-primary"></span>
-          </span>
+        <div class="py-10 md:py-16 max-w-2xl mx-auto">
           <h1 class="text-3xl md:text-4xl lg:text-5xl font-black text-white leading-tight">
             Contactez
             <span class="text-primary"> CasaNayo</span>

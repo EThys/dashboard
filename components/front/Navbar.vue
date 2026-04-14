@@ -124,7 +124,7 @@ const navPillActive =
               aria-haspopup="true"
               @click="navDiscoverOpen = !navDiscoverOpen"
             >
-              Le bien
+              Vacances
               <ChevronDown
                 class="size-3.5 opacity-80 transition-transform duration-300"
                 :class="{ 'rotate-180': navDiscoverOpen }"
@@ -370,7 +370,7 @@ const navPillActive =
                 class="flex w-full items-center justify-between text-2xl font-black text-slate-800"
                 @click="mobileDiscoverOpen = !mobileDiscoverOpen"
               >
-                Le bien
+                Vacances
                 <ChevronDown class="size-6 transition-transform" :class="{ 'rotate-180': mobileDiscoverOpen }" />
               </button>
               <div v-show="mobileDiscoverOpen" class="mt-4 flex flex-col gap-3 border-l-2 border-amber-200/80 pl-4">
