@@ -107,12 +107,22 @@ export const useNotificationStore = defineStore('notifications', {
         },
 
         normalizeNotification(n: any): AppNotification {
+            let title = n.title || n.message || 'Notification'
+            let content = n.content || n.body || ''
+            const type = n.type || n.notificationType || 'INFO'
+
+            if (type === 'SUBSCRIPTION_CANCEL') {
+                title = 'CasaNayo Abonnement'
+            } else if (type === 'DEMANDES') {
+                title = "Demande d'intervention reçue"
+            }
+
             return {
                 id: n.id || n.notificationId,
-                title: n.title || n.message || 'Notification',
+                title,
                 description: n.description || '',
-                content: n.content || n.body || '',
-                type: n.type || n.notificationType || 'INFO',
+                content,
+                type,
                 tag: n.tag || '',
                 read: n.read === true || n.isRead === true || n.status === 'READ',
                 createdAt: n.createdAt || n.date || new Date().toISOString(),
