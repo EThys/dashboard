@@ -35,8 +35,15 @@ const form = reactive({
 })
 
 const handleSubmit = async () => {
-    if (!authStore.isAuthenticated) {
+    if (!authStore.isAuthenticated || !authStore.user) {
         return
+    }
+
+    if (!authStore.user?.certified) {
+        toast.error("Certification requise", {
+            description: "Vous devez certifier votre compte pour programmer des visites ou effectuer des réservations."
+        })
+        return navigateTo('/compte/certification-requise')
     }
 
     const elig = evaluateReservationEligibility(authStore.user as Record<string, unknown>)
