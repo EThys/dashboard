@@ -30,29 +30,30 @@ const isLoading = computed(() => isLoadingProps.value || isLoadingServices.value
 const combinedItems = computed(() => {
     const props = (propertyStore.getTypes || []).map(p => ({
         id: p.propertyTypeId,
-        name: p.name,
+        name: p.name === 'Apparts' ? 'appartement' : p.name,
         type: 'property' as const,
         link: `/properties?type=${p.name}`
     }))
-    
+
     const serves = (serviceStore.getCategories || []).map(s => ({
         id: s.id,
         name: s.name,
         type: 'service' as const,
         link: `/services?categoryId=${s.id}`
     }))
-    
+
     return [...props, ...serves]
 })
 
 // Dynamically generate styles based on category names and types (matching Airbnb aesthetics)
 const getStyle = (name: string, type: 'property' | 'service') => {
     const lowerName = name.toLowerCase()
-    
+
     if (type === 'property') {
       switch(lowerName) {
           case 'studio': return { icon: Hotel }
-          case 'apparts': return { icon: Building2 }
+          case 'apparts':
+          case 'appartement': return { icon: Building2 }
           case 'maisons': return { icon: Home }
           case 'bureau': return { icon: Briefcase }
           case 'hotels': return { icon: Hotel }
