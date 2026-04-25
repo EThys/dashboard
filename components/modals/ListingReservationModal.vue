@@ -31,6 +31,13 @@ const handleSubmit = async () => {
         return
     }
 
+    if (!authStore.user?.certified) {
+        toast.error("Certification requise", {
+            description: "Vous devez certifier votre compte pour effectuer une réservation."
+        })
+        return navigateTo('/compte/certification-requise')
+    }
+
     if (!form.endDate) {
         form.endDate = form.startDate
     }
