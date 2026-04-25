@@ -165,13 +165,7 @@ const navPillActive =
             </Transition>
           </div>
 
-          <NuxtLink
-            to="/contact"
-            class="shrink-0"
-            :class="[navPillBase, isNavActive('/contact') ? navPillActive : navPillIdle]"
-          >
-            Contact
-          </NuxtLink>
+
         </div>
       </nav>
 
@@ -259,7 +253,7 @@ const navPillActive =
                         <Receipt class="size-4" />
                         Historique des paiements
                     </NuxtLink>
-                    <NuxtLink to="/profile" @click="isDropdownOpen = false" class="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-2xl transition-all">
+                    <NuxtLink to="/compte/profile" @click="isDropdownOpen = false" class="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-2xl transition-all">
                         <User class="size-4" />
                         Mon Profil
                     </NuxtLink>
@@ -392,13 +386,7 @@ const navPillActive =
                 </NuxtLink>
               </div>
             </div>
-            <NuxtLink
-              to="/contact"
-              class="text-2xl font-black text-slate-800 hover:text-primary transition-colors"
-              @click="isMobileMenuOpen = false"
-            >
-              Contact
-            </NuxtLink>
+
 
             <div class="border-t border-slate-100 my-4 w-10"></div>
 
@@ -433,13 +421,13 @@ const navPillActive =
                      <Badge v-if="unreadCount > 0" variant="destructive" class="h-6 px-2 text-xs font-black">{{ unreadCount }}</Badge>
                   </NuxtLink>
                   <NuxtLink to="/compte/reservations" @click="isMobileMenuOpen = false" class="flex items-center gap-4 text-lg font-bold text-slate-600">
-                     <div class="size-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center">
+                     <div class="size-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
                         <Calendar class="w-5 h-5" />
                      </div>
                      Réservations (biens)
                   </NuxtLink>
                   <NuxtLink to="/compte/sollicitations" @click="isMobileMenuOpen = false" class="flex items-center gap-4 text-lg font-bold text-slate-600">
-                     <div class="size-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center">
+                     <div class="size-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
                         <Wrench class="w-5 h-5" />
                      </div>
                      Sollicitations (services)
@@ -456,8 +444,8 @@ const navPillActive =
                      </div>
                      Historique des paiements
                   </NuxtLink>
-                  <NuxtLink to="/profile" @click="isMobileMenuOpen = false" class="flex items-center gap-4 text-lg font-bold text-slate-600">
-                     <div class="size-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                  <NuxtLink to="/compte/profile" @click="isMobileMenuOpen = false" class="flex items-center gap-4 text-lg font-bold text-slate-600">
+                     <div class="size-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
                         <User class="w-5 h-5" />
                      </div>
                      Mon Profil
