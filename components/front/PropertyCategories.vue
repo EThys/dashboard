@@ -14,9 +14,11 @@ const { pending: isLoading } = await useAsyncData('property-types', () => proper
 
 // Mapping icons to types manually with specific colors for a premium feel
 const getCategoryStyle = (name: string) => {
-    switch(name.toLowerCase()) {
+    const n = name.toLowerCase()
+    switch(n) {
         case 'studio': return { icon: Hotel }
-        case 'apparts': return { icon: Building2 }
+        case 'apparts':
+        case 'appartement': return { icon: Building2 }
         case 'maisons': return { icon: Home }
         case 'bureau': return { icon: Briefcase }
         case 'hotels': return { icon: Hotel }
@@ -28,7 +30,10 @@ const getCategoryStyle = (name: string) => {
     }
 }
 
-const categories = computed(() => propertyStore.getTypes)
+const categories = computed(() => propertyStore.getTypes.map(c => ({
+    ...c,
+    name: c.name === 'Apparts' ? 'appartement' : c.name
+})))
 
 // Scroll helper — works on any ref
 const doScrollLeft = (container: HTMLElement | null) => {
