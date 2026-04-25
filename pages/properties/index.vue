@@ -159,14 +159,14 @@ const properties = computed(() => {
      let img = images.length > 0 ? images[0] : 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800&q=80'
 
      // Type Name
-     let typeName = item.typeProperty?.name
+     let typeName = item.typeProperty?.name === 'Apparts' ? 'appartement' : item.typeProperty?.name
      if(!typeName) {
          if(item.terrain) typeName = 'Terrain'
          else if(item.bureau) typeName = 'Bureau'
          else if(item.hotel) typeName = 'Hôtel'
          else if(item.festive) typeName = 'Salle de fête'
          else if(item.funeraire) typeName = 'Espace funéraire'
-         else typeName = 'Propriété'
+         else typeName = item.typeProperty?.name || 'Propriété'
      }
     
     const isHotel = item._category === 'hotel'
