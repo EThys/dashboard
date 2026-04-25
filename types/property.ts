@@ -399,6 +399,7 @@ export interface NormalizedProperty {
     }
     publisherImage?: string
     createdAt: string
+    transactionType?: string
     guarantee?: string
     /** Hôtel : pas de prix global sur la fiche / cartes */
     hideListingPrice?: boolean
