@@ -4,7 +4,8 @@ import {
     LayoutDashboard, Users, FileText, Settings, LogOut, 
     Bell, Search, Menu, X, AlertOctagon, Calendar,
     Plus, Home, Briefcase, ChevronRight, User as UserIcon,
-    CreditCard, Receipt, Wrench, MapPin, Building2, ChevronDown
+    CreditCard, Receipt, Wrench, MapPin, Building2, ChevronDown,
+    ShieldCheck
 } from 'lucide-vue-next'
 import { Button, Sheet } from '@/components/ui'
 import { useAuthStore } from '~/stores/auth'
@@ -98,6 +99,7 @@ const menuGroups = computed(() => {
         { name: 'Mes Réservations', path: '/dashboard/my-reservations', icon: Calendar },
         { name: 'Mes sollicitations', path: '/dashboard/my-solicitations', icon: Wrench },
         { name: 'Tourisme & agences', path: '/dashboard/agences', icon: MapPin },
+        { name: 'Certification', path: '/dashboard/certification', icon: ShieldCheck },
         { name: 'Abonnement', path: '/compte/abonnement', icon: CreditCard },
         { name: 'Historique paiements', path: '/compte/paiements', icon: Receipt },
       ]
@@ -112,7 +114,7 @@ const menuGroups = computed(() => {
     admin: [
       { name: 'Utilisateurs', path: '/dashboard/users', icon: Users },
       { name: 'Paiements', path: '/dashboard/payments', icon: Receipt },
-      { name: 'Paramètres', path: '/dashboard/settings', icon: Settings },
+      { name: 'Paramètres', path: '/compte/profile', icon: Settings },
     ],
   }
 })
@@ -120,7 +122,7 @@ const menuGroups = computed(() => {
 const pubsMoreLinks = computed(() => [
   { name: 'Paiements', path: '/dashboard/payments', icon: Receipt },
   { name: 'Utilisateurs', path: '/dashboard/users', icon: Users },
-  { name: 'Paramètres', path: '/dashboard/settings', icon: Settings },
+  { name: 'Paramètres', path: '/compte/profile', icon: Settings },
 ])
 
 // Auto-select rail tab based on path
@@ -137,7 +139,7 @@ watch(
     else if (newPath === '/dashboard/agences') selectedRailTab.value = 'pubs'
     else if (newPath === '/dashboard/users') selectedRailTab.value = 'admin'
     else if (newPath === '/dashboard/payments') selectedRailTab.value = 'admin'
-    else if (newPath === '/dashboard/settings') selectedRailTab.value = 'admin'
+    else if (newPath === '/compte/profile') selectedRailTab.value = 'admin'
     else selectedRailTab.value = 'main'
   },
   { immediate: true }
@@ -479,11 +481,11 @@ onUnmounted(() => {
                  <transition name="fade">
                     <div v-if="isUserMenuOpen" class="absolute right-0 mt-3 w-56 bg-card border border-border rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2">
                         <button 
-                            @click="router.push('/dashboard/settings'); isUserMenuOpen = false"
+                            @click="router.push('/compte/profile'); isUserMenuOpen = false"
                             class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-muted-foreground hover:bg-primary/5 hover:text-primary transition-colors"
                         >
-                            <Settings class="size-4" />
-                            Paramètres
+                            <UserIcon class="size-4" />
+                            Mon profil
                         </button>
                         <div class="h-[1px] bg-border my-1"></div>
                         <button 
