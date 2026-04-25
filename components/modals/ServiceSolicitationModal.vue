@@ -34,6 +34,13 @@ const handleSubmit = async () => {
         return
     }
 
+    if (!authStore.user?.certified) {
+        toast.error("Certification requise", {
+            description: "Vous devez certifier votre compte pour proposer des services ou effectuer des réservations."
+        })
+        return navigateTo('/compte/certification-requise')
+    }
+
     isLoading.value = true
     try {
         const uid = authStore.user.userId ?? (authStore.user as { id?: number }).id
