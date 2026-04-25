@@ -345,7 +345,7 @@ function openChambreLightboxFromDetail() {
                                     v-if="isPropertyTaken"
                                     class="px-4 py-1.5 rounded-full bg-red-600 text-white text-sm font-black uppercase tracking-wider shadow-lg shadow-red-900/30 border border-red-500/80"
                                 >
-                                    Déjà pris
+                                    {{ (property.transactionType === 'location' || property.transactionType === 'louer') ? 'Déjà pris' : 'Vendu' }}
                                 </span>
                                 <span class="px-4 py-1.5 rounded-full bg-primary text-white text-sm font-bold uppercase tracking-wider shadow-lg shadow-primary/25">
                                     {{ property.status }}
