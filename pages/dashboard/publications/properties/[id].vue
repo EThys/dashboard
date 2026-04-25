@@ -303,7 +303,7 @@ const lifecyclePresentation = computed(() => {
 const publicationBadge = computed(() => {
   if (isSoldListing.value)
     return {
-      label: isLocationTransaction.value ? 'Non disponible' : 'Vendu',
+      label: isLocationTransaction.value ? 'Déjà pris' : 'Vendu',
       class: 'bg-slate-800 text-white border-slate-800 font-semibold',
     }
   if (!listingAvailable.value)
@@ -416,7 +416,7 @@ const resForm = ref({
 
 const handleStartReservation = () => {
   if (isSoldListing.value) {
-    toast.info('Ce bien est déjà pris — réservation impossible.')
+    toast.info(`${isLocationTransaction.value ? 'Ce bien est déjà pris' : 'Ce bien est déjà vendu'} — réservation impossible.`)
     return
   }
   if (!authStore.isAuthenticated) {
@@ -538,7 +538,7 @@ const property = computed(() => {
     livingRooms,
     floor,
     guarantee,
-    category: n.type,
+    category: n.type === 'Apparts' ? 'appartement' : n.type,
     createdAt: n.createdAt,
     capacity: n.capacity,
     electricity: n.electricity,
@@ -557,7 +557,7 @@ const property = computed(() => {
       id: raw.userId as number | undefined,
       photo: (raw.image as string | null) || null
     },
-    type: n.type,
+    type: n.type === 'Apparts' ? 'appartement' : n.type,
     features: featuresList,
     images: {
       main: mainArr,
@@ -1029,10 +1029,10 @@ const goBack = () => router.push('/dashboard/publications?tab=properties')
                                 <Tag v-else class="h-4 w-4 shrink-0 text-[#1976D2]" />
                                 {{
                                   isSoldListing
-                                    ? isLocationTransaction
+                                    ? isLocationTransaction.value
                                       ? 'Rendre disponible à la location'
                                       : 'Rouvrir la vente'
-                                    : isLocationTransaction
+                                    : isLocationTransaction.value
                                       ? 'Marquer déjà pris / loué'
                                       : 'Marquer comme vendu'
                                 }}
@@ -1128,7 +1128,7 @@ const goBack = () => router.push('/dashboard/publications?tab=properties')
                     <div class="grid gap-3">
                         <Button 
                             :disabled="isSoldListing"
-                            :title="isSoldListing ? 'Ce bien est déjà pris' : undefined"
+                            :title="isSoldListing ? (isLocationTransaction.value ? 'Ce bien est déjà pris' : 'Ce bien est déjà vendu') : undefined"
                             @click="handleStartReservation"
                             class="w-full h-14 text-base font-black bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 rounded-2xl group transition-all disabled:opacity-50 disabled:pointer-events-none"
                         >
