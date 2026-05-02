@@ -12,7 +12,7 @@ import {
 } from '@/components/ui'
 import { useAuthStore } from '~/stores/auth'
 import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
-import { useToast } from '@/components/ui/toast/use-toast'
+import { toast } from 'vue-sonner'
 
 definePageMeta({
   layout: 'dashboard'
@@ -20,7 +20,6 @@ definePageMeta({
 
 const auth = useAuthStore()
 const config = useRuntimeConfig()
-const { toast } = useToast()
 
 // State
 const isLoading = ref(false)
@@ -52,10 +51,8 @@ const handleImageSelect = async (e: Event, type: 'profile' | 'front' | 'back') =
 
   // Basic validation
   if (file.size > 5 * 1024 * 1024) {
-    toast({
-      title: 'Fichier trop lourd',
+    toast.error('Fichier trop lourd', {
       description: 'La taille maximale est de 5 Mo.',
-      variant: 'destructive'
     })
     return
   }
@@ -136,20 +133,20 @@ const getCardDisplayName = (apiName: string, id: number) => {
 // Submit Logic
 const submitCertification = async () => {
   if (!form.value.imageProfile) {
-    toast({ title: 'Erreur', description: 'Photo de profil requise.', variant: 'destructive' })
+    toast.error('Erreur', { description: 'Photo de profil requise.' })
     return
   }
   if (!form.value.selectedCardTypeId) {
-    toast({ title: 'Erreur', description: 'Veuillez choisir un type de document.', variant: 'destructive' })
+    toast.error('Erreur', { description: 'Veuillez choisir un type de document.' })
     return
   }
   if (!form.value.imageFront) {
-    toast({ title: 'Erreur', description: 'Photo recto du document requise.', variant: 'destructive' })
+    toast.error('Erreur', { description: 'Photo recto du document requise.' })
     return
   }
   // Passeport (ID 2) doesn't need back photo
   if (form.value.selectedCardTypeId !== 2 && !form.value.imageBack) {
-    toast({ title: 'Erreur', description: 'Photo verso du document requise.', variant: 'destructive' })
+    toast.error('Erreur', { description: 'Photo verso du document requise.' })
     return
   }
 
@@ -192,10 +189,8 @@ const submitCertification = async () => {
       body: payload
     })
 
-    toast({
-      title: 'Vérification envoyée !',
+    toast.success('Vérification envoyée !', {
       description: 'Vos documents sont en cours de validation par nos services.',
-      variant: 'default'
     })
 
     // Update local state if needed
@@ -205,10 +200,8 @@ const submitCertification = async () => {
 
   } catch (e: any) {
     console.error('Certification error:', e)
-    toast({ 
-      title: 'Échec de l\'envoi', 
+    toast.error('Échec de l\'envoi', { 
       description: e.data?.message || 'Une erreur est survenue lors de la certification.', 
-      variant: 'destructive' 
     })
   } finally {
     isLoading.value = false
