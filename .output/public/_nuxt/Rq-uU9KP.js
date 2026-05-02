@@ -1,0 +1,1 @@
+const r=t=>{const e=typeof t=="string"?parseInt(t):t;return isNaN(e)?String(t):(e+45821).toString(36).toUpperCase()},n=t=>{try{const e=parseInt(t.toLowerCase(),36)-45821;return isNaN(e)?0:e}catch{return 0}};export{n as d,r as e};
