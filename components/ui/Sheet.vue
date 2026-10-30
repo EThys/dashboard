@@ -12,7 +12,9 @@ const emit = defineEmits(['update:open'])
 
 <template>
   <DialogRoot :open="open" @update:open="emit('update:open', $event)">
-    <DialogTrigger as="slot" />
+    <DialogTrigger as-child>
+      <slot />
+    </DialogTrigger>
     <DialogPortal>
         <DialogOverlay class="fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
         <DialogContent 

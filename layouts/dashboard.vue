@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { 
-    LayoutDashboard, Users, FileText, Settings, LogOut, 
-    Bell, Search, Menu, X, AlertOctagon, Calendar,
-    Plus, Home, Briefcase, ChevronRight, User as UserIcon,
-    CreditCard, Receipt, Wrench, MapPin, Building2, ChevronDown,
-    ShieldCheck
+    LayoutDashboard, Users, Settings, LogOut, 
+    Bell, Search, Menu, AlertOctagon, Calendar,
+    Home, Briefcase, ChevronLeft, User as UserIcon,
+    CreditCard, Receipt, Wrench, MapPin, Building2,
+    ShieldCheck, BarChart3
 } from 'lucide-vue-next'
 import { Button, Sheet } from '@/components/ui'
 import { useAuthStore } from '~/stores/auth'
@@ -17,9 +17,7 @@ const auth = useAuthStore()
 
 const isMobileMenuOpen = ref(false)
 const isSidebarCollapsed = ref(false)
-const openDropdown = ref('')
 const isUserMenuOpen = ref(false)
-const sidebarRef = ref(null)
 const userMenuRef = ref(null)
 const showLogoutModal = ref(false)
 const mainContentRef = ref<HTMLElement | null>(null)
@@ -31,10 +29,19 @@ watch(() => route.path, () => {
     }
 })
 
-type RailTab = 'main' | 'pubs' | 'admin' | 'hotel'
-const selectedRailTab = ref<RailTab>('main')
-
 const isGerantOnly = computed(() => auth.isGerant && !auth.isAdmin)
+
+interface NavItem {
+  name: string
+  path: string
+  icon: any
+}
+
+interface NavSection {
+  id: string
+  label: string
+  items: NavItem[]
+}
 
 // User Data from Auth Store
 const userProfile = computed(() => ({
@@ -50,135 +57,87 @@ const userProfile = computed(() => ({
     avatar: auth.profile?.images || `https://ui-avatars.com/api/?name=${auth.user?.username || 'U'}&background=0F172A&color=fff`
 }))
 
-interface RailItem {
-  id: RailTab
-  label: string
-  icon: any
-  color: string
-  bg: string
-}
-
-const railItems = computed<RailItem[]>(() => {
+const sidebarSections = computed<NavSection[]>(() => {
   if (isGerantOnly.value) {
     return [
       {
         id: 'hotel',
-        label: 'Hôtel',
-        icon: Building2,
-        color: 'text-blue-600',
-        bg: 'bg-blue-500/10',
+        label: 'Établissement',
+        items: [
+          { name: 'Aperçu', path: '/dashboard/hotel', icon: LayoutDashboard },
+          { name: 'Mes établissements', path: '/dashboard/hotel/hotels', icon: Building2 },
+          { name: 'Réservations reçues', path: '/dashboard/hotel/reservations', icon: Calendar },
+          { name: 'Abonnement', path: '/compte/abonnement', icon: CreditCard },
+          { name: 'Historique paiements', path: '/compte/paiements', icon: Receipt },
+        ],
       },
     ]
   }
-  return [
-    { id: 'main', label: 'Dashboard', icon: Home, color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
-    { id: 'pubs', label: 'Publications', icon: LayoutDashboard, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-    { id: 'admin', label: 'Utilisateurs', icon: Users, color: 'text-orange-500', bg: 'bg-orange-500/10' },
-  ]
-})
 
-const pubsMoreOpen = ref(false)
-
-// Mapping current items to the new groups
-const menuGroups = computed(() => {
-  if (isGerantOnly.value) {
-    return {
-      hotel: [
-        { name: 'Aperçu', path: '/dashboard/hotel', icon: LayoutDashboard },
-        { name: 'Mes établissements', path: '/dashboard/hotel/hotels', icon: Building2 },
-        { name: 'Réservations reçues', path: '/dashboard/hotel/reservations', icon: Calendar },
-        { name: 'Abonnement', path: '/compte/abonnement', icon: CreditCard },
-        { name: 'Historique paiements', path: '/compte/paiements', icon: Receipt },
-      ],
-    }
-  }
-  const mainDashboardItems = auth.isAdmin
-    ? [{ name: 'Home', path: '/dashboard', icon: Home }]
+  const overview: NavItem[] = auth.isAdmin
+    ? [
+        { name: 'Accueil', path: '/dashboard', icon: Home },
+        { name: 'Statistiques', path: '/dashboard/statistiques', icon: BarChart3 },
+      ]
     : [
-        { name: 'Home', path: '/dashboard', icon: Home },
-        { name: 'Mes Réservations', path: '/dashboard/my-reservations', icon: Calendar },
+        { name: 'Accueil', path: '/dashboard', icon: Home },
+        { name: 'Mes réservations', path: '/dashboard/my-reservations', icon: Calendar },
         { name: 'Mes sollicitations', path: '/dashboard/my-solicitations', icon: Wrench },
-        { name: 'Tourisme & agences', path: '/dashboard/agences', icon: MapPin },
         { name: 'Certification', path: '/dashboard/certification', icon: ShieldCheck },
         { name: 'Abonnement', path: '/compte/abonnement', icon: CreditCard },
         { name: 'Historique paiements', path: '/compte/paiements', icon: Receipt },
       ]
-  return {
-    main: mainDashboardItems,
-    pubs: [
-      { name: 'Propriétés', path: '/dashboard/publications?tab=properties', icon: Briefcase },
-      { name: 'Services', path: '/dashboard/publications?tab=services', icon: Settings },
-      { name: 'Tourisme & agences', path: '/dashboard/agences', icon: MapPin },
-      { name: 'Hôtels', path: '/dashboard/publications?tab=hotels', icon: Building2 },
-    ],
-    admin: [
-      { name: 'Utilisateurs', path: '/dashboard/users', icon: Users },
-      { name: 'Paiements', path: '/dashboard/payments', icon: Receipt },
-      { name: 'Paramètres', path: '/compte/profile', icon: Settings },
-    ],
-  }
-})
 
-const pubsMoreLinks = computed(() => [
-  { name: 'Paiements', path: '/dashboard/payments', icon: Receipt },
-  { name: 'Utilisateurs', path: '/dashboard/users', icon: Users },
-  { name: 'Paramètres', path: '/compte/profile', icon: Settings },
-])
-
-// Auto-select rail tab based on path
-watch(
-  () => [route.path, route.query.tab, isGerantOnly.value] as const,
-  () => {
-    if (isGerantOnly.value) {
-      selectedRailTab.value = 'hotel'
-      return
-    }
-    const newPath = route.path
-    if (newPath.startsWith('/dashboard/hotel')) selectedRailTab.value = 'pubs'
-    else if (newPath.includes('/publications')) selectedRailTab.value = 'pubs'
-    else if (newPath === '/dashboard/agences') selectedRailTab.value = 'pubs'
-    else if (newPath === '/dashboard/users') selectedRailTab.value = 'admin'
-    else if (newPath === '/dashboard/payments') selectedRailTab.value = 'admin'
-    else if (newPath === '/compte/profile') selectedRailTab.value = 'admin'
-    else selectedRailTab.value = 'main'
-  },
-  { immediate: true }
-)
-
-const currentMenuTitle = computed(() => {
-    const item = railItems.value.find(i => i.id === selectedRailTab.value)
-    return item ? item.label : 'Menu'
-})
-
-const currentMenuItems = computed(() => {
-  const g = menuGroups.value as unknown as Record<string, { name: string; path: string; icon: unknown }[]>
-  return g[selectedRailTab.value] ?? []
-})
-
-const flatMobileMenu = computed(() => {
-  if (isGerantOnly.value) {
-    const g = menuGroups.value as { hotel?: { name: string; path: string; icon: unknown }[] }
-    return g.hotel ?? []
-  }
-  const g = menuGroups.value as {
-    main: { name: string; path: string; icon: unknown }[]
-    pubs: { name: string; path: string; icon: unknown }[]
-    admin: { name: string; path: string; icon: unknown }[]
-  }
-  return [...g.main, ...g.pubs, ...g.admin]
-})
-
-function toggleDropdown(name: string) {
-  openDropdown.value = openDropdown.value === name ? '' : name
-}
-
-onClickOutside(sidebarRef, () => {
-    openDropdown.value = ''
+  return [
+    { id: 'main', label: 'Tableau de bord', items: overview },
+    {
+      id: 'pubs',
+      label: 'Publications',
+      items: [
+        { name: 'Propriétés', path: '/dashboard/publications?tab=properties', icon: Briefcase },
+        { name: 'Services', path: '/dashboard/publications?tab=services', icon: Settings },
+        { name: 'Tourisme & agences', path: '/dashboard/agences', icon: MapPin },
+        { name: 'Hôtels', path: '/dashboard/publications?tab=hotels', icon: Building2 },
+      ],
+    },
+    {
+      id: 'admin',
+      label: 'Administration',
+      items: [
+        { name: 'Utilisateurs', path: '/dashboard/users', icon: Users },
+        { name: 'Paiements', path: '/dashboard/payments', icon: Receipt },
+        { name: 'Paramètres', path: '/compte/profile', icon: Settings },
+      ],
+    },
+  ]
 })
 
 onClickOutside(userMenuRef, () => {
     isUserMenuOpen.value = false
 })
+
+function goTo(event: MouseEvent, path: string) {
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return
+  event.preventDefault()
+  isMobileMenuOpen.value = false
+  const qIndex = path.indexOf('?')
+  const pathname = qIndex === -1 ? path : path.slice(0, qIndex)
+  const query: Record<string, string> = {}
+  if (qIndex !== -1) {
+    new URLSearchParams(path.slice(qIndex + 1)).forEach((value, key) => {
+      query[key] = value
+    })
+  }
+  navigateTo({ path: pathname, query }).catch(() => {
+    window.location.assign(path)
+  }).finally(() => {
+    window.setTimeout(() => {
+      if (decodeURIComponent(route.fullPath) !== decodeURIComponent(path)) {
+        window.location.assign(path)
+      }
+    }, 400)
+  })
+}
 
 function isItemActive(path: string) {
   if (path === '/dashboard' && route.path === '/dashboard') return true
@@ -238,161 +197,113 @@ onUnmounted(() => {
   background: #CBD5E1;
 }
 
-.rail-transition-enter-active,
-.rail-transition-leave-active {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.rail-transition-enter-from {
-  opacity: 0;
-  transform: translateX(-10px);
-}
-.rail-transition-leave-to {
-  opacity: 0;
-  transform: translateX(10px);
-}
 </style>
 
 <template>
   <div class="flex h-screen bg-background font-sans overflow-hidden">
-    <!-- Dual Sidebar -->
-    <div class="hidden md:flex flex-row h-screen antialiased transition-all duration-500">
-       <!-- 1. Narrow Icon Rail (Modernized) -->
-       <aside class="w-24 bg-[#F8FAFC] flex flex-col items-center py-8 border-r border-slate-200/60 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.05)] z-40 relative">
-          <!-- Official Logo -->
-          <div 
-             @click="router.push('/')"
-             class="mb-12 cursor-pointer hover:scale-110 active:scale-95 transition-all duration-500"
+    <aside
+      class="hidden md:flex h-screen shrink-0 flex-col border-r border-slate-200/80 bg-white transition-[width] duration-300 ease-out"
+      :class="isSidebarCollapsed ? 'w-[76px]' : 'w-[268px]'"
+    >
+      <div class="flex h-20 shrink-0 items-center border-b border-slate-100" :class="isSidebarCollapsed ? 'justify-center px-2' : 'gap-3 px-4'">
+        <button
+          type="button"
+          class="grid size-10 shrink-0 place-items-center rounded-xl bg-slate-50 ring-1 ring-slate-100"
+          title="Accueil du site"
+          @click="router.push('/')"
+        >
+          <img src="~/assets/logoCasa.png" alt="CasaNayo" class="h-7 w-auto" />
+        </button>
+        <div v-if="!isSidebarCollapsed" class="min-w-0 flex-1">
+          <p class="truncate text-sm font-semibold tracking-tight text-slate-900">CasaNayo</p>
+          <p class="truncate text-[11px] text-slate-500">Espace de gestion</p>
+        </div>
+        <button
+          v-if="!isSidebarCollapsed"
+          type="button"
+          class="grid size-8 shrink-0 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700"
+          title="Réduire le menu"
+          @click="isSidebarCollapsed = true"
+        >
+          <ChevronLeft class="size-4" />
+        </button>
+      </div>
+
+      <nav class="custom-scrollbar flex-1 space-y-6 overflow-y-auto px-3 py-4">
+        <div v-for="(section, index) in sidebarSections" :key="section.id">
+          <p
+            v-if="!isSidebarCollapsed"
+            class="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400"
           >
-             <img src="~/assets/logoCasa.png" alt="CasaNayo" class="w-14 h-auto drop-shadow-md" />
+            {{ section.label }}
+          </p>
+          <div v-else-if="index > 0" class="mx-auto mb-2 h-px w-6 bg-slate-200"></div>
+          <div class="space-y-0.5">
+            <a
+              v-for="item in section.items"
+              :key="section.id + item.path + item.name"
+              :href="item.path"
+              :title="isSidebarCollapsed ? item.name : undefined"
+              :aria-current="isItemActive(item.path) ? 'page' : undefined"
+              class="relative flex items-center rounded-lg text-[13px] font-medium transition-colors"
+              :class="[
+                isSidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2',
+                isItemActive(item.path)
+                  ? 'bg-[#e8f3fb] text-slate-900'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              ]"
+              @click="goTo($event, item.path)"
+            >
+              <span
+                v-if="isItemActive(item.path) && !isSidebarCollapsed"
+                class="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-[#4aa3df]"
+              />
+              <component
+                :is="item.icon"
+                class="size-[18px] shrink-0"
+                :class="isItemActive(item.path) ? 'text-[#2f8fc9]' : 'text-slate-400'"
+              />
+              <span v-if="!isSidebarCollapsed" class="truncate">{{ item.name }}</span>
+            </a>
           </div>
+        </div>
+      </nav>
 
-          <!-- Rail Items -->
-          <div class="flex-1 flex flex-col gap-8 w-full px-3">
-             <button 
-                v-for="rail in railItems" 
-                :key="rail.id"
-                @click="selectedRailTab = rail.id; isSidebarCollapsed = false"
-                class="flex flex-col items-center gap-1.5 group relative py-1"
-             >
-                <div 
-                   class="size-12 rounded-2xl flex items-center justify-center transition-all duration-500 relative z-10"
-                   :class="selectedRailTab === rail.id ? 'bg-white shadow-md scale-105 ring-1 ring-slate-100' : 'hover:bg-white/80 hover:scale-105'"
-                >
-                   <component :is="rail.icon" :class="['size-5.5 transition-all duration-300', selectedRailTab === rail.id ? rail.color : 'text-slate-400 group-hover:text-slate-600']" />
-                </div>
-                
-                <!-- Active Indicator (pill cut - more refined) -->
-                <div 
-                   v-if="selectedRailTab === rail.id && !isSidebarCollapsed" 
-                   class="absolute -right-[13.5px] top-1/2 -translate-y-1/2 w-4 h-[72px] bg-white rounded-l-3xl z-20 border-y border-l border-slate-200/60"
-                ></div>
-
-                <span 
-                   class="text-[11px] font-bold tracking-tight transition-colors duration-300 text-center px-1 truncate max-w-full"
-                   :class="selectedRailTab === rail.id ? 'text-slate-900' : 'text-slate-400 group-hover:text-slate-600'"
-                >
-                   {{ rail.label }}
-                </span>
-             </button>
+      <div class="shrink-0 border-t border-slate-100 p-3">
+        <button
+          v-if="isSidebarCollapsed"
+          type="button"
+          class="mb-2 grid size-10 w-full place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700"
+          title="Déplier le menu"
+          @click="isSidebarCollapsed = false"
+        >
+          <ChevronLeft class="size-4 rotate-180" />
+        </button>
+        <div class="flex items-center gap-2.5" :class="isSidebarCollapsed ? 'justify-center' : ''">
+          <button
+            type="button"
+            class="shrink-0"
+            title="Mon profil"
+            @click="router.push('/compte/profile')"
+          >
+            <img :src="userProfile.avatar" alt="" class="size-9 rounded-full object-cover ring-2 ring-slate-100" />
+          </button>
+          <div v-if="!isSidebarCollapsed" class="min-w-0 flex-1">
+            <p class="truncate text-[13px] font-semibold text-slate-900">{{ userProfile.name }}</p>
+            <p class="truncate text-[11px] text-slate-500">{{ userProfile.role }}</p>
           </div>
-
-          <!-- Collapse Toggle at bottom -->
-          <div class="mt-auto flex flex-col items-center gap-6">
-             <button 
-                @click="isSidebarCollapsed = !isSidebarCollapsed"
-                class="flex items-center justify-center size-10 rounded-xl bg-white border border-slate-200 shadow-sm text-slate-400 hover:text-primary hover:border-primary/30 transition-all duration-300"
-                :title="isSidebarCollapsed ? 'Déplier' : 'Plier'"
-             >
-                <ChevronRight class="size-5 transition-transform duration-500" :class="{ 'rotate-180': !isSidebarCollapsed }" />
-             </button>
-
-             <!-- Logout -->
-             <button 
-                @click="showLogoutModal = true"
-                class="group flex flex-col items-center gap-2 p-4 text-slate-400 transition-all duration-300"
-                :class="isGerantOnly ? 'hover:text-blue-600' : 'hover:text-red-500'"
-             >
-                <div 
-                   class="size-10 rounded-xl flex items-center justify-center transition-colors"
-                   :class="isGerantOnly ? 'group-hover:bg-blue-50' : 'group-hover:bg-red-50'"
-                >
-                   <LogOut class="size-5 group-hover:-translate-x-0.5 transition-transform" />
-                </div>
-             </button>
-          </div>
-       </aside>
-
-       <!-- 2. Wider Menu Panel (Collapsible) -->
-       <aside 
-          class="bg-white flex flex-col border-r border-slate-200/60 transition-all duration-500 ease-in-out relative z-30"
-          :class="isSidebarCollapsed ? 'w-0 opacity-0 -translate-x-4 pointer-events-none' : 'w-64 opacity-100 translate-x-0'"
-       >
-          <!-- Header with Avatar Integration -->
-          <div class="px-6 h-20 flex items-center gap-4 border-b border-slate-50">
-             <div 
-                class="size-10 rounded-xl flex items-center justify-center overflow-hidden ring-4 ring-slate-50 shadow-sm transition-all duration-500 hover:rotate-3"
-                :class="railItems.find(i => i.id === selectedRailTab)?.bg"
-             >
-                 <img v-if="selectedRailTab === 'admin'" :src="userProfile.avatar" class="size-full object-cover" />
-                 <component v-else :is="railItems.find(i => i.id === selectedRailTab)?.icon" :class="['size-6', railItems.find(i => i.id === selectedRailTab)?.color]" />
-             </div>
-             <div class="flex flex-col">
-                <Transition name="rail-transition" mode="out-in">
-                   <h2 :key="currentMenuTitle" class="font-black text-xl text-slate-900 leading-tight tracking-tight">{{ currentMenuTitle }}</h2>
-                </Transition>
-                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-0.5">CasaNayo</span>
-             </div>
-          </div>
-
-          <!-- Secondary Menu Links -->
-          <div class="flex-1 overflow-hidden relative">
-            <Transition name="rail-transition" mode="out-in">
-               <nav :key="selectedRailTab" class="h-full px-4 py-6 space-y-1.5 overflow-y-auto custom-scrollbar">
-                  <NuxtLink 
-                     v-for="item in currentMenuItems" 
-                     :key="item.name"
-                     :to="item.path"
-                     class="flex items-center gap-4 px-4 py-3 rounded-2xl text-[13px] font-bold transition-all duration-300 group overflow-hidden relative"
-                     :class="isItemActive(item.path) 
-                        ? 'bg-blue-50 text-blue-600 shadow-sm shadow-blue-500/5' 
-                        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 group-hover:translate-x-1'"
-                  >
-                     <div v-if="isItemActive(item.path)" class="absolute left-0 top-0 bottom-0 w-1 bg-blue-500 rounded-r-full"></div>
-                     <component :is="item.icon" :class="['size-5 transition-all duration-300 group-hover:scale-110', isItemActive(item.path) ? 'text-blue-600' : 'text-slate-400 group-hover:text-slate-600']" />
-                     <span class="relative z-10">{{ item.name }}</span>
-                     <ChevronRight v-if="isItemActive(item.path)" class="ml-auto size-4" />
-                  </NuxtLink>
-                  
-                  <div v-if="selectedRailTab === 'pubs' && !isGerantOnly" class="pt-8 mt-4 border-t border-slate-50/50 px-2">
-                     <button
-                        type="button"
-                        class="flex w-full items-center justify-between gap-2 text-slate-500 hover:text-slate-800 text-[11px] font-bold uppercase tracking-wider transition-all group"
-                        @click="pubsMoreOpen = !pubsMoreOpen"
-                     >
-                        <span class="flex items-center gap-3">
-                           <span class="size-1.5 rounded-full bg-slate-200 group-hover:bg-blue-400 group-hover:scale-125 transition-all"></span>
-                           Plus d'options
-                        </span>
-                        <ChevronDown class="size-4 transition-transform shrink-0" :class="{ 'rotate-180': pubsMoreOpen }" />
-                     </button>
-                     <div v-show="pubsMoreOpen" class="mt-3 space-y-1 pl-1">
-                        <NuxtLink
-                           v-for="link in pubsMoreLinks"
-                           :key="link.path"
-                           :to="link.path"
-                           class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-[12px] font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                           :class="isItemActive(link.path) ? 'bg-blue-50/80 text-blue-700' : ''"
-                        >
-                           <component :is="link.icon" class="size-4 opacity-70" />
-                           {{ link.name }}
-                        </NuxtLink>
-                     </div>
-                  </div>
-               </nav>
-            </Transition>
-          </div>
-       </aside>
-    </div>
+          <button
+            v-if="!isSidebarCollapsed"
+            type="button"
+            class="grid size-8 shrink-0 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
+            title="Déconnexion"
+            @click="showLogoutModal = true"
+          >
+            <LogOut class="size-4" />
+          </button>
+        </div>
+      </div>
+    </aside>
 
     <!-- Main Content -->
     <div class="flex-1 flex flex-col min-w-0 bg-muted/20">
@@ -405,26 +316,33 @@ onUnmounted(() => {
                 </Button>
                 <template #content>
                     <div class="flex flex-col h-full">
-                        <div class="flex items-center gap-3 mb-8">
-                            <img src="~/assets/logoCasa.png" alt="CasaNayo" class="h-10 w-auto" />
-                            <span class="font-black text-xl tracking-tighter text-slate-900 border-l-2 border-slate-100 pl-3">CasaNayo</span>
+                        <div class="mb-6 flex items-center gap-3">
+                            <img src="~/assets/logoCasa.png" alt="CasaNayo" class="h-9 w-auto" />
+                            <div>
+                              <p class="text-sm font-semibold tracking-tight text-slate-900">CasaNayo</p>
+                              <p class="text-[11px] text-slate-500">Espace de gestion</p>
+                            </div>
                         </div>
-                        <nav class="flex-1 space-y-2">
-                             <NuxtLink
-                                v-for="item in flatMobileMenu"
-                                :key="item.path + item.name"
-                                :to="item.path"
-                                @click="isMobileMenuOpen = false"
-                                :class="[
-                                    'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all duration-200',
-                                    isItemActive(item.path)
-                                    ? 'bg-primary/10 text-primary'
-                                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                                ]"
+                        <nav class="flex-1 space-y-6 overflow-y-auto">
+                            <div v-for="section in sidebarSections" :key="section.id">
+                              <p class="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                                {{ section.label }}
+                              </p>
+                              <div class="space-y-0.5">
+                                <a
+                                  v-for="item in section.items"
+                                  :key="section.id + item.path + item.name"
+                                  :href="item.path"
+                                  :aria-current="isItemActive(item.path) ? 'page' : undefined"
+                                  class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors"
+                                  :class="isItemActive(item.path) ? 'bg-[#e8f3fb] text-slate-900' : 'text-slate-600 hover:bg-slate-50'"
+                                  @click="goTo($event, item.path)"
                                 >
-                                <component :is="item.icon" class="size-5" />
-                                {{ item.name }}
-                            </NuxtLink>
+                                  <component :is="item.icon" class="size-[18px]" :class="isItemActive(item.path) ? 'text-[#2f8fc9]' : 'text-slate-400'" />
+                                  {{ item.name }}
+                                </a>
+                              </div>
+                            </div>
                         </nav>
                          <div class="mt-auto pt-4 border-t border-border">
                             <Button 
@@ -503,7 +421,7 @@ onUnmounted(() => {
       </header>
 
       <!-- Page Content -->
-      <main ref="mainContentRef" class="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth" @click="openDropdown = ''">
+      <main ref="mainContentRef" class="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth">
         <div class="max-w-7xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <slot />
         </div>
