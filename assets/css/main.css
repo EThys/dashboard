@@ -227,3 +227,27 @@
   );
   animation: casa-shimmer-sweep 1.25s ease-in-out infinite;
 }
+
+/* Surcharges Kendo reprises d’airtel-money-new-patch/resources/sass/app.scss */
+.k-widget.k-grid,
+.k-grid {
+  border: 0;
+}
+
+.k-grid-header .k-header,
+.k-grid-header .k-table-th {
+  color: #f8f9fa !important;
+  background-color: #2a2a2e !important;
+}
+
+.k-filter-row,
+.k-filter-row .k-table-th {
+  background: #6c757d !important;
+}
+
+.k-grid td,
+.k-grid .k-table-td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

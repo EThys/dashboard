@@ -1,30 +1,20 @@
 <script setup lang="ts">
-import { computed, ref, watch, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import {
   Loader2,
   RefreshCw,
   Receipt,
-  Eye,
   X,
   TrendingUp,
   FileText,
   DollarSign,
   Check,
 } from 'lucide-vue-next'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  Badge,
-  Button,
-  Input,
-} from '@/components/ui'
-import { useAuthStore } from '@/stores/auth'
+import { Badge, Button } from '@/components/ui'
+import { process } from '@progress/kendo-data-query'
+import type { State } from '@progress/kendo-data-query'
 import { useDashboardStore } from '@/stores/dashboard'
-import type { DeviseRow, PaymentRow } from '@/stores/payment'
+import type { PaymentRow } from '@/stores/payment'
 import { toast } from 'vue-sonner'
 import { downloadPaymentReportPdf } from '@/utils/paymentReportPdf'
 
@@ -41,21 +31,22 @@ interface PaymentUser {
   premium?: boolean
 }
 
-interface PaymentGroup {
-  payment: PaymentRow[]
-  user: PaymentUser
-}
-
-interface PaymentUsersResponse {
-  payments?: PaymentGroup[]
-}
-
 interface FlatPaymentRow {
   user: PaymentUser
   payment: PaymentRow & { userId?: number }
 }
 
-const auth = useAuthStore()
+interface PaymentGridItem extends FlatPaymentRow {
+  id: number
+  dateCreated: string
+  username: string
+  contact: string
+  amount: number
+  devise: string
+  status: string
+  reference: string
+}
+
 const dashboard = useDashboardStore()
 const config = useRuntimeConfig()
 const apiBase = config.public.apiBase as string
@@ -65,9 +56,12 @@ const errorMsg = ref<string | null>(null)
 const flatRows = computed(() => dashboard.flatPayments)
 const devises = computed(() => dashboard.devises)
 
-const searchQuery = ref('')
-const statusFilter = ref<'all' | string>('all')
-const selected = ref<FlatPaymentRow | null>(null)
+const dataState = ref<State>({
+  skip: 0,
+  take: 10,
+  sort: [{ field: 'id', dir: 'desc' }],
+})
+const selected = ref<PaymentGridItem | null>(null)
 
 const load = async (force = false) => {
   errorMsg.value = null
@@ -84,51 +78,66 @@ onMounted(() => {
   load()
 })
 
-const statusOptions = computed(() => {
-  const s = new Set<string>()
-  for (const r of flatRows.value) {
-    if (r.payment.status) s.add(String(r.payment.status))
-  }
-  return Array.from(s).sort()
-})
+const gridSource = computed<PaymentGridItem[]>(() =>
+  (Array.isArray(flatRows.value) ? flatRows.value : []).flatMap((row) => {
+    if (!row?.payment) return []
+    const user = row.user || ({} as PaymentUser)
+    const amount = typeof row.payment.amount === 'string' ? parseFloat(row.payment.amount) : Number(row.payment.amount)
+    return [{
+      user,
+      payment: row.payment,
+      id: Number(row.payment.id ?? 0),
+      dateCreated: row.payment.dateCreated || '—',
+      username: user.username || '—',
+      contact: user.email || user.phone || '',
+      amount: Number.isNaN(amount) ? 0 : amount,
+      devise: row.payment.devise || '',
+      status: row.payment.status || '—',
+      reference: row.payment.reference || '',
+    }]
+  })
+)
 
-const filteredRows = computed(() => {
-  let list = flatRows.value
-  if (statusFilter.value !== 'all') {
-    list = list.filter((r) => String(r.payment.status) === statusFilter.value)
-  }
-  const q = searchQuery.value.trim().toLowerCase()
-  if (q) {
-    list = list.filter((r) => {
-      const u = r.user
-      const p = r.payment
-      return (
-        (u.username || '').toLowerCase().includes(q) ||
-        (u.email || '').toLowerCase().includes(q) ||
-        (u.phone || '').toLowerCase().includes(q) ||
-        String(p.reference || '').toLowerCase().includes(q) ||
-        String(p.id ?? '').includes(q)
-      )
-    })
-  }
-  return list
-})
+const gridData = computed(() => process(gridSource.value, dataState.value))
 
+const filteredItems = computed(() =>
+  process(gridSource.value, { filter: dataState.value.filter, sort: dataState.value.sort }).data as PaymentGridItem[]
+)
 
-const itemsPerPage = 10
-const currentPage = ref(1)
+function onDataStateChange(event: { data: State }) {
+  dataState.value = event.data
+}
 
-const totalPages = computed(() => Math.ceil(filteredRows.value.length / itemsPerPage))
+const amountCell = (h: any, _defaultRendering: unknown, cellProps: { dataItem: PaymentGridItem; className?: string }) => {
+  const item = cellProps.dataItem
+  return h('td', { class: cellProps.className }, formatAmount(item.payment.amount, item.payment.devise))
+}
 
-const paginatedRows = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage
-  const end = start + itemsPerPage
-  return filteredRows.value.slice(start, end)
-})
+const detailCell = (h: any, _defaultRendering: unknown, cellProps: { dataItem: PaymentGridItem; className?: string }) => {
+  return h('td', { class: cellProps.className }, [
+    h('button', {
+      class: 'k-button',
+      attrs: { type: 'button' },
+      on: {
+        click: (clickEvent: Event) => {
+          clickEvent.stopPropagation()
+          selected.value = cellProps.dataItem
+        },
+      },
+    }, 'Voir'),
+  ])
+}
 
-watch(filteredRows, () => {
-  currentPage.value = 1
-})
+const columns = [
+  { field: 'id', title: 'ID', width: '90px', filter: 'numeric' },
+  { field: 'dateCreated', title: 'Date', width: '180px' },
+  { field: 'username', title: 'Utilisateur' },
+  { field: 'contact', title: 'Contact' },
+  { field: 'amount', title: 'Montant', width: '140px', filter: 'numeric', cell: amountCell },
+  { field: 'status', title: 'Statut', width: '140px' },
+  { field: 'reference', title: 'Référence' },
+  { title: 'Détail', width: '110px', filterable: false, sortable: false, cell: detailCell },
+]
 
 function statusBadgeVariant(st: string | undefined) {
   const v = (st || '').toUpperCase()
@@ -140,7 +149,7 @@ function statusBadgeVariant(st: string | undefined) {
 
 const successTotals = computed(() => {
   const totals: Record<string, number> = {}
-  for (const r of filteredRows.value) {
+  for (const r of filteredItems.value) {
     const p = r.payment
     const st = (p.status || '').toUpperCase()
     if (st === 'SUCCESS' || st === 'COMPLETED' || st === 'PAID') {
@@ -173,7 +182,7 @@ function formatAmount(amount: string | number | undefined, code: string | undefi
         </p>
       </div>
       <div class="flex items-center gap-2">
-        <Button variant="outline" size="sm" :disabled="pending" class="shrink-0 gap-2" @click="() => downloadPaymentReportPdf(filteredRows)">
+        <Button variant="outline" size="sm" :disabled="pending" class="shrink-0 gap-2" @click="() => downloadPaymentReportPdf(filteredItems)">
           <FileText class="h-4 w-4" />
           Télécharger PDF
         </Button>
@@ -237,110 +246,33 @@ function formatAmount(amount: string | number | undefined, code: string | undefi
     </div>
 
 
-    <!-- Filtres -->
-    <div class="rounded-2xl border border-border bg-card p-6 shadow-sm">
-      <div class="grid gap-4 md:grid-cols-12 md:items-end">
-        <div class="md:col-span-6">
-          <label class="mb-1 block text-xs font-semibold text-muted-foreground">Recherche</label>
-          <Input v-model="searchQuery" placeholder="Utilisateur, email, téléphone, référence…" class="h-11" />
-        </div>
-        <div class="md:col-span-4">
-          <label class="mb-1 block text-xs font-semibold text-muted-foreground">Statut</label>
-          <select
-            v-model="statusFilter"
-            class="flex h-11 w-full rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <option value="all">Tous les statuts</option>
-            <option v-for="st in statusOptions" :key="st" :value="st">{{ st }}</option>
-          </select>
-        </div>
-        <div class="md:col-span-2 text-right text-sm text-muted-foreground md:pt-6">
-          {{ filteredRows.length }} ligne(s)
-        </div>
-      </div>
+    <div v-if="pending" class="flex items-center justify-center gap-2 py-20 text-muted-foreground">
+      <Loader2 class="h-6 w-6 animate-spin" />
+      Chargement…
     </div>
-
-    <!-- Table -->
-    <div class="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-      <div v-if="pending" class="flex items-center justify-center gap-2 py-20 text-muted-foreground">
-        <Loader2 class="h-6 w-6 animate-spin" />
-        Chargement…
-      </div>
-      <div v-else-if="errorMsg" class="p-8 text-center text-sm text-destructive">
-        {{ errorMsg }}
-      </div>
-      <div v-else-if="!flatRows.length" class="flex flex-col items-center gap-2 py-16 text-muted-foreground">
-        <Receipt class="h-10 w-10 opacity-40" />
-        Aucun paiement à afficher.
-      </div>
-      <Table v-else>
-        <TableHeader>
-          <TableRow>
-            <TableHead class="w-[100px]">ID</TableHead>
-            <TableHead>Date</TableHead>
-            <TableHead>Utilisateur</TableHead>
-            <TableHead>Montant</TableHead>
-            <TableHead>Statut</TableHead>
-            <TableHead class="hidden lg:table-cell">Référence</TableHead>
-            <TableHead class="w-[100px] text-right">Détail</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          <TableRow v-for="row in paginatedRows" :key="`${row.payment.userId}-${row.payment.id}`" class="hover:bg-muted/40">
-            <TableCell class="font-mono text-xs">{{ row.payment.id }}</TableCell>
-            <TableCell class="whitespace-nowrap text-sm">
-              {{ row.payment.dateCreated || '—' }}
-            </TableCell>
-            <TableCell>
-              <div class="font-semibold">{{ row.user.username || '—' }}</div>
-              <div class="text-xs text-muted-foreground">{{ row.user.email || row.user.phone || '' }}</div>
-            </TableCell>
-            <TableCell class="font-medium">
-              {{ formatAmount(row.payment.amount, row.payment.devise) }}
-            </TableCell>
-            <TableCell>
-              <Badge :variant="statusBadgeVariant(row.payment.status)">
-                {{ row.payment.status || '—' }}
-              </Badge>
-            </TableCell>
-            <TableCell class="hidden max-w-[200px] truncate font-mono text-xs lg:table-cell">
-              {{ row.payment.reference }}
-            </TableCell>
-            <TableCell class="text-right">
-              <Button size="sm" variant="ghost" class="gap-1" @click="selected = row">
-                <Eye class="h-4 w-4" />
-                Voir
-              </Button>
-            </TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
+    <div v-else-if="errorMsg" class="p-8 text-center text-sm text-destructive">
+      {{ errorMsg }}
     </div>
-
-    <!-- Pagination -->
-    <div v-if="totalPages > 1" class="flex items-center justify-between gap-4">
-      <div class="text-sm text-muted-foreground">
-        Page {{ currentPage }} sur {{ totalPages }}
-      </div>
-      <div class="flex items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          :disabled="currentPage === 1"
-          @click="currentPage--"
-        >
-          Précédent
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          :disabled="currentPage === totalPages"
-          @click="currentPage++"
-        >
-          Suivant
-        </Button>
-      </div>
+    <div v-else-if="!flatRows.length" class="flex flex-col items-center gap-2 py-16 text-muted-foreground">
+      <Receipt class="h-10 w-10 opacity-40" />
+      Aucun paiement à afficher.
     </div>
+    <KendoGrid
+      v-else
+      :data-items="gridData.data"
+      :total="gridData.total"
+      :skip="dataState.skip"
+      :take="dataState.take"
+      :sort="dataState.sort"
+      :filter="dataState.filter"
+      :columns="columns"
+      :pageable="{ buttonCount: 5, pageSizes: [10, 20, 50], info: true }"
+      :sortable="true"
+      :filterable="true"
+      :resizable="true"
+      :reorderable="true"
+      @datastatechange="onDataStateChange"
+    />
 
     <!-- Détail -->
     <Teleport to="body">

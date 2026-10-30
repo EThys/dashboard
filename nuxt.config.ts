@@ -170,6 +170,46 @@ export default defineNuxtConfig({
   },
 
   vite: {
+    plugins: [
+      {
+        name: 'kendo-vue2-alias',
+        enforce: 'pre',
+        resolveId(source: string, importer?: string) {
+          const vue2 = join(__dirname, 'node_modules/vue2/dist/vue.runtime.esm.js')
+          if (source === 'virtual:kendo-vue2') return vue2
+          if (source !== 'vue' || !importer) return null
+          const from = importer.replace(/\\/g, '/')
+          const kendo =
+            from.includes('/node_modules/@progress/kendo-vue-') ||
+            from.includes('/node_modules/vue-class-component/')
+          if (!kendo) return null
+          return vue2
+        },
+        transform(code: string, id: string) {
+          const norm = id.replace(/\\/g, '/')
+          if (norm.includes('/vue2/dist/vue.runtime.esm.js')) {
+            return code.replace(/process\.env\.NODE_ENV/g, '"production"')
+          }
+          if (norm.includes('/vue-class-component/dist/vue-class-component.common.js')) {
+            const vue2 = JSON.stringify(join(__dirname, 'node_modules/vue2/dist/vue.runtime.esm.js'))
+            const body = code
+              .replace(/process\.env\.NODE_ENV/g, '"production"')
+              .replace(/\bexports\b/g, '__kendoExports')
+              .replace(/\brequire\b/g, '__kendoRequire')
+              .replace(/\bmodule\b/g, '__kendoModule')
+            return [
+              `import __kendoVue from ${vue2};`,
+              'const __kendoExports = {};',
+              'const __kendoModule = { exports: __kendoExports };',
+              'const __kendoRequire = (id) => { if (id === "vue") return __kendoVue; throw new Error(id); };',
+              body,
+              'export default __kendoExports.default;',
+            ].join('\n')
+          }
+          return null
+        },
+      },
+    ],
     optimizeDeps: {
       include: [
         '@vueuse/core',
@@ -177,6 +217,12 @@ export default defineNuxtConfig({
         '@stomp/stompjs',
         'vue',
         'vue-router',
+      ],
+      exclude: [
+        '@progress/kendo-vue-grid',
+        '@progress/kendo-vue-common',
+        '@progress/kendo-vue-intl',
+        'vue-class-component',
       ],
     },
     resolve: {
@@ -243,6 +289,14 @@ export default defineNuxtConfig({
     '/register/**': { ssr: false },
   },
   build: {
-    transpile: ["vue-sonner", "@stomp/stompjs"],
+    transpile: [
+      "vue-sonner",
+      "@stomp/stompjs",
+      "@progress/kendo-vue-grid",
+      "@progress/kendo-vue-common",
+      "@progress/kendo-vue-intl",
+      "@progress/kendo-data-query",
+      "vue-class-component",
+    ],
   },
 });

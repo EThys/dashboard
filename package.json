@@ -13,6 +13,11 @@
     "@headlessui/vue": "^1.7.23",
     "@nuxtjs/tailwindcss": "^6.14.0",
     "@pinia/nuxt": "^0.11.3",
+    "@progress/kendo-data-query": "1.5.1",
+    "@progress/kendo-theme-default": "3.5.1",
+    "@progress/kendo-vue-common": "0.2.0",
+    "@progress/kendo-vue-grid": "0.2.0",
+    "@progress/kendo-vue-intl": "0.2.0",
     "@stomp/stompjs": "^7.3.0",
     "@tanstack/vue-query": "^5.92.5",
     "@vueuse/core": "^14.1.0",
@@ -32,10 +37,12 @@
     "typescript": "^5.7.2",
     "vue": "^3.5.13",
     "vue-chartjs": "^5.3.3",
+    "vue-class-component": "6.3.2",
     "vue-easy-lightbox": "^1.19.0",
     "vue-router": "^4.6.4",
     "vue-sonner": "^2.0.9",
-    "vue-tsc": "^2.1.10"
+    "vue-tsc": "^2.1.10",
+    "vue2": "npm:vue@2.6.14"
   },
   "devDependencies": {
     "@nuxtjs/color-mode": "^4.0.0"
