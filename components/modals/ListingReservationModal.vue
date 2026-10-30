@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { X, Loader2, Calendar, MessageSquare, Info } from 'lucide-vue-next'
 import { Button, Input, Label } from '@/components/ui'
+import ClockTimePicker from '@/components/front/ClockTimePicker.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useReservationStore } from '@/stores/reservations'
 import { toast } from 'vue-sonner'
@@ -17,10 +18,13 @@ const emit = defineEmits(['close', 'success'])
 const authStore = useAuthStore()
 const resStore = useReservationStore()
 
+const isHotelRoom = computed(() => props.type === 'chambre')
+
 const isLoading = ref(false)
 const form = reactive({
     startDate: new Date().toISOString().split('T')[0],
     endDate: '',
+    arrivalTime: '14:00:00',
     message: '',
     type: 'STANDARD' as 'STANDARD' | 'VIP' | 'PREMIUM'
 })
@@ -49,7 +53,9 @@ const handleSubmit = async () => {
             endDate: form.endDate,
             message: form.message,
             type: form.type,
-            reservationHeure: new Date().toLocaleTimeString('fr-FR', { hour12: false })
+            reservationHeure: isHotelRoom.value
+                ? form.arrivalTime
+                : new Date().toLocaleTimeString('fr-FR', { hour12: false })
         })
 
         if (res.success) {
@@ -75,7 +81,7 @@ const handleSubmit = async () => {
       <div @click="$emit('close')" class="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in transition-opacity"></div>
       
       <!-- Modal Content -->
-      <div class="relative bg-white dark:bg-slate-950 w-full max-w-lg rounded-[2rem] shadow-2xl border border-border overflow-hidden animate-in zoom-in-95 duration-200">
+      <div class="relative bg-white dark:bg-slate-950 w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-[2rem] shadow-2xl border border-border animate-in zoom-in-95 duration-200">
           <!-- Header -->
           <div class="p-6 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
               <div>
@@ -106,7 +112,12 @@ const handleSubmit = async () => {
                     </div>
                </div>
 
-
+               <div v-if="isHotelRoom" class="space-y-2">
+                    <Label class="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                        <Calendar class="size-3" /> Heure d’arrivée
+                    </Label>
+                    <ClockTimePicker v-model="form.arrivalTime" />
+               </div>
 
                <!-- Message -->
                <div class="space-y-2">

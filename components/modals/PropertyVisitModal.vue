@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { X, Loader2, CheckCircle } from 'lucide-vue-next'
 import { Button, Input, Label } from '@/components/ui'
+import ClockTimePicker from '@/components/front/ClockTimePicker.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useReservationStore } from '@/stores/reservations'
 import { evaluateReservationEligibility } from '@/composables/useReservationEligibility'
@@ -23,10 +24,9 @@ const resStore = useReservationStore()
 const authStore = useAuthStore()
 
 const isLoading = ref(false)
-const availableHours = Array.from({ length: 12 }, (_, i) => {
-    const h = i + 7 // Starts at 7
-    return `${h.toString().padStart(2, '0')}:00:00`
-})
+const isHotelRoom = computed(() => props.chambreId != null)
+
+const availableHours = Array.from({ length: 12 }, (_, i) => `${(7 + i).toString().padStart(2, '0')}:00:00`)
 
 const form = reactive({
     date: new Date().toISOString().split('T')[0],
@@ -109,7 +109,7 @@ const handleSubmit = async () => {
   <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div @click="$emit('close')" class="absolute inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in transition-opacity"></div>
       
-      <div class="relative bg-white dark:bg-slate-950 w-full max-w-md rounded-2xl shadow-xl border border-border p-6 animate-in zoom-in-95 duration-200">
+      <div class="relative bg-white dark:bg-slate-950 w-full rounded-2xl shadow-xl border border-border p-6 animate-in zoom-in-95 duration-200" :class="isHotelRoom ? 'max-w-lg max-h-[92vh] overflow-y-auto' : 'max-w-md'">
           <button @click="$emit('close')" class="absolute top-4 right-4 p-2 rounded-full hover:bg-muted transition-colors">
               <X class="h-4 w-4" />
           </button>
@@ -126,8 +126,10 @@ const handleSubmit = async () => {
                </div>
 
                <div class="space-y-2">
-                   <Label>Heure (07h - 18h)</Label>
-                   <select 
+                   <Label>{{ isHotelRoom ? 'Heure d’arrivée' : 'Heure (07h - 18h)' }}</Label>
+                   <ClockTimePicker v-if="isHotelRoom" v-model="form.time" />
+                   <select
+                     v-else
                      v-model="form.time"
                      class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                    >
