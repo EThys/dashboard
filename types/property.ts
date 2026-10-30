@@ -250,6 +250,8 @@ export interface Hotel {
     address?: string
     cityValue?: string
     communeValue?: string
+    quartierValue?: string
+    countryValue?: string
     sold?: boolean
 }
 
@@ -342,6 +344,11 @@ export interface NormalizedProperty {
     title: string
     location: string
     fullAddress: string
+    streetAddress?: string
+    quartier?: string
+    commune?: string
+    city?: string
+    country?: string
     price: string
     frequency: string
     currencyCode?: string

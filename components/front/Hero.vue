@@ -33,7 +33,7 @@ const serviceCategories = computed(() => serviceStore.getCategories)
 const handleSearch = () => {
   if (activeTab.value === 'properties') {
     const query: any = {}
-    if (location.value && location.value !== 'all') query.city = location.value
+    if (location.value && location.value.trim()) query.q = location.value.trim()
     if (propertyType.value && propertyType.value !== 'all') query.type = propertyType.value
     
     // Simple budget mapping
@@ -153,45 +153,34 @@ const handleSearch = () => {
 
             <!-- Property Filters -->
             <div v-if="activeTab === 'properties'" class="space-y-4">
-              <div class="grid grid-cols-2 gap-4">
-                <div class="space-y-1.5">
-                  <label class="text-xs font-bold text-white/80 ml-1">Ville</label>
-                  <div class="relative group">
-                    <select v-model="location" class="w-full h-12 pl-4 pr-10 rounded-xl bg-white/10 border border-white/10 text-white focus:bg-white/20 focus:border-primary outline-none transition-all appearance-none cursor-pointer">
-                      <option value="" class="text-slate-900">Toutes villes</option>
-                      <option class="text-slate-900">Kinshasa</option>
-                      <option class="text-slate-900">Lubumbashi</option>
-                      <option class="text-slate-900">Goma</option>
-                      <option class="text-slate-900">Bukavu</option>
-                      <option class="text-slate-900">Kisangani</option>
-                      <option class="text-slate-900">Matadi</option>
-                      <option class="text-slate-900">Kananga</option>
-                      <option class="text-slate-900">Mbuji-Mayi</option>
-                      <option class="text-slate-900">Kolwezi</option>
-                      <option class="text-slate-900">Likasi</option>
-                      <option class="text-slate-900">Mbandaka</option>
-                      <option class="text-slate-900">Kindu</option>
-                      <option class="text-slate-900">Boma</option>
-                    </select>
-                    <ChevronDown class="absolute right-3 top-4 h-4 w-4 text-white/50 pointer-events-none" />
-                  </div>
-                </div>
-                <div class="space-y-1.5">
-                  <label class="text-xs font-bold text-white/80 ml-1">Type</label>
-                  <div class="relative group">
-                    <select v-model="propertyType" class="w-full h-12 pl-4 pr-10 rounded-xl bg-white/10 border border-white/10 text-white focus:bg-white/20 focus:border-primary outline-none transition-all appearance-none cursor-pointer">
-                      <option value="" class="text-slate-900 font-bold">Tout type</option>
-                      <option 
-                        v-for="type in propertyTypes" 
-                        :key="type.propertyTypeId" 
-                        :value="type.name"
-                        class="text-slate-900"
-                      >
-                        {{ type.name }}
-                      </option>
-                    </select>
-                    <ChevronDown class="absolute right-3 top-4 h-4 w-4 text-white/50 pointer-events-none" />
-                  </div>
+              <div class="space-y-1.5">
+                <label class="text-xs font-bold text-white/80 ml-1">Localisation</label>
+                <input
+                  v-model="location"
+                  list="hero-places"
+                  type="text"
+                  placeholder="Ville, commune ou quartier"
+                  class="w-full h-12 px-4 rounded-xl bg-white/10 border border-white/10 text-white placeholder:text-white/50 focus:bg-white/20 focus:border-primary outline-none"
+                />
+                <datalist id="hero-places">
+                  <option v-for="city in ['Kinshasa', 'Lubumbashi', 'Goma', 'Bukavu', 'Kisangani', 'Matadi', 'Kananga', 'Mbuji-Mayi', 'Kolwezi', 'Likasi', 'Mbandaka', 'Kindu', 'Boma', 'Gombe', 'Kalamu', 'Ngaliema', 'Lemba', 'Limete', 'Bandalungwa']" :key="city" :value="city" />
+                </datalist>
+              </div>
+              <div class="space-y-1.5">
+                <label class="text-xs font-bold text-white/80 ml-1">Type</label>
+                <div class="relative group">
+                  <select v-model="propertyType" class="w-full h-12 pl-4 pr-10 rounded-xl bg-white/10 border border-white/10 text-white focus:bg-white/20 focus:border-primary outline-none transition-all appearance-none cursor-pointer">
+                    <option value="" class="text-slate-900 font-bold">Tout type</option>
+                    <option
+                      v-for="type in propertyTypes"
+                      :key="type.propertyTypeId"
+                      :value="type.name"
+                      class="text-slate-900"
+                    >
+                      {{ type.name }}
+                    </option>
+                  </select>
+                  <ChevronDown class="absolute right-3 top-4 h-4 w-4 text-white/50 pointer-events-none" />
                 </div>
               </div>
 

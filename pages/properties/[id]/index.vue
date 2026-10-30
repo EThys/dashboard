@@ -1,15 +1,13 @@
 <script setup lang="ts">
-import { MapPin, BedDouble, Bath, Maximize, Heart, Share2, Calendar, CheckCircle2, Phone, Mail, User, ArrowLeft, Zap, Droplets, ChefHat, Sofa, Home, Briefcase, DoorOpen, Users, Star, XCircle, FileText, Hotel, X } from 'lucide-vue-next'
+import { MapPin, BedDouble, Bath, Maximize, Heart, Share2, Calendar, CheckCircle2, Phone, Mail, User, ArrowLeft, Zap, Droplets, ChefHat, Sofa, Home, Briefcase, DoorOpen, Users, Star, XCircle, FileText, Hotel } from 'lucide-vue-next'
 import { Button } from '@/components/ui'
 import { usePropertyStore } from '@/stores/properties'
 import { useAuthStore } from '@/stores/auth'
-import { useReservationStore } from '@/stores/reservations'
 import VueEasyLightbox from 'vue-easy-lightbox'
 import { normalizeBureau, normalizeFestive, normalizeFuneraire, normalizeTerrain, normalizeHotel, normalizeStandardProperty } from '@/utils/propertyNormalizer'
 import { toast } from 'vue-sonner'
 import type { AnyPropertyResponse, NormalizedProperty } from '@/types/property'
 
-type HotelChambreItem = NonNullable<NormalizedProperty['hotelChambres']>[number]
 import CasaLoader from '@/components/ui/CasaLoader.vue'
 import PropertyVisitModal from '@/components/modals/PropertyVisitModal.vue'
 import DetailShimmer from '@/components/front/DetailShimmer.vue'
@@ -17,6 +15,7 @@ import { encodeId, decodeId } from '@/utils/urlObfuscator'
 import { ShieldCheck, Calendar as CalendarIcon, Loader2 } from 'lucide-vue-next'
 import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
 import { formatCurrency } from '@/utils/currency'
+import { trackListingView } from '@/composables/useGoogleAnalytics'
 
 definePageMeta({
   layout: 'default'
@@ -27,7 +26,6 @@ const router = useRouter()
 const config = useRuntimeConfig()
 const propertyStore = usePropertyStore()
 const authStore = useAuthStore()
-const resStore = useReservationStore()
 const propertyId = computed(() => decodeId(route.params.id as string))
 
 // Local ref to store data fetched specifically for this page
@@ -98,6 +96,20 @@ const property = computed<NormalizedProperty | null>(() => {
     console.error('Failed to normalize property:', error)
     return null
   }
+})
+
+const listingViewSent = ref(false)
+watch(property, (item) => {
+  if (!item || listingViewSent.value) return
+  listingViewSent.value = true
+  trackListingView({
+    id: item.id,
+    title: item.title,
+    currency: item.currencyCode,
+    location: item.city || item.location,
+    category: item.type,
+    transactionType: item.transactionType,
+  })
 })
 
 // Carousel / Hero Logic
@@ -211,72 +223,6 @@ function onVisitModalClose() {
     visitChambreTitleStr.value = ''
 }
 
-const isResModalOpen = ref(false)
-const resTargetType = ref<'vacance'|'chambre'|'standard'>('vacance')
-const resTargetId = ref(0)
-const resTargetTitle = ref('')
-
-function openChambreReservation() {
-    const ch = selectedChambre.value
-    if (!ch) return
-    if (!authStore.isAuthenticated) {
-        closeChambreDetail()
-        return navigateTo(`/login?reason=reservation&redirect=${route.fullPath}`)
-    }
-    
-    resTargetId.value = ch.id
-    resTargetTitle.value = ch.title
-    resTargetType.value = 'chambre'
-    closeChambreDetail()
-    isResModalOpen.value = true
-}
-
-const chambreDetailOpen = ref(false)
-const selectedChambre = ref<HotelChambreItem | null>(null)
-const chambreGalleryIndex = ref(0)
-
-function openChambreDetail(ch: HotelChambreItem) {
-  selectedChambre.value = ch
-  chambreGalleryIndex.value = 0
-  chambreDetailOpen.value = true
-}
-
-function closeChambreDetail() {
-  chambreDetailOpen.value = false
-  selectedChambre.value = null
-}
-
-function chambreImageUrlList(ch: HotelChambreItem): string[] {
-  const out: string[] = []
-  const imgs = ch.images as unknown
-  if (Array.isArray(imgs)) {
-    for (const im of imgs) {
-      if (typeof im === 'string' && im) out.push(im)
-      else if (im && typeof im === 'object') {
-        const o = im as { path?: string; publicPath?: string }
-        if (o.path) out.push(o.path)
-        if (o.publicPath) out.push(o.publicPath)
-      }
-    }
-  }
-  if (ch.image && typeof ch.image === 'string') out.push(ch.image)
-  return [...new Set(out.filter(Boolean))]
-}
-
-function chambreMainImages(ch: HotelChambreItem) {
-  const urls = chambreImageUrlList(ch)
-  return urls.length ? urls : []
-}
-
-function openChambreLightboxFromDetail() {
-  const ch = selectedChambre.value
-  if (!ch) return
-  const imgs = chambreMainImages(ch)
-  if (!imgs.length) return
-  lightboxImgs.value = imgs
-  lightboxIndex.value = chambreGalleryIndex.value
-  lightboxVisible.value = true
-}
 </script>
 
 <template>
@@ -342,16 +288,16 @@ function openChambreLightboxFromDetail() {
                         <div class="space-y-4 max-w-3xl">
                             <div class="flex flex-wrap items-center gap-3">
                                 <span
-                                    v-if="isPropertyTaken"
+                                    v-if="isPropertyTaken && !property.isHotel"
                                     class="px-4 py-1.5 rounded-full bg-red-600 text-white text-sm font-black uppercase tracking-wider shadow-lg shadow-red-900/30 border border-red-500/80"
                                 >
                                     {{ (property.transactionType === 'location' || property.transactionType === 'louer') ? 'Déjà pris' : 'Vendu' }}
                                 </span>
                                 <span class="px-4 py-1.5 rounded-full bg-primary text-white text-sm font-bold uppercase tracking-wider shadow-lg shadow-primary/25">
-                                    {{ property.status }}
+                                    {{ property.isHotel ? 'Hébergement' : property.status }}
                                 </span>
                                 <span class="px-3 py-1.5 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white text-sm font-medium flex items-center gap-2">
-                                    <MapPin class="h-3.5 w-3.5" /> {{ property.location }}
+                                    <MapPin class="h-3.5 w-3.5" /> {{ property.fullAddress || property.location }}
                                 </span>
                                 <span class="px-3 py-1.5 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white text-sm font-medium flex items-center gap-2">
                                     <Home class="h-3.5 w-3.5" /> {{ property.type }}
@@ -507,6 +453,39 @@ function openChambreLightboxFromDetail() {
 
                         </div>
 
+                        <!-- Adresse -->
+                        <div
+                            v-if="property.streetAddress || property.quartier || property.commune || property.city || property.country"
+                            class="bg-card rounded-3xl p-8 border border-border/50 shadow-sm"
+                        >
+                            <h2 class="text-2xl font-bold mb-6 flex items-center gap-2">
+                                <MapPin class="h-6 w-6 text-primary" />
+                                Adresse
+                            </h2>
+                            <dl class="grid gap-4 sm:grid-cols-2">
+                                <div v-if="property.streetAddress">
+                                    <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Adresse</dt>
+                                    <dd class="mt-1 text-base font-semibold text-foreground">{{ property.streetAddress }}</dd>
+                                </div>
+                                <div v-if="property.quartier">
+                                    <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Quartier</dt>
+                                    <dd class="mt-1 text-base font-semibold text-foreground">{{ property.quartier }}</dd>
+                                </div>
+                                <div v-if="property.commune">
+                                    <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Commune</dt>
+                                    <dd class="mt-1 text-base font-semibold text-foreground">{{ property.commune }}</dd>
+                                </div>
+                                <div v-if="property.city">
+                                    <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Ville</dt>
+                                    <dd class="mt-1 text-base font-semibold text-foreground">{{ property.city }}</dd>
+                                </div>
+                                <div v-if="property.country">
+                                    <dt class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pays</dt>
+                                    <dd class="mt-1 text-base font-semibold text-foreground">{{ property.country }}</dd>
+                                </div>
+                            </dl>
+                        </div>
+
                         <!-- Description -->
                         <div class="bg-card rounded-3xl p-8 border border-border/50 shadow-sm">
                             <h2 class="text-2xl font-bold mb-6 flex items-center gap-2">
@@ -529,12 +508,11 @@ function openChambreLightboxFromDetail() {
             Chambres & tarifs
           </h2>
           <div class="grid gap-6 sm:grid-cols-2">
-            <button
+            <NuxtLink
               v-for="ch in property.hotelChambres"
               :key="ch.id"
-              type="button"
+              :to="`/properties/${route.params.id}/chambres/${encodeId(ch.id)}`"
               class="group flex flex-col overflow-hidden rounded-3xl border border-border/50 bg-card text-left shadow-sm transition hover:ring-2 hover:ring-primary/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              @click="openChambreDetail(ch)"
             >
               <div class="aspect-[5/3] bg-muted">
                 <img
@@ -562,7 +540,7 @@ function openChambreLightboxFromDetail() {
                   <span v-if="ch.priceHeure" class="max-w-[50%] text-right text-xs text-muted-foreground">{{ ch.priceHeure }}</span>
                 </div>
               </div>
-            </button>
+            </NuxtLink>
           </div>
         </div>
         <div
@@ -679,132 +657,6 @@ function openChambreLightboxFromDetail() {
         </div>
     </Transition>
 
-      <Teleport to="body">
-        <div
-          v-if="chambreDetailOpen && selectedChambre"
-          class="fixed inset-0 z-[90] flex items-end justify-center bg-black/60 p-4 sm:items-center"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="chambre-detail-title"
-          @click.self="closeChambreDetail"
-        >
-          <div
-            class="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-border bg-background shadow-2xl"
-            @click.stop
-          >
-            <div class="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-border bg-background/95 px-5 py-4 backdrop-blur">
-              <h2 id="chambre-detail-title" class="pr-4 text-lg font-bold leading-tight sm:text-xl">
-                {{ selectedChambre.title }}
-              </h2>
-              <button
-                type="button"
-                class="rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
-                aria-label="Fermer"
-                @click="closeChambreDetail"
-              >
-                <X class="h-5 w-5" />
-              </button>
-            </div>
-
-            <div class="space-y-6 p-5 sm:p-6">
-              <div v-if="chambreMainImages(selectedChambre).length" class="space-y-3">
-                <button
-                  type="button"
-                  class="relative aspect-[16/10] w-full overflow-hidden rounded-2xl bg-muted ring-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  @click="openChambreLightboxFromDetail"
-                >
-                  <img
-                    :src="chambreMainImages(selectedChambre)[chambreGalleryIndex]"
-                    alt=""
-                    class="h-full w-full object-cover"
-                  />
-                  <span
-                    class="absolute bottom-3 right-3 rounded-full bg-black/40 px-2 py-1 text-xs font-medium text-white backdrop-blur"
-                  >
-                    Agrandir
-                  </span>
-                </button>
-                <div class="flex flex-wrap gap-2">
-                  <button
-                    v-for="(u, i) in chambreMainImages(selectedChambre)"
-                    :key="i"
-                    type="button"
-                    class="h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 transition"
-                    :class="i === chambreGalleryIndex ? 'border-primary ring-2 ring-primary/30' : 'border-transparent opacity-80 hover:opacity-100'"
-                    @click="chambreGalleryIndex = i"
-                  >
-                    <img :src="u" alt="" class="h-full w-full object-cover" />
-                  </button>
-                </div>
-              </div>
-
-              <div class="flex flex-wrap gap-2">
-                <span
-                  v-if="selectedChambre.available !== false"
-                  class="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-800 dark:text-emerald-200"
-                >
-                  Disponible
-                </span>
-                <span
-                  v-else
-                  class="rounded-full bg-amber-500/15 px-3 py-1 text-xs font-bold text-amber-900 dark:text-amber-100"
-                >
-                  Indisponible
-                </span>
-                <span
-                  v-if="selectedChambre.numberPiece != null"
-                  class="rounded-full bg-muted px-3 py-1 text-xs font-medium"
-                >
-                  {{ selectedChambre.numberPiece }} pièce(s)
-                </span>
-              </div>
-
-              <div
-                class="rounded-2xl border border-border/50 bg-muted/30 p-4 text-sm text-muted-foreground"
-              >
-                <p class="text-xs font-bold uppercase tracking-wider text-foreground">Description</p>
-                <p class="mt-2 whitespace-pre-line text-foreground">{{ selectedChambre.description || '—' }}</p>
-              </div>
-
-              <div class="grid gap-6 rounded-2xl border border-border/50 bg-card p-4 sm:grid-cols-2">
-                <div>
-                  <p class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Prix / nuit</p>
-                  <p class="mt-1 text-2xl font-black text-primary">
-                    {{ formatCurrency(selectedChambre.price, selectedChambre.currencyLabel) }}
-                  </p>
-                </div>
-                <div v-if="selectedChambre.priceHeure">
-                  <p class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Infos horaires</p>
-                  <p class="mt-1 text-foreground">{{ selectedChambre.priceHeure }}</p>
-                </div>
-                <div v-if="selectedChambre.createdAt">
-                  <p class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Publié le</p>
-                  <p class="mt-1 text-sm">{{ selectedChambre.createdAt }}</p>
-                </div>
-              </div>
-
-              <div class="flex flex-col gap-3 border-t border-border pt-6 sm:flex-row sm:justify-end">
-                <Button type="button" variant="outline" class="rounded-xl" @click="closeChambreDetail">
-                  Fermer
-                </Button>
-                <Button
-                  v-if="selectedChambre.available !== false && !isPropertyTaken"
-                  type="button"
-                  class="rounded-xl font-bold"
-                  @click="openChambreReservation"
-                >
-                  <Calendar class="mr-2 h-5 w-5" />
-                  Réserver cette chambre
-                </Button>
-                <p v-else-if="isPropertyTaken" class="text-center text-sm text-muted-foreground sm:self-center">
-                  Cette annonce n’est plus disponible.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Teleport>
-
       <!-- Lightbox -->
       <VueEasyLightbox
         v-if="property"
@@ -824,14 +676,6 @@ function openChambreLightboxFromDetail() {
          @close="onVisitModalClose"
       />
 
-      <!-- Reservation Modal (Chambres/Vacances) -->
-      <ListingReservationModal 
-         :isOpen="isResModalOpen"
-         :listingId="resTargetId"
-         :listingTitle="resTargetTitle"
-         :type="resTargetType"
-         @close="isResModalOpen = false"
-      />
   </div>
 </template>
 

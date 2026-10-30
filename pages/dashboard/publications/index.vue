@@ -20,7 +20,8 @@ watch(() => route.query.tab, (tab) => {
 })
 
 import { ref, computed, watch, onMounted } from 'vue'
-import { Check, X, Eye, MapPin, Search, ChevronLeft, ChevronRight, Filter, Wrench, Calendar, ChevronDown, Power, Tag, Loader2 } from 'lucide-vue-next'
+import { Check, X, Eye, MapPin, Search, Filter, Wrench, Calendar, ChevronDown, Power, Tag, Loader2 } from 'lucide-vue-next'
+import ListPagination from '@/components/dashboard/ListPagination.vue'
 import { useQuery, useQueryClient } from '@tanstack/vue-query'
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, Badge, Skeleton } from '@/components/ui'
 import { toast } from 'vue-sonner'
@@ -33,6 +34,7 @@ import { useAuthStore } from '@/stores/auth'
 import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
 import { reloadNuxtApp } from '#app'
 import { unwrapArrayPayload } from '@/utils/apiListResponse'
+import { formatListingPlace } from '@/utils/propertyNormalizer'
 
 const propertyStore = usePropertyStore()
 const serviceStore = useServiceStore()
@@ -61,7 +63,14 @@ serviceStore.fetchCategories(config.public.apiBase)
 const currentFilter = ref('all')
 const searchQuery = ref('')
 const currentPage = ref(1)
-const itemsPerPage = 8
+const itemsPerPage = 6
+
+function moneyLabel(amount: number | string, code?: string | number | null) {
+  const raw = String(code ?? '').toUpperCase()
+  const symbol = code === 1 || raw === '1' || raw === 'CDF' || raw === 'FC' ? 'FC' : '$'
+  const text = typeof amount === 'number' ? amount.toLocaleString('fr-FR') : String(amount)
+  return `${text} ${symbol}`
+}
 const showFilters = ref(false)
 
 // Advanced Filters (Properties)
@@ -86,6 +95,31 @@ const endServiceDate = ref('')
 const selectedServiceExperience = ref('all') 
 const selectedServiceStatus = ref('all')
 const serviceSortOrder = ref('newest')
+
+function personName(value: unknown): string {
+  if (!value || typeof value !== 'object') return ''
+  const o = value as Record<string, unknown>
+  const full = typeof o.fullName === 'string' ? o.fullName.trim() : ''
+  if (full) return full
+  const parts = [o.firstName, o.lastName].filter((part): part is string => typeof part === 'string' && part.trim().length > 0)
+  if (parts.length) return parts.map((part) => part.trim()).join(' ')
+  return typeof o.username === 'string' ? o.username.replace(/@@/g, '').trim() : ''
+}
+
+function publicationAuthor(item: any, owners?: Record<string, string>) {
+  const posted = typeof item?.postBy === 'string' ? item.postBy.replace(/@@/g, '').trim() : ''
+  if (posted) return posted
+  const named = personName(item?.proprietaire) || personName(item?.member) || personName(item?.user) || personName(item?.hotel?.user)
+  if (named) return named
+  const userId = item?.hotel?.userId ?? item?.property?.userId ?? item?.terrain?.userId ?? item?.bureau?.userId ?? item?.festive?.userId ?? item?.funeraire?.userId ?? item?.userId
+  const fromAccount = userId != null ? owners?.[String(userId)] : ''
+  if (fromAccount) return fromAccount
+  const selfId = authStore.user?.userId
+  if (userId != null && selfId != null && String(userId) === String(selfId)) {
+    return authStore.profile?.fullName?.trim() || authStore.user?.username?.replace(/@@/g, '').trim() || 'Inconnu'
+  }
+  return 'Inconnu'
+}
 
 // Fetch logic
 const { data: allPropertiesData, isLoading, isError } = useQuery({
@@ -126,25 +160,57 @@ const { data: allPropertiesData, isLoading, isError } = useQuery({
           : ApiEndpoints.propertyHotels
     )
 
+    async function readJson(url: string, headers?: Record<string, string>) {
+      try {
+        const res = await fetch(url, headers ? { headers } : undefined)
+        if (!res.ok) return null
+        return await res.json()
+      } catch {
+        return null
+      }
+    }
+
     const [props, terrains, bureaux, hotels, festives, funeraires] = await Promise.all([
-      fetch(propsUrl, isAdmin ? { headers: h } : undefined).then((res) => res.json()),
-      fetch(terrainsUrl, isAdmin ? { headers: h } : undefined).then((res) => res.json()),
-      fetch(bureauxUrl, isAdmin ? { headers: h } : undefined).then((res) => res.json()),
-      fetch(hotelsUrl, { headers: h }).then((res) => res.json()),
-      fetch(festivesUrl, isAdmin ? { headers: h } : undefined).then((res) => res.json()),
-      fetch(funerairesUrl, isAdmin ? { headers: h } : undefined).then((res) => res.json()),
+      readJson(propsUrl, isAdmin ? h : undefined),
+      readJson(terrainsUrl, isAdmin ? h : undefined),
+      readJson(bureauxUrl, isAdmin ? h : undefined),
+      readJson(hotelsUrl, h),
+      readJson(festivesUrl, isAdmin ? h : undefined),
+      readJson(funerairesUrl, isAdmin ? h : undefined),
     ])
+
+    let hotelRows = hotels == null ? null : unwrapArrayPayload(hotels)
+    if (hotelRows == null) {
+      const publicHotels = await readJson(joinApi(apiBase, ApiEndpoints.propertyHotelsPublic))
+      hotelRows = unwrapArrayPayload(publicHotels)
+    }
+
+    const owners: Record<string, string> = {}
+    if (token && isAdmin) {
+      const [usersRaw, membersRaw] = await Promise.all([
+        readJson(joinApi(apiBase, ApiEndpoints.allUsers), h),
+        readJson(joinApi(apiBase, ApiEndpoints.protectedMembers), h),
+      ])
+      for (const user of unwrapArrayPayload<Record<string, unknown>>(usersRaw)) {
+        const id = user?.userId
+        const name = typeof user?.username === 'string' ? user.username.replace(/@@/g, '').trim() : ''
+        if (id != null && name) owners[String(id)] = name
+      }
+      for (const member of unwrapArrayPayload<Record<string, unknown>>(membersRaw)) {
+        const id = member?.userId
+        const name = personName(member)
+        if (id != null && name) owners[String(id)] = name
+      }
+    }
+
     return {
       properties: props?.properties || [],
       terrains: terrains?.terrain || [],
       bureaux: unwrapArrayPayload(bureaux),
-      hotels: (() => {
-        const h = hotels
-        const raw = h?.data ?? h ?? []
-        return Array.isArray(raw) ? raw : []
-      })(),
+      hotels: hotelRows,
       festives: festives?.festives || [],
-      funeraires: funeraires?.funeraires || []
+      funeraires: funeraires?.funeraires || [],
+      owners,
     }
   }
 })
@@ -188,18 +254,25 @@ const allPublications = computed(() => {
         img = item.images[0].path
     }
 
-    const sold = !!(p as { sold?: boolean }).sold
+    const isHotel = item._category === 'hotel' || !!item.hotel
+    const rooms = hotelRooms(item)
+    const roomOffer = cheapestRoomOffer(rooms)
+    const sold = !isHotel && !!(p as { sold?: boolean }).sold
     /** Désactivé admin ≠ en attente : reste listé pour les administrateurs */
-    const explicitlyDisabled =
-      (p as { available?: boolean; active?: boolean }).available === false ||
-      (p as { available?: boolean; active?: boolean }).active === false
+    const explicitlyDisabled = isHotel
+      ? (p as { available?: boolean }).available === false
+      : (p as { available?: boolean; active?: boolean }).available === false ||
+        (p as { available?: boolean; active?: boolean }).active === false
     const status = sold ? 'Sold' : explicitlyDisabled ? 'Inactive' : 'Active'
-    const priceVal = p.price || p.minPrice || 0
-    const priceDisplay = typeof priceVal === 'number' ? priceVal.toLocaleString() : priceVal
+    const priceVal = p.price ?? p.minPrice
+    const hasOwnPrice = !isHotel && priceVal != null && priceVal !== ''
+    const priceDisplay = typeof priceVal === 'number' ? priceVal.toLocaleString('fr-FR') : priceVal
     
-    // Location string
+    // Location string — hôtels : rue, quartier, commune, même si la ville est vide
     let locationStr = 'RDC'
-    if (addr.communeValue && addr.cityValue) {
+    if (item._category === 'hotel' || item.hotel) {
+        locationStr = formatListingPlace(p) || formatListingPlace(addr) || 'RDC'
+    } else if (addr.communeValue && addr.cityValue) {
         locationStr = `${addr.communeValue}, ${addr.cityValue}`
     } else if (p.communeValue && p.cityValue) {
         locationStr = `${p.communeValue}, ${p.cityValue}`
@@ -213,10 +286,16 @@ const allPublications = computed(() => {
       title: p.title || typeName,
       type: typeName,
       location: locationStr,
-      price: `${priceDisplay} ${item.devise?.code || 'USD'}`,
+      price: isHotel
+        ? (roomOffer?.label || 'Tarif par chambre')
+        : hasOwnPrice
+          ? moneyLabel(priceDisplay, item.devise?.code || 'USD')
+          : 'Prix sur demande',
+      hidePrice: isHotel && !roomOffer,
+      rooms: rooms.length,
       image: img,
       status: status,
-      author: item.postBy?.replace('@@', '') || 'Inconnu',
+      author: publicationAuthor(item, allPropertiesData.value?.owners),
       description: p.description || 'Aucune description fournie.',
       date: new Date(p.createdAt || p.dateCreated).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }),
       rawDate: new Date(p.createdAt || p.dateCreated),
@@ -230,6 +309,29 @@ const allPublications = computed(() => {
     }
   })
 })
+
+function hotelRooms(item: { structure?: unknown }) {
+  const structure = Array.isArray(item.structure) ? item.structure : []
+  return structure
+    .map((entry) => {
+      if (!entry || typeof entry !== 'object') return null
+      const row = entry as { chambre?: Record<string, unknown> }
+      return row.chambre && typeof row.chambre === 'object' ? row.chambre : (entry as Record<string, unknown>)
+    })
+    .filter((room): room is Record<string, unknown> => !!room && (room.id != null || room.price != null || room.title != null))
+}
+
+function cheapestRoomOffer(rooms: Record<string, unknown>[]) {
+  const priced = rooms
+    .map((room) => ({
+      price: Number(room.price),
+      deviseId: Number(room.deviseId),
+    }))
+    .filter((room) => Number.isFinite(room.price) && room.price > 0)
+  if (!priced.length) return null
+  const min = priced.reduce((best, room) => (room.price < best.price ? room : best))
+  return { label: `À partir de ${moneyLabel(min.price, min.deviseId)}` }
+}
 
 function getPubEntity(raw: Record<string, unknown>) {
     return (raw.property ||
@@ -279,17 +381,25 @@ async function togglePublicationEnable(pub: {
     }
 }
 
+function isHotelListed(pub: { raw: Record<string, unknown> }) {
+    const hotel = getPubEntity(pub.raw)
+    if (hotel.available === false || hotel.sold === true) return false
+    return true
+}
+
 async function togglePublicationSold(pub: {
     id: number
     category: PublicationCategory
     raw: Record<string, unknown>
 }) {
-    if (pub.category === 'hotel') {
-        toast.info('Les hôtels ne sont pas gérés par ces endpoints pour l’instant.')
-        return
-    }
-    const currentlySold = isPubSold(pub)
-    if (!currentlySold) {
+    const isHotel = pub.category === 'hotel'
+    const currentlySold = isHotel ? !isHotelListed(pub) : isPubSold(pub)
+    if (isHotel) {
+        const ok = confirm(currentlySold
+            ? 'Remettre cet hôtel en ligne ?'
+            : 'Rendre cet hôtel indisponible sur le site ?')
+        if (!ok) return
+    } else if (!currentlySold) {
         const ok = confirm('Marquer ce bien comme vendu ? Il sera traité comme indisponible.')
         if (!ok) return
     } else {
@@ -308,7 +418,11 @@ async function togglePublicationSold(pub: {
     )
     publicationActionKey.value = null
     if (res.success) {
-        toast.success(nextSold ? 'Bien marqué comme vendu' : 'Statut vendu retiré')
+        toast.success(
+            isHotel
+                ? (nextSold ? 'Hôtel retiré du site' : 'Hôtel remis en ligne')
+                : (nextSold ? 'Bien marqué comme vendu' : 'Statut vendu retiré')
+        )
         await queryClient.invalidateQueries({ queryKey: ['all-dashboard-properties'] })
         await reloadNuxtApp({ ttl: 1000 })
     } else {
@@ -321,21 +435,18 @@ function isPublicationActionLoading(pub: { id: number; category: PublicationCate
 }
 
 // Services filtering logic
-const getCurrencyCode = (deviseId: number): 'CDF' | 'USD' => deviseId === 1 ? 'CDF' : 'USD'
-
 const allServices = computed(() => {
   if (!servicesData.value?.prestations) return []
   return servicesData.value.prestations.map((item: any) => {
     const p = item.prestation
     const img = p.profile || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&q=80&w=800'
-    const price = typeof p.minPrice === 'number' ? p.minPrice.toLocaleString() : p.minPrice
-    const currency = getCurrencyCode(p.deviseId)
-    
+    const hasPrice = p.minPrice != null && p.minPrice !== ''
+    const price = typeof p.minPrice === 'number' ? p.minPrice.toLocaleString('fr-FR') : p.minPrice
     return {
       id: p.id,
       title: p.title || 'Sans titre',
-      location: `${p.communeValue || ''}, ${p.cityValue || ''}`,
-      minPriceFormatted: `${price} ${currency}`, // Updated display format
+      location: formatListingPlace(p) || 'RDC',
+      minPriceFormatted: hasPrice ? moneyLabel(price, p.deviseId) : 'Tarif sur demande',
       image: img,
       status: p.active ? 'Active' : 'Inactive',
       author: item.postBy?.replace('@@', '') || 'Inconnu',
@@ -518,11 +629,15 @@ const filteredPublications = computed(() => {
   return pubs
 })
 
-const totalPages = computed(() => Math.ceil(filteredPublications.value.length / itemsPerPage))
+const filteredPropertyPublications = computed(() =>
+  filteredPublications.value.filter((p: { category?: string }) => p.category !== 'hotel')
+)
+
+const totalPages = computed(() => Math.ceil(filteredPropertyPublications.value.length / itemsPerPage))
 const paginatedPublications = computed(() => {
   const start = (currentPage.value - 1) * itemsPerPage
   const end = start + itemsPerPage
-  return filteredPublications.value.slice(start, end)
+  return filteredPropertyPublications.value.slice(start, end)
 })
 
 const appovePub = (id: number) => alert(`Bien ${id} validé !`)
@@ -577,9 +692,18 @@ const activeFilterCount = computed(() => {
 
 watch([currentFilter, searchQuery], () => { currentPage.value = 1 })
 
-const filteredHotelPublications = computed(() =>
-  filteredPublications.value.filter((p: { category?: string }) => p.category === 'hotel')
-)
+const filteredHotelPublications = computed(() => {
+  let pubs = allPublications.value.filter((p: { category?: string }) => p.category === 'hotel')
+  if (searchQuery.value) {
+    const q = searchQuery.value.toLowerCase()
+    pubs = pubs.filter((p: { title: string; location: string; author: string }) =>
+      p.title.toLowerCase().includes(q) ||
+      p.location.toLowerCase().includes(q) ||
+      p.author.toLowerCase().includes(q)
+    )
+  }
+  return pubs
+})
 
 const hotelTotalPages = computed(() => Math.ceil(filteredHotelPublications.value.length / itemsPerPage))
 const hotelCurrentPage = ref(1)
@@ -595,14 +719,40 @@ watch([activeTab, filteredHotelPublications], () => {
 const goToHotelDetail = (id: number) => {
   router.push(`/dashboard/publications/hotels/${id}`)
 }
+
+function switchPublicationTab(tab: 'properties' | 'services' | 'hotels') {
+  activeTab.value = tab
+  router.push({ path: '/dashboard/publications', query: { tab } })
+}
+
+const serviceActionId = ref<number | null>(null)
+
+async function toggleServiceActive(srv: { id: number; raw: { prestation: { active?: boolean } } }) {
+  const next = !srv.raw.prestation.active
+  serviceActionId.value = srv.id
+  try {
+    const token = authStore.token || useCookie<string | null>('auth_token').value
+    await $fetch(joinApi(config.public.apiBase as string, `${ApiEndpoints.updatePrestation}${srv.id}`), {
+      method: 'PATCH',
+      body: { active: next },
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+    toast.success(next ? 'Service activé' : 'Service désactivé')
+    await queryClient.invalidateQueries({ queryKey: ['prestations'] })
+  } catch {
+    toast.error('Mise à jour du service impossible')
+  } finally {
+    serviceActionId.value = null
+  }
+}
 </script>
 
 <template>
   <div class="space-y-8 p-8 max-w-7xl mx-auto">
     <div class="flex flex-wrap gap-2 mb-6">
-      <Button :variant="activeTab === 'properties' ? 'default' : 'outline'" @click="router.push({ path: '/dashboard/publications', query: { tab: 'properties' } })">Propriétés</Button>
-      <Button :variant="activeTab === 'services' ? 'default' : 'outline'" @click="router.push({ path: '/dashboard/publications', query: { tab: 'services' } })">Services</Button>
-      <Button :variant="activeTab === 'hotels' ? 'default' : 'outline'" @click="router.push({ path: '/dashboard/publications', query: { tab: 'hotels' } })">Hôtels</Button>
+      <Button :variant="activeTab === 'properties' ? 'default' : 'outline'" @click="switchPublicationTab('properties')">Propriétés</Button>
+      <Button :variant="activeTab === 'services' ? 'default' : 'outline'" @click="switchPublicationTab('services')">Services</Button>
+      <Button :variant="activeTab === 'hotels' ? 'default' : 'outline'" @click="switchPublicationTab('hotels')">Hôtels</Button>
     </div>
 
     <!-- Header Section -->
@@ -708,8 +858,8 @@ const goToHotelDetail = (id: number) => {
                  <label class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Devise</label>
                  <select v-model="currencyFilter" class="w-full h-9 px-3 rounded-md border border-input bg-background text-sm">
                     <option value="">Toute devise</option>
-                    <option value="USD">USD</option>
-                    <option value="CDF">CDF</option>
+                    <option value="USD">$</option>
+                    <option value="CDF">FC</option>
                 </select>
             </div>
             
@@ -732,7 +882,7 @@ const goToHotelDetail = (id: number) => {
               </div>
           </div>
       </div>
-      <div v-else-if="filteredPublications.length === 0" class="py-20 text-center border rounded-lg bg-card text-card-foreground">
+      <div v-else-if="filteredPropertyPublications.length === 0" class="py-20 text-center border rounded-lg bg-card text-card-foreground">
           <p class="text-muted-foreground">Aucune publication trouvée.</p>
           <Button variant="link" @click="resetFilters">Tout afficher</Button>
       </div>
@@ -870,19 +1020,49 @@ const goToHotelDetail = (id: number) => {
             <div class="absolute top-2 left-2">
               <Badge variant="secondary" class="bg-white/90 text-black shadow-sm">Hôtel</Badge>
             </div>
+            <div class="absolute top-2 right-2">
+              <Badge
+                v-if="isHotelListed(pub)"
+                variant="secondary"
+                class="bg-[#1976D2] text-white hover:bg-[#1976D2] border-0 shadow-sm"
+              >En ligne</Badge>
+              <Badge
+                v-else
+                variant="outline"
+                class="border-[#1976D2] bg-white/95 text-[#1565C0] font-semibold shadow-sm"
+              >Indisponible</Badge>
+            </div>
           </div>
           <CardContent class="flex-1 p-4 flex flex-col gap-3">
             <div>
               <h3 class="font-semibold text-lg line-clamp-1 leading-tight mb-1 group-hover:text-primary transition-colors">{{ pub.title }}</h3>
               <div class="flex items-center text-xs text-muted-foreground gap-1">
                 <MapPin class="h-3 w-3" />
-                <span class="line-clamp-1">{{ pub.location }}</span>
+                <span class="line-clamp-2">{{ pub.location }}</span>
               </div>
             </div>
-            <div class="font-bold text-primary text-xl">{{ pub.price }}</div>
+            <div>
+              <div class="font-bold text-primary text-lg leading-tight">{{ pub.price }}</div>
+              <p class="text-xs text-muted-foreground mt-1">
+                {{ pub.rooms > 0 ? `${pub.rooms} chambre${pub.rooms > 1 ? 's' : ''}` : 'Aucune chambre publiée' }}
+              </p>
+            </div>
             <div class="mt-auto pt-3 border-t flex items-center justify-between text-xs text-muted-foreground">
               <span>Par <span class="font-medium text-foreground">{{ pub.author }}</span></span>
               <span>{{ pub.date }}</span>
+            </div>
+            <div class="pt-3 border-t border-border/60" @click.stop.prevent>
+              <p class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Admin</p>
+              <Button
+                size="sm"
+                variant="outline"
+                class="h-8 text-xs font-semibold"
+                @click="togglePublicationSold(pub)"
+              >
+                <Loader2 v-if="isPublicationActionLoading(pub, 'sold')" class="h-3.5 w-3.5 mr-1 animate-spin shrink-0" />
+                <Power v-else class="h-3.5 w-3.5 mr-1 shrink-0" />
+                {{ isHotelListed(pub) ? 'Rendre indisponible' : 'Remettre en ligne' }}
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -1097,42 +1277,52 @@ const goToHotelDetail = (id: number) => {
               </div>
             </div>
             <div class="font-bold text-primary max-sm:text-sm">
-              <span class="text-muted-foreground text-xs font-normal block">À partir de</span>
+              <span v-if="srv.minPriceFormatted !== 'Tarif sur demande'" class="text-muted-foreground text-xs font-normal block">À partir de</span>
               {{ srv.minPriceFormatted }}
             </div>
             <div class="mt-auto pt-3 border-t flex items-center justify-between text-xs text-muted-foreground">
               <span>Par <span class="font-medium text-foreground">{{ srv.author }}</span></span>
               <span>{{ srv.date }}</span>
             </div>
+            <div class="pt-3 border-t border-border/60" @click.stop.prevent>
+              <p class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Admin</p>
+              <Button
+                size="sm"
+                variant="outline"
+                class="h-8 text-xs font-semibold"
+                :disabled="serviceActionId === srv.id"
+                @click="toggleServiceActive(srv)"
+              >
+                <Loader2 v-if="serviceActionId === srv.id" class="h-3.5 w-3.5 mr-1 animate-spin shrink-0" />
+                <Power v-else class="h-3.5 w-3.5 mr-1 shrink-0" />
+                {{ srv.raw.prestation.active ? 'Désactiver' : 'Activer' }}
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
     </div>
 
-    <!-- Pagination -->
-    <!-- Pagination (Shared logic) -->
-    <div class="flex items-center justify-center space-x-2 py-8" v-if="(activeTab === 'properties' && totalPages > 1) || (activeTab === 'services' && serviceTotalPages > 1) || (activeTab === 'hotels' && hotelTotalPages > 1)">
-        <Button 
-            variant="outline" 
-            size="sm" 
-            @click="activeTab === 'properties' ? currentPage-- : activeTab === 'hotels' ? hotelCurrentPage-- : serviceCurrentPage--"
-            :disabled="activeTab === 'properties' ? currentPage === 1 : activeTab === 'hotels' ? hotelCurrentPage === 1 : serviceCurrentPage === 1"
-        >
-             <ChevronLeft class="h-4 w-4 mr-2" />
-            Précédent
-        </Button>
-        <span class="flex items-center text-sm font-medium mx-2">
-            Page {{ activeTab === 'properties' ? currentPage : activeTab === 'hotels' ? hotelCurrentPage : serviceCurrentPage }} sur {{ activeTab === 'properties' ? totalPages : activeTab === 'hotels' ? hotelTotalPages : serviceTotalPages }}
-        </span>
-        <Button 
-            variant="outline" 
-            size="sm" 
-            @click="activeTab === 'properties' ? currentPage++ : activeTab === 'hotels' ? hotelCurrentPage++ : serviceCurrentPage++"
-             :disabled="activeTab === 'properties' ? currentPage === totalPages : activeTab === 'hotels' ? hotelCurrentPage === hotelTotalPages : serviceCurrentPage === serviceTotalPages"
-        >
-            Suivant
-            <ChevronRight class="h-4 w-4 ml-2" />
-        </Button>
-    </div>
+    <ListPagination
+      v-if="activeTab === 'properties'"
+      :page="currentPage"
+      :total="filteredPropertyPublications.length"
+      :page-size="itemsPerPage"
+      @update:page="currentPage = $event"
+    />
+    <ListPagination
+      v-else-if="activeTab === 'hotels'"
+      :page="hotelCurrentPage"
+      :total="filteredHotelPublications.length"
+      :page-size="itemsPerPage"
+      @update:page="hotelCurrentPage = $event"
+    />
+    <ListPagination
+      v-else-if="activeTab === 'services'"
+      :page="serviceCurrentPage"
+      :total="filteredServices.length"
+      :page-size="itemsPerPage"
+      @update:page="serviceCurrentPage = $event"
+    />
   </div>
 </template>

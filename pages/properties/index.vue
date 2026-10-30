@@ -7,7 +7,7 @@ import PropertyCardShimmer from '@/components/front/PropertyCardShimmer.vue'
 import CasaLoader from '@/components/ui/CasaLoader.vue'
 import { encodeId } from '@/utils/urlObfuscator'
 import { getPublicListingStatus } from '@/utils/listingAvailability'
-import { getPublicTransactionBadgeLabel, isLocationTransactionType } from '@/utils/transactionDisplay'
+import { getPublicTransactionBadgeLabel, isLocationTransactionType, isLodgingTransactionType } from '@/utils/transactionDisplay'
 
 definePageMeta({
   layout: 'default'
@@ -71,22 +71,55 @@ const isStoreEmpty = computed(() =>
 // ----------------------------------------------------------------------------
 // Filter States
 // ----------------------------------------------------------------------------
-const searchInputText = ref(route.query.city?.toString() || '')
-const searchQuery = ref(route.query.city?.toString() || '')
+const searchInputText = ref(route.query.q?.toString() || route.query.city?.toString() || '')
+const searchQuery = ref(route.query.q?.toString() || route.query.city?.toString() || '')
 
 const applySearch = () => {
     searchQuery.value = searchInputText.value
 }
 
+watch(searchInputText, (value) => {
+    searchQuery.value = value
+})
+
 const selectedType = ref(route.query.type?.toString() || 'all')
-const selectedTransaction = ref('all')
-const sortOrder = ref('desc') // 'desc' = plus récents, 'asc' = plus anciens
+const selectedTransaction = ref(route.query.transaction?.toString() || 'all')
+const selectedCity = ref('all')
+const selectedCommune = ref('all')
+const selectedQuartier = ref('all')
+const sortOrder = ref('desc')
+
+const kinshasaCommunes = new Set([
+    'bandalungwa', 'barumbu', 'bumbu', 'gombe', 'kalamu', 'kasa-vubu', 'kasavubu',
+    'kimbanseke', 'kinshasa', 'kintambo', 'kisenso', 'lemba', 'limete',
+    'lingwala', 'makala', 'maluku', 'masina', 'matete', 'mont-ngafula', 'mont ngafula',
+    'ndjili', 'ngaba', 'ngaliema', 'ngiri-ngiri', 'ngiri ngiri', 'nsele', 'selembao',
+])
+
+function foldPlace(value: unknown) {
+    return String(value ?? '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim()
+}
+
+function textPart(value: unknown) {
+    if (typeof value === 'string' || typeof value === 'number') return String(value).trim()
+    return ''
+}
 
 // Sync with route query
 watch(() => route.query.type, (newType) => {
     selectedType.value = newType?.toString() || 'all'
 })
+watch(() => route.query.q, (value) => {
+    const next = value?.toString() || route.query.city?.toString() || ''
+    searchQuery.value = next
+    searchInputText.value = next
+})
 watch(() => route.query.city, (newCity) => {
+    if (route.query.q) return
     searchQuery.value = newCity?.toString() || ''
     searchInputText.value = newCity?.toString() || ''
 })
@@ -123,22 +156,15 @@ const properties = computed(() => {
 
      // Address
      let addr = item.address
-     if (item.hotel && !addr) addr = item.hotel // Hotel hack
+     if (item.hotel && !addr) addr = item.hotel
 
-     // Location
-     const getVal = (obj: any, key: string) => obj?.[key] || ''
-     let locationStr = 'RDC'
      const localAddr = item.localAddress || {}
-
-     if (localAddr.commune?.name && localAddr.city?.name) {
-       locationStr = `${localAddr.commune.name}, ${localAddr.city.name}`
-     } else if (getVal(addr, 'communeValue') && getVal(addr, 'cityValue')) {
-       locationStr = `${getVal(addr, 'communeValue')}, ${getVal(addr, 'cityValue')}`
-     } else if (getVal(p, 'communeValue') && getVal(p, 'cityValue')) {
-        locationStr = `${getVal(p, 'communeValue')}, ${getVal(p, 'cityValue')}`
-     } else if (getVal(addr, 'cityValue')) {
-       locationStr = `${getVal(addr, 'cityValue')}, RDC`
-     }
+     const street = textPart(typeof addr === 'object' ? addr?.address : '') || textPart(p.address)
+     const quartier = textPart(p.quartierValue) || textPart(addr?.quartierValue) || textPart(localAddr.quartier?.name)
+     const commune = textPart(p.communeValue) || textPart(addr?.communeValue) || textPart(localAddr.commune?.name)
+     const city = textPart(p.cityValue) || textPart(addr?.cityValue) || textPart(localAddr.city?.name)
+     const country = textPart(p.countryValue) || textPart(addr?.countryValue)
+     const locationStr = [street, quartier, commune, city, country].filter(Boolean).join(', ') || 'RDC'
 
      // Image
      const extractImages = (it: any) => {
@@ -184,6 +210,11 @@ const properties = computed(() => {
        id: id,
        title: p.title || typeName,
        location: locationStr,
+       street,
+       quartier,
+       commune,
+       city,
+       searchBlob: foldPlace([p.title, p.description, typeName, street, quartier, commune, city, country, locationStr].join(' ')),
        price: priceDisplay,
        priceValue: priceVal,
        hidePrice: isHotel,
@@ -220,8 +251,80 @@ const properties = computed(() => {
 const propertyTypes = computed(() => {
     const allItems = properties.value
     const types = new Set(allItems.map(p => p.type).filter(Boolean))
-    return ['all', ...Array.from(types)]
+    return [...Array.from(types)]
 })
+
+const cityOptions = computed(() => uniquePlaces('city'))
+const communeOptions = computed(() => uniquePlaces('commune', selectedCity.value))
+const quartierOptions = computed(() => uniquePlaces('quartier', selectedCity.value, selectedCommune.value))
+
+function uniquePlaces(field: 'city' | 'commune' | 'quartier', city = 'all', commune = 'all') {
+    const values = new Set<string>()
+    for (const property of properties.value) {
+        if (city !== 'all' && !samePlace(property.city, city) && !(foldPlace(city) === 'kinshasa' && kinshasaCommunes.has(foldPlace(property.commune)))) continue
+        if (field === 'quartier' && commune !== 'all' && !samePlace(property.commune, commune)) continue
+        const value = property[field]
+        if (value) values.add(value)
+    }
+    if (field === 'city') {
+        const hasKinshasa = properties.value.some((property) =>
+            foldPlace(property.city) === 'kinshasa' || kinshasaCommunes.has(foldPlace(property.commune))
+        )
+        if (hasKinshasa) values.add('Kinshasa')
+    }
+    return [...values].sort((a, b) => a.localeCompare(b, 'fr'))
+}
+
+function samePlace(value: string | undefined, selected: string) {
+    if (!value || selected === 'all') return false
+    return foldPlace(value) === foldPlace(selected)
+}
+
+function matchesSelectedPlace(property: { city?: string, commune?: string, quartier?: string, street?: string, searchBlob?: string }) {
+    if (selectedCity.value !== 'all') {
+        const city = foldPlace(selectedCity.value)
+        const ownCity = foldPlace(property.city)
+        const ownCommune = foldPlace(property.commune)
+        const inCity = ownCity.includes(city) || (city === 'kinshasa' && kinshasaCommunes.has(ownCommune))
+        if (!inCity) return false
+    }
+    if (selectedCommune.value !== 'all') {
+        const commune = foldPlace(selectedCommune.value)
+        const hit = foldPlace(property.commune).includes(commune) || foldPlace(property.street).includes(commune)
+        if (!hit) return false
+    }
+    if (selectedQuartier.value !== 'all') {
+        const quartier = foldPlace(selectedQuartier.value)
+        const hit = foldPlace(property.quartier).includes(quartier) || foldPlace(property.street).includes(quartier)
+        if (!hit) return false
+    }
+    return true
+}
+
+const hasActiveFilters = computed(() =>
+    !!searchQuery.value.trim() ||
+    selectedType.value !== 'all' ||
+    selectedTransaction.value !== 'all' ||
+    selectedCity.value !== 'all' ||
+    selectedCommune.value !== 'all' ||
+    selectedQuartier.value !== 'all' ||
+    minPrice.value !== null ||
+    maxPrice.value !== null
+)
+
+const resetFilters = () => {
+    searchInputText.value = ''
+    searchQuery.value = ''
+    selectedType.value = 'all'
+    selectedTransaction.value = 'all'
+    selectedCity.value = 'all'
+    selectedCommune.value = 'all'
+    selectedQuartier.value = 'all'
+    minPrice.value = null
+    maxPrice.value = null
+    selectedCurrency.value = 'all'
+    roomCount.value = 'all'
+}
 
 // ----------------------------------------------------------------------------
 // Filtering Logic
@@ -229,26 +332,26 @@ const propertyTypes = computed(() => {
 const filteredProperties = computed(() => {
    let res = properties.value
 
-   // Basic Text Search (Title, Location, Type)
-   if (searchQuery.value) {
-      const q = searchQuery.value.toLowerCase()
-      res = res.filter(p => 
-         p.title?.toLowerCase().includes(q) || 
-         p.location?.toLowerCase().includes(q) ||
-         p.type?.toLowerCase().includes(q)
-      )
+   if (searchQuery.value.trim()) {
+      const tokens = foldPlace(searchQuery.value).split(/\s+/).filter(Boolean)
+      res = res.filter(p => tokens.every((token) => (p.searchBlob || '').includes(token)))
    }
 
-   // Type Filter
+   res = res.filter(matchesSelectedPlace)
+
    if (selectedType.value !== 'all') {
-      res = res.filter(p => p.type === selectedType.value)
+      const wanted = foldPlace(selectedType.value)
+      res = res.filter(p => {
+         const type = foldPlace(p.type)
+         return type === wanted || type.includes(wanted) || wanted.includes(type)
+      })
    }
 
-   // Transaction Filter
    if (selectedTransaction.value !== 'all') {
       res = res.filter((p) => {
+         if (selectedTransaction.value === 'hebergement') return isLodgingTransactionType(p.transaction) || p.category === 'hotel'
          if (selectedTransaction.value === 'location') return isLocationTransactionType(p.transaction)
-         return !isLocationTransactionType(p.transaction)
+         return !isLocationTransactionType(p.transaction) && !isLodgingTransactionType(p.transaction) && p.category !== 'hotel'
       })
    }
 
@@ -305,9 +408,12 @@ const scrollToTop = () => {
 }
 
 // Reset pagination when filters change (do not include showAdvancedFilters to prevent scrolling when toggling)
-watch([searchQuery, selectedType, selectedTransaction, minPrice, maxPrice, selectedCurrency, roomCount, sortOrder], () => {
+watch([selectedType, selectedTransaction, selectedCity, selectedCommune, selectedQuartier, minPrice, maxPrice, selectedCurrency, roomCount, sortOrder], () => {
   currentPage.value = 1
   scrollToTop()
+})
+watch(searchQuery, () => {
+  currentPage.value = 1
 })
 </script>
 
@@ -339,7 +445,7 @@ watch([searchQuery, selectedType, selectedTransaction, minPrice, maxPrice, selec
               v-model="searchInputText"
               @keyup.enter="applySearch"
               type="text"
-              placeholder="Gombe, Matadi, Kinshasa..."
+              placeholder="Ville, commune, quartier ou adresse"
               class="flex-1 h-12 bg-transparent border-none focus:ring-0 text-slate-800 px-3 text-sm font-medium placeholder:text-slate-400"
             />
             <Button class="h-10 rounded-xl m-1 px-5 font-bold text-sm shrink-0" @click="applySearch">Rechercher</Button>
@@ -365,7 +471,7 @@ watch([searchQuery, selectedType, selectedTransaction, minPrice, maxPrice, selec
                 class="w-full h-12 pl-12 pr-8 bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary text-foreground cursor-pointer appearance-none"
                 >
                 <option value="all">Tous les types</option>
-                <option v-for="t in propertyTypes" :key="t" :value="t" v-show="t !== 'all'">{{ t }}</option>
+                <option v-for="t in propertyTypes" :key="t" :value="t">{{ t }}</option>
                 </select>
                 <div class="absolute inset-y-0 right-4 flex items-center pointer-events-none">
                 <ChevronDown class="h-4 w-4 text-muted-foreground opacity-50" />
@@ -381,9 +487,10 @@ watch([searchQuery, selectedType, selectedTransaction, minPrice, maxPrice, selec
                 v-model="selectedTransaction"
                 class="w-full h-12 pl-12 pr-8 bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary text-foreground cursor-pointer appearance-none"
                 >
-                <option value="all">Vente & Location</option>
+                <option value="all">Vente, location & hébergement</option>
                 <option value="vente">Vente</option>
                 <option value="location">Location</option>
+                <option value="hebergement">Hébergement</option>
                 </select>
                 <div class="absolute inset-y-0 right-4 flex items-center pointer-events-none">
                 <ChevronDown class="h-4 w-4 text-muted-foreground opacity-50" />
@@ -419,6 +526,30 @@ watch([searchQuery, selectedType, selectedTransaction, minPrice, maxPrice, selec
                     </span>
                     <ChevronDown class="h-4 w-4 transition-transform" :class="{'rotate-180': showAdvancedFilters}" />
                </Button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            <div class="relative">
+                <select v-model="selectedCity" class="w-full h-12 px-4 bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary text-foreground cursor-pointer appearance-none">
+                    <option value="all">Toutes les villes</option>
+                    <option v-for="city in cityOptions" :key="city" :value="city">{{ city }}</option>
+                </select>
+                <ChevronDown class="pointer-events-none absolute right-4 top-4 h-4 w-4 text-muted-foreground" />
+            </div>
+            <div class="relative">
+                <select v-model="selectedCommune" class="w-full h-12 px-4 bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary text-foreground cursor-pointer appearance-none">
+                    <option value="all">Toutes les communes</option>
+                    <option v-for="commune in communeOptions" :key="commune" :value="commune">{{ commune }}</option>
+                </select>
+                <ChevronDown class="pointer-events-none absolute right-4 top-4 h-4 w-4 text-muted-foreground" />
+            </div>
+            <div class="relative">
+                <select v-model="selectedQuartier" class="w-full h-12 px-4 bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary text-foreground cursor-pointer appearance-none">
+                    <option value="all">Tous les quartiers</option>
+                    <option v-for="quartier in quartierOptions" :key="quartier" :value="quartier">{{ quartier }}</option>
+                </select>
+                <ChevronDown class="pointer-events-none absolute right-4 top-4 h-4 w-4 text-muted-foreground" />
             </div>
         </div>
 
@@ -480,6 +611,16 @@ watch([searchQuery, selectedType, selectedTransaction, minPrice, maxPrice, selec
 
         </div>
 
+        <div class="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
+            <p class="text-muted-foreground">
+                <span class="font-bold text-foreground">{{ filteredProperties.length }}</span>
+                annonce{{ filteredProperties.length > 1 ? 's' : '' }}
+            </p>
+            <button v-if="hasActiveFilters" type="button" class="font-semibold text-primary hover:underline" @click="resetFilters">
+                Effacer les filtres
+            </button>
+        </div>
+
       </div>
     </div>
 
@@ -516,6 +657,7 @@ watch([searchQuery, selectedType, selectedTransaction, minPrice, maxPrice, selec
                 :alt="property.title"
                 class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
               />
+              <div v-if="property.category === 'hotel'" class="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/75 to-transparent"></div>
               <div class="absolute top-3 left-3">
                 <span class="px-2.5 py-1 bg-white/90 dark:bg-black/80 backdrop-blur-md rounded-full text-[10px] font-bold shadow-lg uppercase tracking-wider">
                   {{ property.type }}
@@ -545,6 +687,13 @@ watch([searchQuery, selectedType, selectedTransaction, minPrice, maxPrice, selec
                   </span>
               </div>
               <!-- Publisher Profile Image -->
+              <div
+                v-if="property.category === 'hotel'"
+                class="absolute bottom-3 left-3 right-16 z-10 text-white drop-shadow"
+              >
+                <p class="text-[10px] font-semibold uppercase tracking-wide opacity-90">Adresse</p>
+                <p class="text-xs font-bold leading-snug line-clamp-2">{{ property.location }}</p>
+              </div>
               <div v-if="property.publisherImage" class="absolute bottom-3 right-3 rounded-full border-2 border-white overflow-hidden h-10 w-10 bg-white/10 backdrop-blur-sm flex items-center justify-center">
                 <img :src="property.publisherImage" :alt="property.title" class="w-full h-full object-cover" />
               </div>
@@ -555,7 +704,7 @@ watch([searchQuery, selectedType, selectedTransaction, minPrice, maxPrice, selec
               <div class="mb-2">
                  <div class="flex items-center text-muted-foreground text-xs mb-1">
                     <MapPin class="h-3 w-3 mr-1 text-primary" />
-                    <span class="line-clamp-1">{{ property.location }}</span>
+                    <span :class="property.category === 'hotel' ? 'line-clamp-2' : 'line-clamp-1'">{{ property.location }}</span>
                  </div>
                  <h3 class="text-lg font-bold line-clamp-1 group-hover:text-primary transition-colors">
                   {{ property.title }}

@@ -6,6 +6,7 @@ import { formatCurrency, getCurrencyLabel } from '@/utils/currency'
 import { encodeId } from '@/utils/urlObfuscator'
 import { getPublicListingStatus } from '@/utils/listingAvailability'
 import { getPublicTransactionBadgeLabel, isLocationTransactionType } from '@/utils/transactionDisplay'
+import { formatListingPlace } from '@/utils/propertyNormalizer'
 
 const props = defineProps<{
     title: string
@@ -39,7 +40,7 @@ const normalizeItem = (item: any) => {
         p = item.hotel
         addr = p.address
         img = p.image
-        const loc = [p.communeValue, p.cityValue].filter(Boolean).join(', ') || String(p.address || '').slice(0, 80)
+        const loc = formatListingPlace(p) || 'RDC'
         return {
             id: p?.id || p?.propertyId || 0,
             title: p?.title || 'Sans titre',
@@ -248,8 +249,8 @@ onUnmounted(() => {
                     <!-- Price Badge Floating Bottom Left -->
                     <div class="absolute bottom-4 left-4 text-white z-10 flex flex-col max-w-[85%]">
                          <template v-if="item.hidePrice">
-                           <span class="text-xs font-medium opacity-90">Adresse & description</span>
-                           <div class="text-sm font-bold leading-tight">Tarifs sur les chambres</div>
+                           <span class="text-xs font-medium opacity-90">Adresse</span>
+                           <div class="text-sm font-bold leading-tight line-clamp-2">{{ item.location }}</div>
                          </template>
                          <template v-else>
                            <span class="text-xs font-medium opacity-90">{{ item.priceLabel }}</span>
@@ -269,7 +270,7 @@ onUnmounted(() => {
                             <h3 class="font-bold text-lg text-foreground line-clamp-1 group-hover:text-primary transition-colors">{{ item.title }}</h3>
                             <div class="flex items-center gap-2 text-muted-foreground text-sm mt-1">
                                 <MapPin class="h-4 w-4 shrink-0" /> 
-                                <span class="truncate">{{ item.location }}</span>
+                                <span class="line-clamp-2">{{ item.location }}</span>
                             </div>
                         </div>
                     </div>

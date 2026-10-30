@@ -45,7 +45,7 @@ function publicationSoldUrl(apiBase: string, category: PublicationCategory, id: 
         case 'funeraire':
             return joinApi(apiBase, `${ApiEndpoints.soldFuneraire}${id}`)
         case 'hotel':
-            return null
+            return joinApi(apiBase, `${ApiEndpoints.soldHotel}${id}`)
         default:
             return null
     }

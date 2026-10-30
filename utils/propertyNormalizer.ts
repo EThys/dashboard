@@ -37,53 +37,110 @@ function getQualityColor(value: number): string {
     return 'text-red-600'
 }
 
+function cleanPlacePart(value: unknown): string {
+    return String(value ?? '').trim()
+}
+
+/** Adresse affichée sur les cartes hôtel : rue, quartier, commune, ville, pays. */
+export function formatListingPlace(source: {
+    address?: unknown
+    quartierValue?: unknown
+    communeValue?: unknown
+    cityValue?: unknown
+    countryValue?: unknown
+} | null | undefined): string {
+    if (!source) return ''
+    const text = (value: unknown) => {
+        if (typeof value === 'string' || typeof value === 'number') return String(value).trim()
+        return ''
+    }
+    return joinPlaceParts([
+        text(source.address),
+        text(source.quartierValue),
+        text(source.communeValue),
+        text(source.cityValue),
+        text(source.countryValue),
+    ])
+}
+
+function joinPlaceParts(parts: unknown[]): string {
+    const seen = new Set<string>()
+    const out: string[] = []
+    for (const part of parts) {
+        const text = cleanPlacePart(part)
+        if (!text) continue
+        const key = text.toLowerCase()
+        if (seen.has(key)) continue
+        seen.add(key)
+        out.push(text)
+    }
+    return out.join(', ')
+}
+
+type PlaceSource = {
+    address?: unknown
+    quartierValue?: unknown
+    communeValue?: unknown
+    cityValue?: unknown
+    countryValue?: unknown
+    quartier?: { name?: string } | null
+    commune?: { name?: string } | null
+    city?: { name?: string } | null
+}
+
+export type PlaceParts = {
+    streetAddress: string
+    quartier: string
+    commune: string
+    city: string
+    country: string
+    location: string
+    fullAddress: string
+}
+
+function absorbPlace(target: PlaceParts, source: PlaceSource | null | undefined) {
+    if (!source || typeof source !== 'object') return
+    target.streetAddress = target.streetAddress || cleanPlacePart(source.address)
+    target.quartier = target.quartier || cleanPlacePart(source.quartierValue) || cleanPlacePart(source.quartier?.name)
+    target.commune = target.commune || cleanPlacePart(source.communeValue) || cleanPlacePart(source.commune?.name)
+    target.city = target.city || cleanPlacePart(source.cityValue) || cleanPlacePart(source.city?.name)
+    target.country = target.country || cleanPlacePart(source.countryValue)
+}
+
 /**
- * Extract location string from address data
+ * Rue, quartier, commune, ville — même si la ville est vide.
+ * `location` sert aux pastilles ; `fullAddress` inclut la rue.
  */
-function extractLocation(item: AnyPropertyResponse): string {
-    const localAddr = item.localAddress
-    const addr = item.address
-
-    // Priority to LocalAddress
-    if (localAddr?.commune?.name && localAddr?.city?.name) {
-        return `${localAddr.commune.name}, ${localAddr.city.name}`
+function extractPlace(item: AnyPropertyResponse): PlaceParts {
+    const place: PlaceParts = {
+        streetAddress: '',
+        quartier: '',
+        commune: '',
+        city: '',
+        country: '',
+        location: '',
+        fullAddress: '',
     }
 
-    // Fallback to Address object
-    if (addr) {
-        if (addr.communeValue && addr.cityValue) {
-            return `${addr.communeValue}, ${addr.cityValue}`
-        }
-        if (addr.cityValue) {
-            return `${addr.cityValue}, RDC`
-        }
-    }
+    absorbPlace(place, item.address as PlaceSource | undefined)
+    absorbPlace(place, item.localAddress as PlaceSource | undefined)
+    if ('hotel' in item) absorbPlace(place, item.hotel)
+    if ('funeraire' in item) absorbPlace(place, item.funeraire)
+    if ('terrain' in item) absorbPlace(place, item.terrain)
+    if ('bureau' in item) absorbPlace(place, item.bureau as PlaceSource)
+    if ('festive' in item) absorbPlace(place, item.festive as PlaceSource)
+    if ('property' in item) absorbPlace(place, item.property as PlaceSource)
 
-    // Check if property has flat address fields (Funeraire case)
-    if ('funeraire' in item) {
-        const f = item.funeraire
-        if (f.communeValue && f.cityValue) {
-            return `${f.communeValue}, ${f.cityValue}`
-        }
-    }
+    place.location = joinPlaceParts([place.quartier, place.commune, place.city]) || place.country || 'RDC'
+    place.fullAddress = joinPlaceParts([
+        place.streetAddress,
+        place.quartier,
+        place.commune,
+        place.city,
+        place.country,
+    ]) || place.location
 
-    // Check terrain
-    if ('terrain' in item) {
-        const t = item.terrain
-        if (t.communeValue && t.cityValue) {
-            return `${t.communeValue}, ${t.cityValue}`
-        }
-    }
-
-    // Check hotel
-    if ('hotel' in item) {
-        const h = item.hotel
-        if (h.communeValue && h.cityValue) {
-            return `${h.communeValue}, ${h.cityValue}`
-        }
-    }
-
-    return 'RDC'
+    return place
 }
 
 /**
@@ -137,7 +194,8 @@ export function formatPrice(price: number, currencyCode: string, devise?: any): 
  * Normalize Bureau to standard format
  */
 export function normalizeBureau(item: BureauResponse): NormalizedProperty {
-    const location = extractLocation(item)
+    const place = extractPlace(item)
+    const location = place.location
     const images = extractImages(item)
     const currencyCode = item.devise.code
     const symbol = currencyCode === 'USD' ? '$' : 'FC'
@@ -151,7 +209,12 @@ export function normalizeBureau(item: BureauResponse): NormalizedProperty {
         id: item.bureau.id,
         title: item.bureau.title,
         location,
-        fullAddress: `${item.address.address}, ${location}`,
+        fullAddress: place.fullAddress,
+        streetAddress: place.streetAddress,
+        quartier: place.quartier,
+        commune: place.commune,
+        city: place.city,
+        country: place.country,
         price: priceDisplay,
         frequency: '',
         currencyCode: currencyCode,
@@ -216,7 +279,8 @@ export function normalizeBureau(item: BureauResponse): NormalizedProperty {
  * Normalize Festive to standard format
  */
 export function normalizeFestive(item: FestiveResponse): NormalizedProperty {
-    const location = extractLocation(item)
+    const place = extractPlace(item)
+    const location = place.location
     const images = extractImages(item)
     const currencyCode = item.devise.code
     const symbol = currencyCode === 'USD' ? '$' : 'FC'
@@ -231,7 +295,12 @@ export function normalizeFestive(item: FestiveResponse): NormalizedProperty {
         id: item.festive.id,
         title: item.festive.title,
         location,
-        fullAddress: `${item.address.address}, ${location}`,
+        fullAddress: place.fullAddress,
+        streetAddress: place.streetAddress,
+        quartier: place.quartier,
+        commune: place.commune,
+        city: place.city,
+        country: place.country,
         price: priceDisplay,
         frequency: '',
         currencyCode: currencyCode,
@@ -295,7 +364,8 @@ export function normalizeFestive(item: FestiveResponse): NormalizedProperty {
  * Normalize Funeraire to standard format
  */
 export function normalizeFuneraire(item: FuneraireResponse): NormalizedProperty {
-    const location = extractLocation(item)
+    const place = extractPlace(item)
+    const location = place.location
     const images = extractImages(item)
     const currencyCode = item.devise.code
     const symbol = currencyCode === 'USD' ? '$' : 'FC'
@@ -313,7 +383,12 @@ export function normalizeFuneraire(item: FuneraireResponse): NormalizedProperty 
         id: item.funeraire.id,
         title: item.funeraire.title,
         location,
-        fullAddress: `${item.address.address}, ${location}`,
+        fullAddress: place.fullAddress,
+        streetAddress: place.streetAddress,
+        quartier: place.quartier,
+        commune: place.commune,
+        city: place.city,
+        country: place.country,
         price: priceDisplay,
         frequency: '',
         currencyCode: currencyCode,
@@ -377,7 +452,8 @@ export function normalizeFuneraire(item: FuneraireResponse): NormalizedProperty 
  * Normalize Terrain to standard format
  */
 export function normalizeTerrain(item: TerrainResponse): NormalizedProperty {
-    const location = extractLocation(item)
+    const place = extractPlace(item)
+    const location = place.location
     const images = extractImages(item)
     const currencyCode = item.devise.code
     const symbol = currencyCode === 'USD' ? '$' : 'FC'
@@ -390,7 +466,12 @@ export function normalizeTerrain(item: TerrainResponse): NormalizedProperty {
         id: item.terrain.id,
         title: item.terrain.title,
         location,
-        fullAddress: `${item.address.address}, ${location}`,
+        fullAddress: place.fullAddress,
+        streetAddress: place.streetAddress,
+        quartier: place.quartier,
+        commune: place.commune,
+        city: place.city,
+        country: place.country,
         price: priceDisplay,
         frequency: '',
         currencyCode: currencyCode,
@@ -485,12 +566,12 @@ function hotelChambresFromApi(item: HotelResponse): NonNullable<NormalizedProper
  * Normalize Hotel to standard format — pas de prix établissement (tarifs sur les chambres).
  */
 export function normalizeHotel(item: HotelResponse): NormalizedProperty {
-    const location = extractLocation(item)
+    const place = extractPlace(item)
+    const location = place.location
     const images = extractImages(item)
     const currencyCode = item.devise?.code ?? 'USD'
     const symbol = currencyCode === 'USD' ? '$' : 'FC'
     const hotelChambres = hotelChambresFromApi(item)
-    const tx = item.hotel.transactionType || 'en cours'
 
     const features = item.feature?.map((f) => f.name) || []
 
@@ -498,7 +579,12 @@ export function normalizeHotel(item: HotelResponse): NormalizedProperty {
         id: item.hotel.id,
         title: item.hotel.title,
         location,
-        fullAddress: `${item.hotel.address || item.address?.address || ''}, ${location}`,
+        fullAddress: place.fullAddress,
+        streetAddress: place.streetAddress,
+        quartier: place.quartier,
+        commune: place.commune,
+        city: place.city,
+        country: place.country,
         price: '—',
         hideListingPrice: true,
         frequency: '',
@@ -526,8 +612,8 @@ export function normalizeHotel(item: HotelResponse): NormalizedProperty {
         sold: !!item.hotel.sold,
         area: '',
         type: 'Hôtel',
-        transactionType: tx,
-        status: getPublicTransactionBadgeLabel(tx),
+        transactionType: 'hébergement',
+        status: 'Hébergement',
         description: item.hotel.description,
         electricity: 0,
         electricityInfo: 'Non applicable',
@@ -587,7 +673,8 @@ function hotelPublicationDate(item: HotelResponse): string {
  * Normalize Standard Property (Maison, Studio, Appartement) to standard format
  */
 export function normalizeStandardProperty(item: PropertyResponse): NormalizedProperty {
-    const location = extractLocation(item)
+    const place = extractPlace(item)
+    const location = place.location
     const images = extractImages(item)
     const currencyCode = item.devise.code
     const symbol = currencyCode === 'USD' ? '$' : 'FC'
@@ -600,7 +687,12 @@ export function normalizeStandardProperty(item: PropertyResponse): NormalizedPro
         id: item.property.propertyId,
         title: item.property.title,
         location,
-        fullAddress: `${item.address.address}, ${location}`,
+        fullAddress: place.fullAddress,
+        streetAddress: place.streetAddress,
+        quartier: place.quartier,
+        commune: place.commune,
+        city: place.city,
+        country: place.country,
         price: priceDisplay,
         frequency: item.property.transactionType === 'location' ? '/mois' : '',
         currencyCode: currencyCode,

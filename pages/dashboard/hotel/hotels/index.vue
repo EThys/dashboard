@@ -4,6 +4,7 @@ import { Plus, MapPin, ChevronRight, Building2, Loader2 } from 'lucide-vue-next'
 import { Button, Badge } from '@/components/ui'
 import { useAuthStore } from '@/stores/auth'
 import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
+import { formatListingPlace } from '@/utils/propertyNormalizer'
 
 definePageMeta({ layout: 'dashboard' })
 
@@ -48,6 +49,7 @@ function hotelCard(row: any) {
     image: h?.image,
     city: h?.cityValue ?? row?.address?.cityValue ?? '',
     commune: h?.communeValue ?? '',
+    place: formatListingPlace(h) || formatListingPlace(row?.address) || '—',
   }
 }
 </script>
@@ -98,7 +100,7 @@ function hotelCard(row: any) {
           </div>
           <span class="inline-flex items-center gap-1 text-xs text-muted-foreground">
             <MapPin class="h-3.5 w-3.5" />
-            {{ hotelCard(row).commune || hotelCard(row).city || '—' }}
+            {{ hotelCard(row).place }}
           </span>
           <Badge variant="secondary" class="w-fit text-[10px]">ID {{ hotelCard(row).id }}</Badge>
         </div>
