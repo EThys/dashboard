@@ -80,12 +80,13 @@
 import { ref, onMounted } from 'vue'
 import { Cookie, ShieldCheck, X, ChevronRight } from 'lucide-vue-next'
 import { Button } from '@/components/ui'
+import { GA_CONSENT_EVENT, GA_CONSENT_KEY } from '@/composables/useGoogleAnalytics'
 
 const isVisible = ref(false)
 
 onMounted(() => {
   // Check if user has already answered
-  const consent = localStorage.getItem('casanayo_cookie_consent')
+  const consent = localStorage.getItem(GA_CONSENT_KEY)
   if (!consent) {
     // Show banner after a short delay for better UX
     setTimeout(() => {
@@ -95,12 +96,13 @@ onMounted(() => {
 })
 
 const acceptAll = () => {
-  localStorage.setItem('casanayo_cookie_consent', 'all')
+  localStorage.setItem(GA_CONSENT_KEY, 'all')
   isVisible.value = false
+  window.dispatchEvent(new Event(GA_CONSENT_EVENT))
 }
 
 const acceptNecessary = () => {
-  localStorage.setItem('casanayo_cookie_consent', 'necessary')
+  localStorage.setItem(GA_CONSENT_KEY, 'necessary')
   isVisible.value = false
 }
 

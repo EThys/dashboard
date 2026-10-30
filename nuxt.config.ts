@@ -265,6 +265,8 @@ export default defineNuxtConfig({
       /** Surcharge : `NUXT_PUBLIC_STOMP_BROKER_URL` */
       stompBrokerUrl:
         process.env.NUXT_PUBLIC_STOMP_BROKER_URL || "ws://91.99.168.226:8093/websocket",
+      /** Google Analytics 4 — flux Web CasaNayo. Surcharge : `NUXT_PUBLIC_GA_MEASUREMENT_ID` */
+      gaMeasurementId: process.env.NUXT_PUBLIC_GA_MEASUREMENT_ID || "G-F7480H21M3",
     },
   },
 

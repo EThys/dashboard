@@ -243,6 +243,22 @@ const revenueEst = computed(() => {
       </Card>
     </div>
 
+    <Card class="rounded-3xl border-none shadow-sm">
+      <CardContent class="flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p class="text-xs font-black uppercase tracking-widest text-muted-foreground">Activité du site</p>
+          <p class="mt-1 text-lg font-black">Visites, devises et lieux</p>
+          <p class="mt-1 max-w-xl text-sm text-muted-foreground">
+            Demandes de visite par jour et par mois, répartition des annonces par devise, par ville et par type (vente ou location).
+          </p>
+        </div>
+        <Button class="h-11 shrink-0 gap-2" @click="router.push('/dashboard/statistiques')">
+          Voir les statistiques
+          <ArrowUpRight class="h-4 w-4" />
+        </Button>
+      </CardContent>
+    </Card>
+
     <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-12">
       <!-- Main Overview -->
       <Card class="lg:col-span-8 rounded-3xl border-none shadow-sm overflow-hidden bg-card">

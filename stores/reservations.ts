@@ -198,6 +198,7 @@ export const useReservationStore = defineStore('reservations', {
         lastError: null as string | null,
         userReservations: [] as ReservationListItem[],
         hostReservations: [] as ReservationListItem[],
+        platformReservations: [] as ReservationListItem[],
     }),
 
     actions: {
@@ -374,6 +375,49 @@ export const useReservationStore = defineStore('reservations', {
 
             this.userReservations = deduped
             return deduped
+        },
+
+        /**
+         * Toutes les réservations / visites de la plateforme (admin).
+         * Si la liste globale est indisponible, retombe sur les demandes reçues par le compte connecté.
+         */
+        async fetchPlatformReservations(force = false): Promise<ReservationListItem[]> {
+            if (!force && this.platformReservations.length > 0) return this.platformReservations
+
+            const auth = useAuthStore()
+            const config = useRuntimeConfig()
+            if (!auth.isAuthenticated || !auth.token) {
+                auth.checkSession()
+            }
+            if (!auth.token) return []
+
+            const headers = { Authorization: `Bearer ${auth.token}` }
+            const path = joinApi(config.public.apiBase as string, ApiEndpoints.allReservations)
+
+            try {
+                const data = await $fetch(path, { headers })
+                const list = Array.isArray(data) ? data : extractReservationArray(data)
+                const collected: ReservationListItem[] = []
+                for (const item of list) {
+                    const n = normalizeReservation(item, 'standard')
+                    if (n) collected.push(n)
+                }
+                collected.sort((a, b) => {
+                    const da = a.createdAt || a.startDate || ''
+                    const db = b.createdAt || b.startDate || ''
+                    return db.localeCompare(da)
+                })
+                if (collected.length > 0) {
+                    this.platformReservations = collected
+                    return collected
+                }
+            } catch (e) {
+                console.warn(`[reservations platform] ${path}`, e)
+            }
+
+            const host = await this.fetchHostReservations(force)
+            this.platformReservations = host
+            return host
         },
 
         /**

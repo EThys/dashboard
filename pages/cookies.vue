@@ -60,8 +60,8 @@ useHead({
                   <p class="text-sm text-slate-600">Ces cookies sont nécessaires au fonctionnement de CasaNayo. Ils vous permettent de rester connecté à votre compte et d'accéder aux zones sécurisées.</p>
               </div>
               <div class="p-6 rounded-2xl border border-slate-100">
-                  <h4 class="font-bold text-slate-900 mb-2">Cookies Analytiques</h4>
-                  <p class="text-sm text-slate-600">Ils nous aident à comprendre comment les utilisateurs interagissent avec la plateforme, nous permettant ainsi d'optimiser l'expérience et la navigation.</p>
+                  <h4 class="font-bold text-slate-900 mb-2">Cookies Analytiques (Google Analytics)</h4>
+                  <p class="text-sm text-slate-600">Google Analytics mesure les pages vues, le pays et la ville approximatifs, ainsi que la devise et le lieu des annonces consultées. Ces mesures servent à connaître la fréquentation du site.</p>
               </div>
               <div class="p-6 rounded-2xl border border-slate-100">
                   <h4 class="font-bold text-slate-900 mb-2">Cookies de Préférences</h4>
