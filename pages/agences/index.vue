@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { MapPin, Phone, Search, ChevronDown } from 'lucide-vue-next'
 import { Button } from '@/components/ui'
 import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
+import { encodeId } from '@/utils/urlObfuscator'
 import type { AgenceListEntry } from '@/types/agency'
 
 definePageMeta({ layout: 'default' })
@@ -150,7 +151,7 @@ watch(totalPages, (tp) => {
           <NuxtLink
             v-for="row in paginatedRows"
             :key="row.agence.id"
-            :to="`/agences/${row.agence.id}`"
+            :to="`/agences/${encodeId(row.agence.id)}`"
             class="group flex flex-col overflow-hidden rounded-[2rem] border border-border bg-card shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
           >
             <div class="relative h-52 overflow-hidden bg-muted">

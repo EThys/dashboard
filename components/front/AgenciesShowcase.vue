@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { MapPin, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import { Button } from '@/components/ui'
 import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
+import { encodeId } from '@/utils/urlObfuscator'
 import type { AgenceListEntry } from '@/types/agency'
 
 const config = useRuntimeConfig()
@@ -118,7 +119,7 @@ onUnmounted(() => {
           <NuxtLink
             v-for="(row, index) in items"
             :key="row.agence.id"
-            :to="`/agences/${row.agence.id}`"
+            :to="`/agences/${encodeId(row.agence.id)}`"
             class="group flex h-full w-[280px] flex-none snap-center flex-col overflow-hidden rounded-3xl border border-border bg-card reveal transition-all duration-500 hover:-translate-y-2 hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/10 md:w-auto"
             :class="
               (index as number) % 3 === 0

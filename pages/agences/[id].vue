@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import { computed, ref, watch } from 'vue'
 import { MapPin, Phone, Calendar, Users, ArrowLeft, Share2, Heart, Info, Globe, Mail } from 'lucide-vue-next'
 import { Button } from '@/components/ui'
 import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
-import { encodeId } from '@/utils/urlObfuscator'
-import type { AgenceDto } from '@/types/agency'
+import { decodeId, encodeId } from '@/utils/urlObfuscator'
+import type { AgenceDto, AgenceListEntry } from '@/types/agency'
 import DetailShimmer from '@/components/front/DetailShimmer.vue'
 
 definePageMeta({ layout: 'default' })
@@ -12,46 +13,42 @@ const route = useRoute()
 const router = useRouter()
 const config = useRuntimeConfig()
 
-type DetailPayload =
-  | { data?: { agence?: AgenceDto; site?: unknown[] } | any[]; agence?: AgenceDto; site?: unknown[] }
-  | { agence?: AgenceDto; site?: unknown[] }
+const rawParam = computed(() => String(route.params.id ?? ''))
 
-const { data: payload, pending: isLoading, error } = useFetch<DetailPayload>(
-  () =>
-    joinApi(
-      config.public.apiBase as string,
-      `${ApiEndpoints.agences}/${String(route.params.id)}`
-    )
+const { data: payload, pending: isLoading, error } = useFetch<{ data?: AgenceListEntry[] }>(
+  () => joinApi(config.public.apiBase as string, ApiEndpoints.agences),
+  { key: 'public-agences-detail' }
 )
 
-const agence = computed<AgenceDto | null>(() => {
-  const p = payload.value
-  if (!p) return null
-  
-  // Handle case where data is an array (user's API response)
-  if ('data' in p && Array.isArray(p.data) && p.data.length > 0) {
-      return p.data[0].agence
+const entry = computed<AgenceListEntry | null>(() => {
+  const list = payload.value?.data ?? []
+  const param = rawParam.value
+  const decoded = decodeId(param)
+  const byToken = list.find((row) => Number(row?.agence?.id) === decoded)
+  if (byToken) return byToken
+  if (/^\d+$/.test(param)) {
+    const numeric = Number(param)
+    return list.find((row) => Number(row?.agence?.id) === numeric) ?? null
   }
-  
-  // Fallbacks
-  if ('data' in p && (p as any).data?.agence) return (p as any).data.agence
-  if ('agence' in p && p.agence) return p.agence
   return null
 })
 
-const sites = computed(() => {
-  const p = payload.value
-  if (!p) return []
+const agence = computed<AgenceDto | null>(() => entry.value?.agence ?? null)
 
-  // Handle case where data is an array
-  if ('data' in p && Array.isArray(p.data) && p.data.length > 0) {
-      return (p.data[0].site || []) as Record<string, unknown>[]
-  }
+const sites = computed(() => (entry.value?.site ?? []) as Record<string, unknown>[])
 
-  if ('data' in p && Array.isArray((p as any).data?.site)) return (p as any).data!.site as Record<string, unknown>[]
-  if ('site' in p && Array.isArray(p.site)) return p.site as Record<string, unknown>[]
-  return []
-})
+watch(
+  [rawParam, agence],
+  () => {
+    const id = agence.value?.id
+    if (id == null) return
+    const token = encodeId(id)
+    if (rawParam.value !== token) {
+      router.replace(`/agences/${token}`)
+    }
+  },
+  { immediate: true }
+)
 
 useSeoMeta({
   title: () => agence.value?.name || 'Agence',
@@ -265,7 +262,7 @@ const shareAgency = async () => {
              </div>
         </div>
 
-        <div v-else-if="error" class="min-h-screen flex items-center justify-center px-4 bg-slate-50">
+        <div v-else-if="error || !agence" class="min-h-screen flex items-center justify-center px-4 bg-slate-50">
              <div class="max-w-md w-full p-12 bg-white rounded-[3rem] border border-border shadow-2xl text-center">
                  <h2 class="text-3xl font-black mb-3 text-slate-800">Oups !</h2>
                  <p class="text-slate-500 mb-8 font-medium leading-relaxed">Impossible de charger les informations de cette agence pour le moment. Veuillez réessayer plus tard.</p>

@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import { computed, ref, watch } from 'vue'
 import { MapPin, Phone, Compass } from 'lucide-vue-next'
 import { Button } from '@/components/ui'
 import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
+import { encodeId } from '@/utils/urlObfuscator'
 import { useAuthStore } from '@/stores/auth'
 import type { AgenceListEntry } from '@/types/agency'
+import ListPagination from '@/components/dashboard/ListPagination.vue'
 
 definePageMeta({ layout: 'dashboard' })
 
@@ -20,6 +23,18 @@ const { data: publicRows, pending: pendingPublic } = await useAsyncData(
     ).then((r) => r?.data ?? [])
 )
 
+const agencyPage = ref(1)
+const agencyPageSize = 6
+const agencyRows = computed(() => publicRows.value ?? [])
+const pagedAgencies = computed(() => {
+  const start = (agencyPage.value - 1) * agencyPageSize
+  return agencyRows.value.slice(start, start + agencyPageSize)
+})
+
+watch(agencyRows, () => {
+  agencyPage.value = 1
+})
+
 </script>
 
 <template>
@@ -32,7 +47,7 @@ const { data: publicRows, pending: pendingPublic } = await useAsyncData(
           Explorez les lieux idéaux : le Congo est vaste et beau. Retrouvez ici les agences référencées sur CasaNayo.
         </p>
       </div>
-      <NuxtLink to="/agences" target="_blank">
+      <NuxtLink to="/agences">
         <Button variant="outline" class="rounded-full font-bold">
           <Compass class="mr-2 h-4 w-4" />
           Voir le site public
@@ -47,10 +62,9 @@ const { data: publicRows, pending: pendingPublic } = await useAsyncData(
       </div>
       <div v-else class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         <NuxtLink
-          v-for="row in publicRows ?? []"
+          v-for="row in pagedAgencies"
           :key="row.agence.id"
-          :to="`/agences/${row.agence.id}`"
-          target="_blank"
+          :to="`/agences/${encodeId(row.agence.id)}`"
           class="group overflow-hidden rounded-3xl border border-border bg-card shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
         >
           <div class="relative h-44 overflow-hidden bg-muted">
@@ -74,6 +88,13 @@ const { data: publicRows, pending: pendingPublic } = await useAsyncData(
           </div>
         </NuxtLink>
       </div>
+      <ListPagination
+        class="mt-8"
+        :page="agencyPage"
+        :total="agencyRows.length"
+        :page-size="agencyPageSize"
+        @update:page="agencyPage = $event"
+      />
     </section>
   </div>
 </template>

@@ -3,6 +3,7 @@ import { onMounted, ref, watch } from 'vue'
 import { MapPin, Phone, Compass } from 'lucide-vue-next'
 import { Button } from '@/components/ui'
 import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
+import { encodeId } from '@/utils/urlObfuscator'
 import { useAuthStore } from '@/stores/auth'
 import type { AgenceListEntry } from '@/types/agency'
 
@@ -94,7 +95,7 @@ watch(
               {{ row.agence.phone1 }}
             </p>
             <NuxtLink
-              :to="`/agences/${row.agence.id}`"
+              :to="`/agences/${encodeId(row.agence.id)}`"
               class="mt-3 inline-block text-sm font-bold text-primary hover:underline"
             >
               Voir la fiche publique
