@@ -1,5 +1,5 @@
-import process from 'node:process';globalThis._importMeta_=globalThis._importMeta_||{url:"file:///_entry.js",env:process.env};import { hasInjectionContext, inject, ref, getCurrentInstance, defineComponent, createElementBlock, shallowRef, provide, cloneVNode, h, defineAsyncComponent, computed, unref, shallowReactive, Suspense, Fragment, useSSRContext, createApp, mergeProps, withCtx, createVNode, onErrorCaptured, onServerPrefetch, resolveDynamicComponent, reactive, effectScope, nextTick, getCurrentScope, toRef, isReadonly, toRaw, isRef, isShallow, isReactive } from 'vue';
-import { p as parseURL, i as encodePath, k as decodePath, c as createError$1, l as hasProtocol, m as isScriptProtocol, f as joinURL, w as withQuery, n as klona, s as sanitizeStatusCode, o as getRequestHeader, q as destr, r as isEqual, t as getContext, v as setCookie, x as getCookie, y as deleteCookie, $ as $fetch$1, z as createHooks, A as defu, B as executeAsync } from '../nitro/nitro.mjs';
+import process from 'node:process';globalThis._importMeta_=globalThis._importMeta_||{url:"file:///_entry.js",env:process.env};import { hasInjectionContext, inject, defineComponent, shallowRef, getCurrentInstance, provide, cloneVNode, h, createElementBlock, ref, defineAsyncComponent, computed, unref, shallowReactive, Suspense, Fragment, useSSRContext, createApp, mergeProps, withCtx, createVNode, onErrorCaptured, onServerPrefetch, resolveDynamicComponent, reactive, effectScope, nextTick, getCurrentScope, toRef, isReadonly, toRaw, isRef, isShallow, isReactive } from 'vue';
+import { p as parseURL, l as encodePath, m as decodePath, h as createError$1, n as hasProtocol, o as isScriptProtocol, k as joinURL, w as withQuery, q as klona, r as sanitizeStatusCode, v as getRequestHeader, d as destr, x as isEqual, y as getContext, z as setCookie, A as getCookie, B as deleteCookie, $ as $fetch$1, C as createHooks, D as defu, E as executeAsync } from '../_/nitro.mjs';
 import { u as useSeoMeta$1, p as publicAssetsURL, a as useHead$1, h as headSymbol, b as baseURL } from '../routes/renderer.mjs';
 import { defineStore, setActivePinia, createPinia, shouldHydrate } from 'pinia';
 import { useRoute as useRoute$1, RouterView, createMemoryHistory, createRouter, START_LOCATION } from 'vue-router';
@@ -535,57 +535,61 @@ const unhead_k2P3m_ZDyjlr2mMYnoDPwavjsDN8hBlk9cFai0bbopU = /* @__PURE__ */ defin
 function toArray(value) {
   return Array.isArray(value) ? value : [value];
 }
-const __nuxt_page_meta$z = {
+const __nuxt_page_meta$B = {
   layout: "default"
+};
+const __nuxt_page_meta$A = {
+  layout: "default"
+};
+const __nuxt_page_meta$z = {
+  layout: "empty"
 };
 const __nuxt_page_meta$y = {
   layout: "default"
 };
-const __nuxt_page_meta$x = {
-  layout: "empty"
-};
-const __nuxt_page_meta$w = {
+const __nuxt_page_meta$x = { layout: "default" };
+const __nuxt_page_meta$w = { layout: "default" };
+const __nuxt_page_meta$v = {
   layout: "default"
 };
-const __nuxt_page_meta$v = { layout: "default" };
 const __nuxt_page_meta$u = { layout: "default" };
-const __nuxt_page_meta$t = {
-  layout: "default"
-};
-const __nuxt_page_meta$s = { layout: "default" };
-const __nuxt_page_meta$r = { layout: "default" };
-const __nuxt_page_meta$q = {
+const __nuxt_page_meta$t = { layout: "default" };
+const __nuxt_page_meta$s = {
   layout: "empty"
+};
+const __nuxt_page_meta$r = {
+  layout: "empty"
+};
+const __nuxt_page_meta$q = {
+  layout: "default"
 };
 const __nuxt_page_meta$p = {
-  layout: "empty"
+  layout: "dashboard"
 };
 const __nuxt_page_meta$o = {
   layout: "default"
 };
 const __nuxt_page_meta$n = {
-  layout: "dashboard"
+  layout: "default"
 };
 const __nuxt_page_meta$m = {
   layout: "default"
 };
-const __nuxt_page_meta$l = {
-  layout: "default"
-};
-const __nuxt_page_meta$k = {
-  layout: "default"
-};
+const __nuxt_page_meta$l = { layout: "dashboard" };
+const __nuxt_page_meta$k = { layout: "dashboard" };
 const __nuxt_page_meta$j = {
   layout: "default"
 };
-const __nuxt_page_meta$i = { layout: "dashboard" };
-const __nuxt_page_meta$h = { layout: "dashboard" };
+const __nuxt_page_meta$i = {
+  layout: "default"
+};
+const __nuxt_page_meta$h = {
+  layout: "dashboard"
+};
 const __nuxt_page_meta$g = {
   layout: "default"
 };
-const __nuxt_page_meta$f = {
-  layout: "default"
-};
+const __nuxt_page_meta$f = { layout: "dashboard" };
 const __nuxt_page_meta$e = {
   layout: "dashboard"
 };
@@ -596,26 +600,24 @@ const __nuxt_page_meta$c = { layout: "dashboard" };
 const __nuxt_page_meta$b = {
   layout: "dashboard"
 };
-const __nuxt_page_meta$a = {
+const __nuxt_page_meta$a = { layout: "dashboard" };
+const __nuxt_page_meta$9 = {
   layout: "dashboard"
 };
-const __nuxt_page_meta$9 = { layout: "dashboard" };
-const __nuxt_page_meta$8 = {
-  layout: "dashboard"
-};
+const __nuxt_page_meta$8 = { layout: "dashboard" };
 const __nuxt_page_meta$7 = { layout: "dashboard" };
 const __nuxt_page_meta$6 = { layout: "dashboard" };
-const __nuxt_page_meta$5 = { layout: "dashboard" };
+const __nuxt_page_meta$5 = {
+  layout: "dashboard"
+};
 const __nuxt_page_meta$4 = {
   layout: "dashboard"
 };
-const __nuxt_page_meta$3 = {
+const __nuxt_page_meta$3 = { layout: "dashboard" };
+const __nuxt_page_meta$2 = {
   layout: "dashboard"
 };
-const __nuxt_page_meta$2 = { layout: "dashboard" };
-const __nuxt_page_meta$1 = {
-  layout: "dashboard"
-};
+const __nuxt_page_meta$1 = { layout: "default" };
 const __nuxt_page_meta = {
   layout: "dashboard"
 };
@@ -623,51 +625,51 @@ const _routes = [
   {
     name: "team",
     path: "/team",
-    meta: __nuxt_page_meta$z || {},
-    component: () => import('./team-c294HzJO.mjs')
+    meta: __nuxt_page_meta$B || {},
+    component: () => import('./team-C4_SVGDd.mjs')
   },
   {
     name: "index",
     path: "/",
-    meta: __nuxt_page_meta$y || {},
-    component: () => import('./index-DC_h64qj.mjs')
+    meta: __nuxt_page_meta$A || {},
+    component: () => import('./index-BneNzEtJ.mjs')
   },
   {
     name: "legal",
     path: "/legal",
-    component: () => import('./legal-C9T54jc3.mjs')
+    component: () => import('./legal-DK3jRPxS.mjs')
   },
   {
     name: "login",
     path: "/login",
-    meta: __nuxt_page_meta$x || {},
-    component: () => import('./login-CEL2leYi.mjs')
+    meta: __nuxt_page_meta$z || {},
+    component: () => import('./login-DPCF3M0m.mjs')
   },
   {
     name: "terms",
     path: "/terms",
-    component: () => import('./terms-CEE763Dn.mjs')
+    component: () => import('./terms-BzpPF8tY.mjs')
   },
   {
     name: "contact",
     path: "/contact",
-    meta: __nuxt_page_meta$w || {},
-    component: () => import('./contact-qW-p1gbr.mjs')
+    meta: __nuxt_page_meta$y || {},
+    component: () => import('./contact-CFIuifwl.mjs')
   },
   {
     name: "cookies",
     path: "/cookies",
-    component: () => import('./cookies-b_m0jO6Y.mjs')
+    component: () => import('./cookies-CkEopWVb.mjs')
   },
   {
     name: "privacy",
     path: "/privacy",
-    component: () => import('./privacy-CzCNWRHh.mjs')
+    component: () => import('./privacy-CZB0E25w.mjs')
   },
   {
     name: "security",
     path: "/security",
-    component: () => import('./security-CcKT-FNB.mjs')
+    component: () => import('./security-DJQvp3FJ.mjs')
   },
   {
     name: "test-toast",
@@ -677,209 +679,221 @@ const _routes = [
   {
     name: "agences-id",
     path: "/agences/:id()",
-    meta: __nuxt_page_meta$v || {},
-    component: () => import('./_id_-D0Wbrdei.mjs')
+    meta: __nuxt_page_meta$x || {},
+    component: () => import('./_id_-BtdbHMK2.mjs')
   },
   {
     name: "agences",
     path: "/agences",
-    meta: __nuxt_page_meta$u || {},
-    component: () => import('./index-CrstapmU.mjs')
+    meta: __nuxt_page_meta$w || {},
+    component: () => import('./index-DCLz8KQn.mjs')
   },
   {
     name: "services-id",
     path: "/services/:id()",
-    meta: __nuxt_page_meta$t || {},
-    component: () => import('./_id_-lgHhj9Xd.mjs')
+    meta: __nuxt_page_meta$v || {},
+    component: () => import('./_id_-BEnmsmwT.mjs')
   },
   {
     name: "vacances-id",
     path: "/vacances/:id()",
-    meta: __nuxt_page_meta$s || {},
-    component: () => import('./_id_-zJOXFQpG.mjs')
+    meta: __nuxt_page_meta$u || {},
+    component: () => import('./_id_-D7X2pecO.mjs')
   },
   {
     name: "booking-policy",
     path: "/booking-policy",
-    component: () => import('./booking-policy-6XC-DzQm.mjs')
+    component: () => import('./booking-policy-B9ov-3_v.mjs')
   },
   {
     name: "compte-agences",
     path: "/compte/agences",
-    meta: __nuxt_page_meta$r || {},
-    component: () => import('./agences-HCVOa-E-.mjs')
+    meta: __nuxt_page_meta$t || {},
+    component: () => import('./agences-D_Q-ITrS.mjs')
   },
   {
     name: "compte-profile",
     path: "/compte/profile",
-    component: () => import('./profile-vCSxZMZJ.mjs')
+    component: () => import('./profile-CO1CdDh8.mjs')
   },
   {
     name: "register-admin",
     path: "/register/admin",
-    meta: __nuxt_page_meta$q || {},
-    component: () => import('./admin-JdD1EixV.mjs')
+    meta: __nuxt_page_meta$s || {},
+    component: () => import('./admin-CYHrspqN.mjs')
   },
   {
     name: "register",
     path: "/register",
-    meta: __nuxt_page_meta$p || {},
-    component: () => import('./index-DfIwmTfm.mjs')
+    meta: __nuxt_page_meta$r || {},
+    component: () => import('./index-xfKoUug5.mjs')
   },
   {
     name: "services",
     path: "/services",
-    meta: __nuxt_page_meta$o || {},
-    component: () => import('./index-DzoQBMHP.mjs')
+    meta: __nuxt_page_meta$q || {},
+    component: () => import('./index-C7NnXKL5.mjs')
   },
   {
     name: "dashboard",
     path: "/dashboard",
-    meta: __nuxt_page_meta$n || {},
-    component: () => import('./index-DCq9yMGj.mjs')
-  },
-  {
-    name: "properties-id",
-    path: "/properties/:id()",
-    meta: __nuxt_page_meta$m || {},
-    component: () => import('./_id_-AZK2PdwZ.mjs')
+    meta: __nuxt_page_meta$p || {},
+    component: () => import('./index-rhCVUf_o.mjs')
   },
   {
     name: "compte-paiements",
     path: "/compte/paiements",
-    meta: __nuxt_page_meta$l || {},
-    component: () => import('./paiements-B7NxiwJW.mjs')
+    meta: __nuxt_page_meta$o || {},
+    component: () => import('./paiements-DmR5HcsR.mjs')
   },
   {
     name: "properties",
     path: "/properties",
-    meta: __nuxt_page_meta$k || {},
-    component: () => import('./index-CSvVPi5p.mjs')
+    meta: __nuxt_page_meta$n || {},
+    component: () => import('./index-PkIR9syx.mjs')
   },
   {
     name: "compte-abonnement",
     path: "/compte/abonnement",
-    meta: __nuxt_page_meta$j || {},
-    component: () => import('./abonnement-DBgt9auZ.mjs')
+    meta: __nuxt_page_meta$m || {},
+    component: () => import('./abonnement-RSGqVurk.mjs')
   },
   {
     name: "dashboard-agences",
     path: "/dashboard/agences",
-    meta: __nuxt_page_meta$i || {},
-    component: () => import('./agences-DfQU40UU.mjs')
+    meta: __nuxt_page_meta$l || {},
+    component: () => import('./agences-DU4MeFuE.mjs')
   },
   {
     name: "dashboard-payments",
     path: "/dashboard/payments",
-    meta: __nuxt_page_meta$h || {},
-    component: () => import('./payments-wge5NfY1.mjs')
+    meta: __nuxt_page_meta$k || {},
+    component: () => import('./payments-BRsSvzIw.mjs')
   },
   {
     name: "compte-reservations",
     path: "/compte/reservations",
-    meta: { ...__nuxt_page_meta$g || {}, ...{ "middleware": ["certification-check"] } },
-    component: () => import('./reservations-DwoR0CXy.mjs')
+    meta: { ...__nuxt_page_meta$j || {}, ...{ "middleware": ["certification-check"] } },
+    component: () => import('./reservations-BY4jc_xO.mjs')
   },
   {
     name: "compte-notifications",
     path: "/compte/notifications",
-    meta: __nuxt_page_meta$f || {},
-    component: () => import('./notifications-BdjGsYqH.mjs')
+    meta: __nuxt_page_meta$i || {},
+    component: () => import('./notifications-BurNnz36.mjs')
   },
   {
     name: "dashboard-users-id",
     path: "/dashboard/users/:id()",
-    meta: __nuxt_page_meta$e || {},
-    component: () => import('./_id_-DnyqtAW8.mjs')
+    meta: __nuxt_page_meta$h || {},
+    component: () => import('./_id_-zjYDUVom.mjs')
   },
   {
     name: "compte-sollicitations",
     path: "/compte/sollicitations",
-    meta: { ...__nuxt_page_meta$d || {}, ...{ "middleware": ["certification-check"] } },
-    component: () => import('./sollicitations-B5aJV9MQ.mjs')
+    meta: { ...__nuxt_page_meta$g || {}, ...{ "middleware": ["certification-check"] } },
+    component: () => import('./sollicitations-DVvRE3Vj.mjs')
   },
   {
     name: "dashboard-hotel",
     path: "/dashboard/hotel",
-    meta: __nuxt_page_meta$c || {},
-    component: () => import('./index-CksjyUrJ.mjs')
+    meta: __nuxt_page_meta$f || {},
+    component: () => import('./index-B_p9DMdm.mjs')
   },
   {
     name: "dashboard-users",
     path: "/dashboard/users",
-    meta: __nuxt_page_meta$b || {},
-    component: () => import('./index-Ba3n49sy.mjs')
+    meta: __nuxt_page_meta$e || {},
+    component: () => import('./index-CHyn6w9Z.mjs')
+  },
+  {
+    name: "properties-id",
+    path: "/properties/:id()",
+    meta: __nuxt_page_meta$d || {},
+    component: () => import('./index-6JwLpdeT.mjs')
+  },
+  {
+    name: "dashboard-statistiques",
+    path: "/dashboard/statistiques",
+    meta: __nuxt_page_meta$c || {},
+    component: () => import('./statistiques-CzXVy0y2.mjs')
   },
   {
     name: "dashboard-my-reservations",
     path: "/dashboard/my-reservations",
-    meta: { ...__nuxt_page_meta$a || {}, ...{ "middleware": ["certification-check"] } },
-    component: () => import('./my-reservations-CXQRGM46.mjs')
+    meta: { ...__nuxt_page_meta$b || {}, ...{ "middleware": ["certification-check"] } },
+    component: () => import('./my-reservations-CkGJO_Gq.mjs')
   },
   {
     name: "dashboard-hotel-hotels-new",
     path: "/dashboard/hotel/hotels/new",
-    meta: __nuxt_page_meta$9 || {},
-    component: () => import('./new-CDfpmPSG.mjs')
+    meta: __nuxt_page_meta$a || {},
+    component: () => import('./new-DEJMTFW2.mjs')
   },
   {
     name: "dashboard-my-solicitations",
     path: "/dashboard/my-solicitations",
-    meta: __nuxt_page_meta$8 || {},
-    component: () => import('./my-solicitations-CLwvhfsD.mjs')
+    meta: __nuxt_page_meta$9 || {},
+    component: () => import('./my-solicitations-DYuHtiPh.mjs')
   },
   {
     name: "dashboard-hotel-hotels-id",
     path: "/dashboard/hotel/hotels/:id()",
-    meta: __nuxt_page_meta$7 || {},
-    component: () => import('./_id_-DO8OocNR.mjs')
+    meta: __nuxt_page_meta$8 || {},
+    component: () => import('./_id_-B60f71ph.mjs')
   },
   {
     name: "compte-certification-requise",
     path: "/compte/certification-requise",
-    component: () => import('./certification-requise-v1eYdeTk.mjs')
+    component: () => import('./certification-requise-Dg6LQ9is.mjs')
   },
   {
     name: "dashboard-hotel-hotels",
     path: "/dashboard/hotel/hotels",
-    meta: __nuxt_page_meta$6 || {},
-    component: () => import('./index-BGPxZCX8.mjs')
+    meta: __nuxt_page_meta$7 || {},
+    component: () => import('./index-CbnslAxg.mjs')
   },
   {
     name: "dashboard-hotel-reservations",
     path: "/dashboard/hotel/reservations",
-    meta: __nuxt_page_meta$5 || {},
-    component: () => import('./reservations-m_ZIpp5G.mjs')
+    meta: __nuxt_page_meta$6 || {},
+    component: () => import('./reservations-CpNtTtws.mjs')
   },
   {
     name: "dashboard-publications",
     path: "/dashboard/publications",
-    meta: __nuxt_page_meta$4 || {},
-    component: () => import('./index-CeoDTtKq.mjs')
+    meta: __nuxt_page_meta$5 || {},
+    component: () => import('./index-CkDTQWPE.mjs')
   },
   {
     name: "dashboard-certification",
     path: "/dashboard/certification",
-    meta: __nuxt_page_meta$3 || {},
-    component: () => import('./index-BcwOra_-.mjs')
+    meta: __nuxt_page_meta$4 || {},
+    component: () => import('./index-D-wyAsCc.mjs')
   },
   {
     name: "dashboard-publications-hotels-id",
     path: "/dashboard/publications/hotels/:id()",
-    meta: __nuxt_page_meta$2 || {},
-    component: () => import('./_id_-DlUkE1X1.mjs')
+    meta: __nuxt_page_meta$3 || {},
+    component: () => import('./_id_-R8eq0nYE.mjs')
   },
   {
     name: "dashboard-publications-services-id",
     path: "/dashboard/publications/services/:id()",
+    meta: __nuxt_page_meta$2 || {},
+    component: () => import('./_id_-B91uf5L5.mjs')
+  },
+  {
+    name: "properties-id-chambres-chambreId",
+    path: "/properties/:id()/chambres/:chambreId()",
     meta: __nuxt_page_meta$1 || {},
-    component: () => import('./_id_-DsQS8w_L.mjs')
+    component: () => import('./_chambreId_-CHIThIcy.mjs')
   },
   {
     name: "dashboard-publications-properties-id",
     path: "/dashboard/publications/properties/:id()",
     meta: __nuxt_page_meta || {},
-    component: () => import('./_id_-CibHClqh.mjs')
+    component: () => import('./_id_-CmXD7O-U.mjs')
   }
 ];
 const _wrapInTransition = (props, children) => {
@@ -1068,6 +1082,8 @@ const ApiEndpoints = {
   propertyHotels: `${v}/private/property/hotels`,
   /** Liste complète hôtels — dashboard admin (`GET …/protected/property/hotels`, Bearer) */
   protectedPropertyHotels: `${v}/protected/property/hotels`,
+  /** Indisponible / de nouveau en ligne — `PUT …/hotels/sold/{hotelId}`, body `{ status }` */
+  soldHotel: `${v}/protected/property/hotels/sold/`,
   propertyHotelsByOwner: `${v}/private/property/hotels/owner/`,
   propertyHotelRoom: `${v}/private/property/hotels/chambre`,
   /** Liste publique des chambres (filtrer côté client par hôtel si besoin) */
@@ -1344,7 +1360,7 @@ function publicationSoldUrl(apiBase, category, id) {
     case "funeraire":
       return joinApi(apiBase, `${ApiEndpoints.soldFuneraire}${id}`);
     case "hotel":
-      return null;
+      return joinApi(apiBase, `${ApiEndpoints.soldHotel}${id}`);
     default:
       return null;
   }
@@ -2053,7 +2069,7 @@ const globalMiddleware = [
   manifest_45route_45rule
 ];
 const namedMiddleware = {
-  "certification-check": () => import('./certification-check-De17GqFx.mjs')
+  "certification-check": () => import('./certification-check-B6NmgmRv.mjs')
 };
 const plugin$1 = /* @__PURE__ */ defineNuxtPlugin({
   name: "nuxt:router",
@@ -2273,7 +2289,7 @@ defineComponent({
   }
 });
 const clientOnlySymbol = /* @__PURE__ */ Symbol.for("nuxt:client-only");
-const __nuxt_component_2 = defineComponent({
+const __nuxt_component_0$1 = defineComponent({
   name: "ClientOnly",
   inheritAttrs: false,
   props: ["fallback", "placeholder", "placeholderTag", "fallbackTag"],
@@ -2400,9 +2416,9 @@ const plugins = [
   vue_query_GNtWx11mSO94O_Ctd2OG8SaawZMBzi1ne17Edj_iIOc
 ];
 const layouts = {
-  dashboard: defineAsyncComponent(() => import('./dashboard-Cu38BcM5.mjs').then((m) => m.default || m)),
-  default: defineAsyncComponent(() => import('./default-s5C9nmkY.mjs').then((m) => m.default || m)),
-  empty: defineAsyncComponent(() => import('./empty-DVIKHGn5.mjs').then((m) => m.default || m))
+  dashboard: defineAsyncComponent(() => import('./dashboard-C_mzo9I1.mjs').then((m) => m.default || m)),
+  default: defineAsyncComponent(() => import('./default-CkzZfEfA.mjs').then((m) => m.default || m)),
+  empty: defineAsyncComponent(() => import('./empty-Cmv-baDf.mjs').then((m) => m.default || m))
 };
 const routeRulesMatcher = _routeRulesMatcher;
 const LayoutLoader = defineComponent({
@@ -2633,11 +2649,11 @@ const _sfc_main$3 = /* @__PURE__ */ defineComponent({
     };
     const currentSize = computed(() => props.size || "md");
     return (_ctx, _push, _parent, _attrs) => {
-      _push(`<div${ssrRenderAttrs(mergeProps({ class: "flex flex-col items-center justify-center gap-10" }, _attrs))} data-v-3a0fc5c9><div class="${ssrRenderClass(["relative flex items-center justify-center", sizeClasses[unref(currentSize)]])}" data-v-3a0fc5c9><div class="absolute inset-[-40%] rounded-full bg-primary/5 blur-[60px] animate-[pulse_4s_ease-in-out_infinite]" data-v-3a0fc5c9></div><div class="absolute inset-[-20%] animate-[spin_8s_linear_infinite]" data-v-3a0fc5c9><div class="absolute top-0 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-primary/40 blur-[1px]" data-v-3a0fc5c9></div><div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-primary/20 blur-[1px]" data-v-3a0fc5c9></div></div><div class="absolute inset-[-25%] animate-[spin_12s_linear_infinite_reverse]" data-v-3a0fc5c9><div class="absolute top-1/2 left-0 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-primary/30 blur-[1px]" data-v-3a0fc5c9></div><div class="absolute top-1/2 right-0 -translate-y-1/2 w-2 h-2 rounded-full bg-primary/10 blur-[1px]" data-v-3a0fc5c9></div></div><div class="absolute inset-0 rounded-full border-[1px] border-primary/5" data-v-3a0fc5c9></div><div class="absolute inset-0 rounded-full border-t-[3px] border-primary/60 animate-[spin_2s_cubic_bezier(0.4,0,0.2,1)_infinite]" data-v-3a0fc5c9></div><div class="absolute inset-4 rounded-full border-[1px] border-primary/5" data-v-3a0fc5c9></div><div class="absolute inset-4 rounded-full border-r-[2px] border-primary/40 animate-[spin_3s_linear_infinite_reverse]" data-v-3a0fc5c9></div><div class="absolute inset-8 rounded-full border-[1px] border-primary/5" data-v-3a0fc5c9></div><div class="absolute inset-8 rounded-full border-l-[2px] border-primary/20 animate-[spin_1.5s_ease-in-out_infinite]" data-v-3a0fc5c9></div><div class="absolute inset-0 flex items-center justify-center p-4" data-v-3a0fc5c9><div class="relative w-full h-full flex items-center justify-center" data-v-3a0fc5c9><div class="animate-[float_3s_ease-in-out_infinite]" data-v-3a0fc5c9><img${ssrRenderAttr("src", _imports_0)} alt="CasaNayo" class="w-full h-full object-contain filter drop-shadow-[0_0_15px_rgba(27,67,50,0.4)] transition-all duration-700 hover:scale-110" data-v-3a0fc5c9></div><div class="absolute inset-0 overflow-hidden rounded-full pointer-events-none" data-v-3a0fc5c9><div class="absolute -inset-full bg-gradient-to-tr from-transparent via-white/20 to-transparent rotate-45 animate-[shine_3s_infinite]" data-v-3a0fc5c9></div></div></div></div></div><div class="flex flex-col items-center gap-3" data-v-3a0fc5c9><div class="relative" data-v-3a0fc5c9><span class="text-2xl font-black text-primary tracking-[0.3em] uppercase flex overflow-hidden" data-v-3a0fc5c9><!--[-->`);
+      _push(`<div${ssrRenderAttrs(mergeProps({ class: "flex flex-col items-center justify-center gap-10" }, _attrs))} data-v-6bd0729b><div class="${ssrRenderClass(["relative flex items-center justify-center", sizeClasses[unref(currentSize)]])}" data-v-6bd0729b><div class="absolute inset-[-40%] rounded-full bg-primary/5 blur-[60px] animate-[pulse_4s_ease-in-out_infinite]" data-v-6bd0729b></div><div class="absolute inset-[-20%] animate-[spin_8s_linear_infinite]" data-v-6bd0729b><div class="absolute top-0 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-primary/40 blur-[1px]" data-v-6bd0729b></div><div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-primary/20 blur-[1px]" data-v-6bd0729b></div></div><div class="absolute inset-[-25%] animate-[spin_12s_linear_infinite_reverse]" data-v-6bd0729b><div class="absolute top-1/2 left-0 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-primary/30 blur-[1px]" data-v-6bd0729b></div><div class="absolute top-1/2 right-0 -translate-y-1/2 w-2 h-2 rounded-full bg-primary/10 blur-[1px]" data-v-6bd0729b></div></div><div class="absolute inset-0 rounded-full border-[1px] border-primary/5" data-v-6bd0729b></div><div class="absolute inset-0 rounded-full border-t-[3px] border-primary/60 animate-[spin_2s_cubic_bezier(0.4,0,0.2,1)_infinite]" data-v-6bd0729b></div><div class="absolute inset-4 rounded-full border-[1px] border-primary/5" data-v-6bd0729b></div><div class="absolute inset-4 rounded-full border-r-[2px] border-primary/40 animate-[spin_3s_linear_infinite_reverse]" data-v-6bd0729b></div><div class="absolute inset-8 rounded-full border-[1px] border-primary/5" data-v-6bd0729b></div><div class="absolute inset-8 rounded-full border-l-[2px] border-primary/20 animate-[spin_1.5s_ease-in-out_infinite]" data-v-6bd0729b></div><div class="absolute inset-0 flex items-center justify-center p-4" data-v-6bd0729b><div class="relative w-full h-full flex items-center justify-center" data-v-6bd0729b><div class="animate-[float_3s_ease-in-out_infinite]" data-v-6bd0729b><img${ssrRenderAttr("src", _imports_0)} alt="CasaNayo" class="w-full h-full object-contain filter drop-shadow-[0_0_15px_rgba(27,67,50,0.4)] transition-all duration-700 hover:scale-110" data-v-6bd0729b></div><div class="absolute inset-0 overflow-hidden rounded-full pointer-events-none" data-v-6bd0729b><div class="absolute -inset-full bg-gradient-to-tr from-transparent via-white/20 to-transparent rotate-45 animate-[shine_3s_infinite]" data-v-6bd0729b></div></div></div></div></div><div class="flex flex-col items-center gap-3" data-v-6bd0729b><div class="relative" data-v-6bd0729b><span class="text-2xl font-black text-primary tracking-[0.3em] uppercase flex overflow-hidden" data-v-6bd0729b><!--[-->`);
       ssrRenderList("CASANAYO", (char, i) => {
-        _push(`<span class="animate-[slide-up_0.5s_ease-out_forwards]" style="${ssrRenderStyle({ animationDelay: `${i * 0.05}s` })}" data-v-3a0fc5c9>${ssrInterpolate(char)}</span>`);
+        _push(`<span class="animate-[slide-up_0.5s_ease-out_forwards]" style="${ssrRenderStyle({ animationDelay: `${i * 0.05}s` })}" data-v-6bd0729b>${ssrInterpolate(char)}</span>`);
       });
-      _push(`<!--]--></span><div class="absolute -bottom-1 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-primary/40 to-transparent scale-x-0 animate-[scale-x_1s_ease-out_forwards_0.5s]" data-v-3a0fc5c9></div></div><div class="flex gap-2" data-v-3a0fc5c9><div class="w-1 w-1 bg-primary/40 rounded-full animate-loader-dot-1" data-v-3a0fc5c9></div><div class="w-1 w-1 bg-primary/40 rounded-full animate-loader-dot-2" data-v-3a0fc5c9></div><div class="w-1 w-1 bg-primary/40 rounded-full animate-loader-dot-3" data-v-3a0fc5c9></div></div></div></div>`);
+      _push(`<!--]--></span><div class="absolute -bottom-1 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-primary/40 to-transparent scale-x-0 animate-[scale-x_1s_ease-out_forwards_0.5s]" data-v-6bd0729b></div></div><div class="flex gap-2" data-v-6bd0729b><div class="w-1 w-1 bg-primary/40 rounded-full animate-loader-dot-1" data-v-6bd0729b></div><div class="w-1 w-1 bg-primary/40 rounded-full animate-loader-dot-2" data-v-6bd0729b></div><div class="w-1 w-1 bg-primary/40 rounded-full animate-loader-dot-3" data-v-6bd0729b></div></div></div></div>`);
     };
   }
 });
@@ -2654,7 +2670,7 @@ _sfc_main$3.setup = (props, ctx) => {
   (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set())).add("components/ui/CasaLoader.vue");
   return _sfc_setup$3 ? _sfc_setup$3(props, ctx) : void 0;
 };
-const CasaLoader = /* @__PURE__ */ _export_sfc(_sfc_main$3, [["__scopeId", "data-v-3a0fc5c9"]]);
+const CasaLoader = /* @__PURE__ */ _export_sfc(_sfc_main$3, [["__scopeId", "data-v-6bd0729b"]]);
 const _sfc_main$2 = /* @__PURE__ */ defineComponent({
   __name: "app",
   __ssrInlineRender: true,
@@ -2666,7 +2682,7 @@ const _sfc_main$2 = /* @__PURE__ */ defineComponent({
     return (_ctx, _push, _parent, _attrs) => {
       const _component_NuxtLayout = __nuxt_component_0;
       const _component_NuxtPage = __nuxt_component_1;
-      const _component_ClientOnly = __nuxt_component_2;
+      const _component_ClientOnly = __nuxt_component_0$1;
       _push(`<div${ssrRenderAttrs(_attrs)}>`);
       if (unref(isInitialLoading)) {
         _push(`<div class="fixed inset-0 z-[9999] flex items-center justify-center bg-white dark:bg-slate-950">`);
@@ -2712,8 +2728,8 @@ const _sfc_main$1 = {
     const statusText = _error.statusMessage ?? (is404 ? "Page Not Found" : "Internal Server Error");
     const description = _error.message || _error.toString();
     const stack = void 0;
-    const _Error404 = defineAsyncComponent(() => import('./error-404-2KN-D3C6.mjs'));
-    const _Error = defineAsyncComponent(() => import('./error-500-C7FZEPKX.mjs'));
+    const _Error404 = defineAsyncComponent(() => import('./error-404-B9kbXdEm.mjs'));
+    const _Error = defineAsyncComponent(() => import('./error-500-D0nTrW7Q.mjs'));
     const ErrorTemplate = is404 ? _Error404 : _Error;
     return (_ctx, _push, _parent, _attrs) => {
       _push(ssrRenderComponent(unref(ErrorTemplate), mergeProps({ status: unref(status), statusText: unref(statusText), statusCode: unref(status), statusMessage: unref(statusText), description: unref(description), stack: unref(stack) }, _attrs), null, _parent));
@@ -2794,5 +2810,5 @@ let entry;
 }
 const entry_default = ((ssrContext) => entry(ssrContext));
 
-export { ApiEndpoints as A, _export_sfc as _, useRouter as a, useNuxtApp as b, useRuntimeConfig as c, nuxtLinkDefaults as d, entry_default as default, encodeRoutePath as e, usePropertyStore as f, useServiceStore as g, useSeoMeta as h, asyncDataDefaults as i, joinApi as j, createError as k, useAuthStore as l, useRoute as m, navigateTo as n, _imports_0 as o, fetchDefaults as p, useRequestFetch as q, resolveRouteObject as r, useMembersStore as s, useCookie as t, useHead as u, defineNuxtRouteMiddleware as v };
+export { ApiEndpoints as A, _export_sfc as _, useRouter as a, useNuxtApp as b, useRuntimeConfig as c, nuxtLinkDefaults as d, entry_default as default, encodeRoutePath as e, usePropertyStore as f, useServiceStore as g, useSeoMeta as h, asyncDataDefaults as i, joinApi as j, createError as k, useAuthStore as l, useRoute as m, navigateTo as n, _imports_0 as o, fetchDefaults as p, useRequestFetch as q, resolveRouteObject as r, useMembersStore as s, __nuxt_component_0$1 as t, useHead as u, useCookie as v, defineNuxtRouteMiddleware as w };
 //# sourceMappingURL=server.mjs.map

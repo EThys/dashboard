@@ -1,0 +1,1 @@
+function t(n){const e=String(n??"").toLowerCase();return e.includes("héberg")||e.includes("heberg")||e.includes("hotel")||e.includes("hôtel")}function i(n){const e=String(n??"vente").toLowerCase();return e.includes("location")||e.includes("louer")}function o(n){return t(n)?"Hébergement":i(n)?"Location":"Vente"}export{t as a,o as g,i};
