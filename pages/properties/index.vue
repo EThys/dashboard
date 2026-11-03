@@ -3,6 +3,7 @@ import { MapPin, BedDouble, Bath, Maximize, Heart, Share2, Calendar, CheckCircle
 import { Button } from '@/components/ui'
 import { usePropertyStore } from '@/stores/properties'
 import { formatCurrency, getCurrencyLabel } from '@/utils/currency'
+import { lowestHotelRoomOffer } from '@/utils/hotelStartingPrice'
 import PropertyCardShimmer from '@/components/front/PropertyCardShimmer.vue'
 import CasaLoader from '@/components/ui/CasaLoader.vue'
 import { encodeId } from '@/utils/urlObfuscator'
@@ -110,9 +111,14 @@ function textPart(value: unknown) {
 }
 
 // Sync with route query
-watch(() => route.query.type, (newType) => {
-    selectedType.value = newType?.toString() || 'all'
-})
+function sameType(candidate: string, selected: string) {
+    const a = foldPlace(candidate)
+    const b = foldPlace(selected)
+    if (!a || !b || b === 'all') return false
+    if (a === b || a.includes(b) || b.includes(a)) return true
+    const hotelWord = (value: string) => value === 'hotel' || value === 'hotels' || value.startsWith('hotel')
+    return hotelWord(a) && hotelWord(b)
+}
 watch(() => route.query.q, (value) => {
     const next = value?.toString() || route.query.city?.toString() || ''
     searchQuery.value = next
@@ -123,12 +129,36 @@ watch(() => route.query.city, (newCity) => {
     searchQuery.value = newCity?.toString() || ''
     searchInputText.value = newCity?.toString() || ''
 })
+watch(() => route.query.minPrice, (value) => {
+    minPrice.value = asPrice(value)
+    if (asPrice(value) !== null) showAdvancedFilters.value = true
+})
+watch(() => route.query.maxPrice, (value) => {
+    maxPrice.value = asPrice(value)
+    if (asPrice(value) !== null) showAdvancedFilters.value = true
+})
+watch(() => route.query.currency, (value) => {
+    selectedCurrency.value = currencyKey(value) || 'all'
+})
 
 // Advanced Filters
+function asPrice(value: unknown): number | null {
+    if (value === null || value === undefined || value === '') return null
+    const amount = typeof value === 'number' ? value : Number(String(value).replace(/\s/g, '').replace(',', '.'))
+    return Number.isFinite(amount) && amount >= 0 ? amount : null
+}
+
+function currencyKey(code: unknown) {
+    const normalized = String(code ?? '').trim().toUpperCase()
+    if (normalized === 'FC' || normalized === 'CDF') return 'CDF'
+    if (normalized === '$' || normalized === 'USD') return 'USD'
+    return normalized
+}
+
 const showAdvancedFilters = ref(!!(route.query.minPrice || route.query.maxPrice))
-const minPrice = ref<number | null>(route.query.minPrice ? Number(route.query.minPrice) : null)
-const maxPrice = ref<number | null>(route.query.maxPrice ? Number(route.query.maxPrice) : null)
-const selectedCurrency = ref('all') // 'all', 'USD', 'CDF'
+const minPrice = ref<number | null>(asPrice(route.query.minPrice))
+const maxPrice = ref<number | null>(asPrice(route.query.maxPrice))
+const selectedCurrency = ref(currencyKey(route.query.currency) || 'all') // 'all', 'USD', 'CDF'
 const roomCount = ref('all') // 'all', '1', '2', '3', '4+'
 
 const toggleAdvanced = () => showAdvancedFilters.value = !showAdvancedFilters.value
@@ -164,7 +194,8 @@ const properties = computed(() => {
      const commune = textPart(p.communeValue) || textPart(addr?.communeValue) || textPart(localAddr.commune?.name)
      const city = textPart(p.cityValue) || textPart(addr?.cityValue) || textPart(localAddr.city?.name)
      const country = textPart(p.countryValue) || textPart(addr?.countryValue)
-     const locationStr = [street, quartier, commune, city, country].filter(Boolean).join(', ') || 'RDC'
+     const resolvedCity = city || (kinshasaCommunes.has(foldPlace(commune)) ? 'Kinshasa' : '')
+     const locationStr = [street, quartier, commune, resolvedCity, country].filter(Boolean).join(', ') || 'RDC'
 
      // Image
      const extractImages = (it: any) => {
@@ -196,10 +227,16 @@ const properties = computed(() => {
      }
     
     const isHotel = item._category === 'hotel'
-    // Price — pas sur l’hôtel (tarifs par chambre)
-    const currencyCode = item.devise?.code || 'USD'
-    const priceVal = isHotel ? 0 : (p.price || 0)
-    const priceDisplay = isHotel ? '—' : formatCurrency(priceVal, currencyCode)
+    const embeddedRooms = Array.isArray(item.structure)
+        ? item.structure.map((row: any) => row?.chambre).filter(Boolean)
+        : []
+    const listedRooms = propertyStore.hotelRooms.filter((room) => Number(room.hotelId) === Number(id))
+    const hotelOffer = isHotel ? lowestHotelRoomOffer(embeddedRooms.length ? embeddedRooms : listedRooms) : null
+    const currencyCode = hotelOffer?.currencyCode || item.devise?.code || 'USD'
+    const priceVal = isHotel ? (hotelOffer?.amount || 0) : (p.price || 0)
+    const priceDisplay = isHotel
+        ? (hotelOffer?.formatted || '—')
+        : formatCurrency(priceVal, currencyCode)
 
     // Calculate Display Area
     const displayArea = p.surface && p.surface > 0 
@@ -213,11 +250,12 @@ const properties = computed(() => {
        street,
        quartier,
        commune,
-       city,
-       searchBlob: foldPlace([p.title, p.description, typeName, street, quartier, commune, city, country, locationStr].join(' ')),
+       city: resolvedCity,
+       searchBlob: foldPlace([p.title, p.description, typeName, street, quartier, commune, resolvedCity, country, locationStr].join(' ')),
        price: priceDisplay,
        priceValue: priceVal,
-       hidePrice: isHotel,
+       hidePrice: isHotel && !hotelOffer,
+       priceCaption: hotelOffer ? 'À partir de' : '',
        description: (p.description || '').trim(),
        currencyCode: currencyCode,
        currencyLabel: getCurrencyLabel(currencyCode),
@@ -253,6 +291,15 @@ const propertyTypes = computed(() => {
     const types = new Set(allItems.map(p => p.type).filter(Boolean))
     return [...Array.from(types)]
 })
+
+function resolveTypeQuery(raw: string) {
+    if (!raw || raw === 'all') return 'all'
+    return propertyTypes.value.find((type) => sameType(type, raw)) || raw
+}
+
+watch([() => route.query.type, propertyTypes], () => {
+    selectedType.value = resolveTypeQuery(route.query.type?.toString() || 'all')
+}, { immediate: true })
 
 const cityOptions = computed(() => uniquePlaces('city'))
 const communeOptions = computed(() => uniquePlaces('commune', selectedCity.value))
@@ -334,17 +381,19 @@ const filteredProperties = computed(() => {
 
    if (searchQuery.value.trim()) {
       const tokens = foldPlace(searchQuery.value).split(/\s+/).filter(Boolean)
-      res = res.filter(p => tokens.every((token) => (p.searchBlob || '').includes(token)))
+      res = res.filter(p => tokens.every((token) => {
+         if ((p.searchBlob || '').includes(token)) return true
+         if (token === 'kinshasa') {
+            return foldPlace(p.city).includes('kinshasa') || kinshasaCommunes.has(foldPlace(p.commune))
+         }
+         return false
+      }))
    }
 
    res = res.filter(matchesSelectedPlace)
 
    if (selectedType.value !== 'all') {
-      const wanted = foldPlace(selectedType.value)
-      res = res.filter(p => {
-         const type = foldPlace(p.type)
-         return type === wanted || type.includes(wanted) || wanted.includes(type)
-      })
+      res = res.filter(p => sameType(p.type, selectedType.value))
    }
 
    if (selectedTransaction.value !== 'all') {
@@ -355,20 +404,20 @@ const filteredProperties = computed(() => {
       })
    }
 
-   // Price Filters (hôtels : pas de prix global — exclus des bornes)
-   if (minPrice.value !== null) {
-       res = res.filter(p => p.hidePrice || p.priceValue >= (minPrice.value as number))
+   const minBound = asPrice(minPrice.value)
+   const maxBound = asPrice(maxPrice.value)
+   if (minBound !== null) {
+       res = res.filter(p => !p.hidePrice && p.priceValue >= minBound)
    }
-   if (maxPrice.value !== null) {
-       res = res.filter(p => p.hidePrice || p.priceValue <= (maxPrice.value as number))
+   if (maxBound !== null) {
+       res = res.filter(p => !p.hidePrice && p.priceValue <= maxBound)
+   }
+   if (selectedCurrency.value !== 'all') {
+       res = res.filter(p => !p.hidePrice && currencyKey(p.currencyCode) === selectedCurrency.value)
    }
 
    // Advanced Filters Panel Specifics
    if (showAdvancedFilters.value) {
-      // Currency
-      if (selectedCurrency.value !== 'all') {
-          res = res.filter(p => p.hidePrice || p.currencyCode === selectedCurrency.value)
-      }
       // Room Count (Residential only usually)
       if (roomCount.value !== 'all') {
             if (roomCount.value === '4+') {
@@ -749,8 +798,9 @@ watch(searchQuery, () => {
                     <span class="text-sm font-semibold text-muted-foreground">Tarifs par chambre</span>
                   </template>
                   <template v-else>
+                    <div v-if="property.priceCaption" class="text-xs font-semibold text-muted-foreground">{{ property.priceCaption }}</div>
                     {{ property.price }}
-                    <div class="text-xs text-muted-foreground font-normal">{{ property.currencyLabel }}</div>
+                    <div v-if="!property.priceCaption" class="text-xs text-muted-foreground font-normal">{{ property.currencyLabel }}</div>
                   </template>
                 </div>
                 <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">

@@ -13,9 +13,18 @@ const serviceStore = useServiceStore()
 const activeTab = ref<'properties' | 'services'>('properties')
 const location = ref('')
 const propertyType = ref('')
-const priceRange = ref('')
+const budgetAmount = ref('')
+const budgetCurrency = ref<'USD' | 'CDF'>('USD')
 const serviceCategory = ref('')
 const serviceSearch = ref('')
+
+function parseBudget(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null
+  const cleaned = String(value).replace(/\s/g, '').replace(',', '.')
+  if (!cleaned) return null
+  const amount = Number(cleaned)
+  return Number.isFinite(amount) && amount > 0 ? amount : null
+}
 
 // Fetch dynamic data
 const { pending: isLoadingTypes } = useAsyncData('hero-types', () => propertyStore.fetchTypes(config.public.apiBase), {
@@ -35,14 +44,11 @@ const handleSearch = () => {
     const query: any = {}
     if (location.value && location.value.trim()) query.q = location.value.trim()
     if (propertyType.value && propertyType.value !== 'all') query.type = propertyType.value
-    
-    // Simple budget mapping
-    if (priceRange.value) {
-      if (priceRange.value === '1') { query.minPrice = 10; query.maxPrice = 100 }
-      else if (priceRange.value === '2') { query.minPrice = 101; query.maxPrice = 200 }
-      else if (priceRange.value === '3') { query.minPrice = 201; query.maxPrice = 500 }
-      else if (priceRange.value === '4') { query.minPrice = 501; query.maxPrice = 1000 }
-      else if (priceRange.value === '5') { query.minPrice = 1000 }
+
+    const budget = parseBudget(budgetAmount.value)
+    if (budget !== null) {
+      query.maxPrice = budget
+      query.currency = budgetCurrency.value
     }
     
     router.push({ path: '/properties', query })
@@ -161,6 +167,7 @@ const handleSearch = () => {
                   type="text"
                   placeholder="Ville, commune ou quartier"
                   class="w-full h-12 px-4 rounded-xl bg-white/10 border border-white/10 text-white placeholder:text-white/50 focus:bg-white/20 focus:border-primary outline-none"
+                  @keydown.enter="handleSearch"
                 />
                 <datalist id="hero-places">
                   <option v-for="city in ['Kinshasa', 'Lubumbashi', 'Goma', 'Bukavu', 'Kisangani', 'Matadi', 'Kananga', 'Mbuji-Mayi', 'Kolwezi', 'Likasi', 'Mbandaka', 'Kindu', 'Boma', 'Gombe', 'Kalamu', 'Ngaliema', 'Lemba', 'Limete', 'Bandalungwa']" :key="city" :value="city" />
@@ -185,17 +192,36 @@ const handleSearch = () => {
               </div>
 
               <div class="space-y-1.5">
-                <label class="text-xs font-bold text-white/80 ml-1">Budget</label>
-                <div class="relative group">
-                  <select v-model="priceRange" class="w-full h-12 pl-4 pr-10 rounded-xl bg-white/10 border border-white/10 text-white focus:bg-white/20 focus:border-primary outline-none transition-all appearance-none cursor-pointer">
-                    <option value="" class="text-slate-900 font-bold">Tout budget</option>
-                    <option value="1" class="text-slate-900">$10 - $100</option>
-                    <option value="2" class="text-slate-900">$101 - $200</option>
-                    <option value="3" class="text-slate-900">$201 - $500</option>
-                    <option value="4" class="text-slate-900">$501 - $1,000</option>
-                    <option value="5" class="text-slate-900">$1,000+</option>
-                  </select>
-                  <ChevronDown class="absolute right-3 top-4 h-4 w-4 text-white/50 pointer-events-none" />
+                <label class="text-xs font-bold text-white/80 ml-1">Budget maximum</label>
+                <div class="flex gap-2">
+                  <input
+                    v-model="budgetAmount"
+                    type="number"
+                    min="0"
+                    step="any"
+                    inputmode="decimal"
+                    placeholder="Montant libre, ex. 250"
+                    class="min-w-0 flex-1 h-12 px-4 rounded-xl bg-white/10 border border-white/10 text-white placeholder:text-white/50 focus:bg-white/20 focus:border-primary outline-none"
+                    @keydown.enter="handleSearch"
+                  />
+                  <div class="flex h-12 shrink-0 rounded-xl border border-white/10 overflow-hidden">
+                    <button
+                      type="button"
+                      class="px-3 text-sm font-bold transition-colors"
+                      :class="budgetCurrency === 'USD' ? 'bg-white text-slate-900' : 'bg-white/10 text-white/80 hover:text-white'"
+                      @click="budgetCurrency = 'USD'"
+                    >
+                      $
+                    </button>
+                    <button
+                      type="button"
+                      class="px-3 text-sm font-bold transition-colors"
+                      :class="budgetCurrency === 'CDF' ? 'bg-white text-slate-900' : 'bg-white/10 text-white/80 hover:text-white'"
+                      @click="budgetCurrency = 'CDF'"
+                    >
+                      FC
+                    </button>
+                  </div>
                 </div>
               </div>
 
