@@ -182,6 +182,15 @@ export const useAuthStore = defineStore('auth', {
             userCookie.value = this.user
         },
 
+        updateMember(patch: { user?: Partial<User>; profile?: Partial<Profile> }) {
+            if (patch.user && this.user) this.user = { ...this.user, ...patch.user }
+            if (patch.profile && this.profile) this.profile = { ...this.profile, ...patch.profile }
+            const userCookie = useCookie<any>('auth_user', { maxAge: 60 * 60 * 24 * 7, path: '/' })
+            const profileCookie = useCookie<any>('auth_profile', { maxAge: 60 * 60 * 24 * 7, path: '/' })
+            userCookie.value = this.user
+            profileCookie.value = this.profile
+        },
+
         checkSession() {
             const token = useCookie('auth_token').value
             const userCookie = useCookie<any>('auth_user').value
