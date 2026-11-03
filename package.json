@@ -2,6 +2,9 @@
   "name": "casaNayoDashboard",
   "type": "module",
   "private": true,
+  "imports": {
+    "#internal/nuxt/paths": "./lib/nuxt-paths.mjs"
+  },
   "scripts": {
     "build": "nuxt build",
     "dev": "nuxt dev",
