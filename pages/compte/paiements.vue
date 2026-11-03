@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import {
-    ArrowLeft,
     Receipt,
     CheckCircle,
     Clock,
@@ -15,7 +14,7 @@ import { downloadPaymentReceiptPdf } from '@/utils/paymentInvoicePdf'
 import { toast } from 'vue-sonner'
 
 definePageMeta({
-    layout: 'default',
+    layout: 'dashboard',
 })
 
 useHead({
@@ -26,29 +25,27 @@ const config = useRuntimeConfig()
 const auth = useAuthStore()
 const payment = usePaymentStore()
 
-const payments = ref<PaymentRow[]>([])
-const pending = ref(true)
 const downloadingId = ref<string | number | null>(null)
 
-async function loadHistory() {
-    const uid = auth.user?.userId ?? (auth.user as { id?: number } | null)?.id
+const currentUserId = computed(() => auth.user?.userId ?? (auth.user as { id?: number } | null)?.id ?? null)
+
+const payments = computed(() =>
+    payment.historyReady && payment.historyUserId === currentUserId.value ? payment.history : []
+)
+
+const pending = computed(() => !payment.historyReady || payment.historyUserId !== currentUserId.value)
+
+async function loadHistory(force = false) {
+    auth.checkSession()
+    const uid = currentUserId.value
     if (!uid) {
-        payments.value = []
-        pending.value = false
+        payment.history = []
+        payment.historyUserId = null
+        payment.historyReady = true
         return
     }
-    pending.value = true
-    try {
-        const r = await payment.fetchPaymentHistory(config.public.apiBase as string, uid)
-        payments.value = (r.payments || []).sort((a, b) => {
-            const dA = a.dateCreated ? new Date(a.dateCreated).getTime() : 0;
-            const dB = b.dateCreated ? new Date(b.dateCreated).getTime() : 0;
-            return dB - dA;
-        })
-        if (r.isPremium === true) auth.setPremium(true)
-    } finally {
-        pending.value = false
-    }
+    const r = await payment.fetchPaymentHistory(config.public.apiBase as string, uid, force)
+    if (r.isPremium === true) auth.setPremium(true)
 }
 
 onMounted(() => {
@@ -56,7 +53,7 @@ onMounted(() => {
 })
 
 function refresh() {
-    return loadHistory()
+    return loadHistory(true)
 }
 
 const totals = computed(() => {
@@ -113,7 +110,7 @@ async function handleDownloadReceipt(p: PaymentRow) {
     try {
         const username = auth.user?.username || auth.profile?.fullName || 'Client CasaNayo'
         await downloadPaymentReceiptPdf(p, username)
-        toast.success('Reçu PDF généré (même mise en forme que sur l’app).')
+        toast.success('Reçu PDF généré.')
     } catch (e) {
         console.error(e)
         toast.error('Impossible de générer le PDF.')
@@ -124,30 +121,18 @@ async function handleDownloadReceipt(p: PaymentRow) {
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#F5F6FA] text-slate-900">
-    <header class="sticky top-0 z-20 border-b border-slate-200/80 bg-white/95 shadow-sm backdrop-blur-md">
-      <div class="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6">
-        <div class="flex items-center gap-3">
-          <NuxtLink
-            to="/"
-            class="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-[#1976D2]/40 hover:text-[#1976D2]"
-            aria-label="Retour"
-          >
-            <ArrowLeft class="size-5" />
-          </NuxtLink>
-          <div class="flex items-center gap-2">
-            <div
-              class="flex h-10 w-10 items-center justify-center rounded-xl bg-[#E3F2FD] text-[#1976D2]"
-            >
-              <Receipt class="size-5" />
-            </div>
-            <div>
-              <p class="text-[10px] font-bold uppercase tracking-wider text-[#1976D2]">Transactions</p>
-              <h1 class="text-lg font-bold sm:text-xl">Paiements & reçus</h1>
-            </div>
-          </div>
+  <div class="text-slate-900">
+    <div class="mb-8 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-[#E3F2FD] text-[#1976D2]">
+          <Receipt class="size-5" />
         </div>
-        <div class="flex flex-wrap gap-2">
+        <div>
+          <p class="text-[10px] font-bold uppercase tracking-wider text-[#1976D2]">Transactions</p>
+          <h1 class="text-lg font-bold sm:text-xl">Paiements & reçus</h1>
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-2">
           <NuxtLink
             to="/compte/abonnement"
             class="rounded-full border border-[#1976D2]/30 bg-[#E3F2FD] px-4 py-2 text-xs font-bold text-[#1565C0] transition hover:bg-[#BBDEFB]"
@@ -157,17 +142,16 @@ async function handleDownloadReceipt(p: PaymentRow) {
           <button
             type="button"
             class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition hover:border-[#1976D2]/30"
-            :disabled="pending"
+            :disabled="payment.isLoadingHistory"
             @click="refresh()"
           >
-            <RefreshCw class="size-3.5" :class="{ 'animate-spin': pending }" />
+            <RefreshCw class="size-3.5" :class="{ 'animate-spin': payment.isLoadingHistory }" />
             Actualiser
           </button>
-        </div>
       </div>
-    </header>
+    </div>
 
-    <main class="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-10">
+    <div>
       <div
         class="mb-8 overflow-hidden rounded-3xl bg-gradient-to-br from-[#1976D2] to-[#1565C0] p-6 text-white shadow-lg sm:p-8"
       >
@@ -175,7 +159,8 @@ async function handleDownloadReceipt(p: PaymentRow) {
           <div>
             <p class="text-xs font-bold uppercase tracking-wider text-blue-100">Total payé (succès)</p>
             <div class="mt-1 flex flex-wrap items-baseline gap-2">
-              <span class="text-4xl font-black sm:text-5xl">{{ totals.usd.toFixed(0) }}</span>
+              <span v-if="pending" class="inline-block h-12 w-28 rounded-xl bg-white/25 animate-pulse" />
+              <span v-else class="text-4xl font-black sm:text-5xl">{{ totals.usd.toFixed(0) }}</span>
               <span class="text-xl font-bold text-blue-100">USD</span>
               <span v-if="totals.cdf > 0" class="text-lg font-semibold text-blue-100">
                 · {{ Math.round(totals.cdf).toLocaleString('fr-FR') }} FC
@@ -192,16 +177,24 @@ async function handleDownloadReceipt(p: PaymentRow) {
             </p>
           </div>
         </div>
-        <p class="mt-6 max-w-2xl text-sm text-blue-50/95">
-          Téléchargez le <strong>reçu PDF</strong> pour chaque paiement réussi — même structure que sur
-          l’application mobile (en-tête bleu CasaNayo, détails, tableau, pied de page).
-        </p>
       </div>
 
-      <div v-if="pending" class="flex justify-center py-20">
-        <div
-          class="size-12 rounded-full border-2 border-[#1976D2] border-t-transparent animate-spin"
-        />
+      <div v-if="pending" class="space-y-3">
+        <div class="hidden overflow-hidden rounded-3xl border border-slate-200 bg-white md:block">
+          <div v-for="i in 6" :key="i" class="flex items-center gap-4 border-b border-slate-100 px-5 py-4">
+            <div class="h-4 w-40 rounded-lg casa-shimmer-slate" />
+            <div class="h-4 w-24 rounded-lg casa-shimmer-slate" />
+            <div class="h-4 w-28 rounded-lg casa-shimmer-slate" />
+            <div class="ml-auto h-4 w-16 rounded-lg casa-shimmer-slate" />
+            <div class="h-6 w-16 rounded-full casa-shimmer-slate" />
+          </div>
+        </div>
+        <div v-for="i in 4" :key="'m' + i" class="rounded-2xl border border-slate-200 bg-white p-4 md:hidden">
+          <div class="h-4 w-2/3 rounded-lg casa-shimmer-slate" />
+          <div class="mt-3 h-3 w-1/3 rounded-lg casa-shimmer-slate" />
+          <div class="mt-3 h-6 w-24 rounded-lg casa-shimmer-slate" />
+          <div class="mt-4 h-10 w-full rounded-xl casa-shimmer-slate" />
+        </div>
       </div>
 
       <div
@@ -315,6 +308,6 @@ async function handleDownloadReceipt(p: PaymentRow) {
           </button>
         </li>
       </ul>
-    </main>
+    </div>
   </div>
 </template>

@@ -43,6 +43,9 @@ export const usePaymentStore = defineStore('payment', {
         isLoadingHistory: false,
         isLoadingDevises: false,
         devises: [] as DeviseRow[],
+        history: [] as PaymentRow[],
+        historyUserId: null as number | null,
+        historyReady: false,
         lastHistoryPremium: null as boolean | null,
     }),
 
@@ -164,24 +167,39 @@ export const usePaymentStore = defineStore('payment', {
             }
         },
 
-        async fetchPaymentHistory(apiBase: string, userId: number) {
+        async fetchPaymentHistory(apiBase: string, userId: number, force = false) {
             const auth = useAuthStore()
             if (!auth.token) return { payments: [] as PaymentRow[], isPremium: null as boolean | null }
+            if (!force && this.historyReady && this.historyUserId === userId) {
+                return { payments: this.history, isPremium: this.lastHistoryPremium }
+            }
             this.isLoadingHistory = true
             try {
                 const res: any = await $fetch(joinApi(apiBase, `${ApiEndpoints.paymentHistory}${userId}`), {
                     headers: { Authorization: `Bearer ${auth.token}` },
                 })
                 const log = res?.log
-                const payments = (log?.payment ?? []) as PaymentRow[]
+                const payments = ((log?.payment ?? []) as PaymentRow[]).slice().sort((a, b) => {
+                    const dA = a.dateCreated ? new Date(a.dateCreated).getTime() : 0
+                    const dB = b.dateCreated ? new Date(b.dateCreated).getTime() : 0
+                    return dB - dA
+                })
                 const u = log?.user
                 const isPremium =
                     u?.premium === true || u?.isPremium === true ? true : u?.premium === false ? false : null
+                this.history = payments
+                this.historyUserId = userId
+                this.historyReady = true
                 this.lastHistoryPremium = isPremium
                 return { payments, isPremium }
             } catch (e) {
                 console.error('fetchPaymentHistory:', e)
-                return { payments: [] as PaymentRow[], isPremium: null as boolean | null }
+                if (this.historyUserId !== userId) {
+                    this.history = []
+                    this.historyUserId = userId
+                }
+                this.historyReady = true
+                return { payments: this.history, isPremium: this.lastHistoryPremium }
             } finally {
                 this.isLoadingHistory = false
             }
