@@ -13,6 +13,7 @@ import { useMembersStore } from '~/stores/members'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
+import { accountTypeLabel } from '@/utils/userAccount'
 
 const router = useRouter()
 
@@ -97,6 +98,7 @@ const gridSource = computed(() => {
     ...user,
     contact: [user.email, user.phone && user.phone !== 'null' ? user.phone : ''].filter(Boolean).join(' · ') || '—',
     location: [user.city, user.country].filter(Boolean).join(', ') || 'Inconnue',
+    compte: accountTypeLabel(membersStore.getMemberByUserId(user.userId)),
     statut: checkIsAdmin(user.userId) ? 'Admin' : (user.certified ? 'Certifié' : 'Non certifié'),
     abonnement: checkIsAdmin(user.userId) ? 'Staff' : (user.premium ? 'Premium' : 'Gratuit'),
     busy: isUpdating.value === user.userId,
@@ -137,6 +139,7 @@ function actionsCell(h: any, _defaultRendering: unknown, cellProps: { dataItem: 
 const columns = [
   { field: 'userId', title: 'ID', width: '90px', filter: 'numeric' },
   { field: 'username', title: 'Utilisateur' },
+  { field: 'compte', title: 'Type de compte', width: '200px' },
   { field: 'contact', title: 'Contact' },
   { field: 'location', title: 'Localisation' },
   { field: 'statut', title: 'Statut', width: '150px' },

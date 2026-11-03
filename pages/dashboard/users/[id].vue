@@ -18,6 +18,7 @@ import { usePropertyStore } from '~/stores/properties'
 import { useServiceStore } from '~/stores/services'
 import { toast } from 'vue-sonner'
 import VueEasyLightbox from 'vue-easy-lightbox'
+import { accountTypeLabel, registrationLabel } from '@/utils/userAccount'
 
 definePageMeta({
   layout: 'dashboard'
@@ -88,6 +89,9 @@ const userProperties = computed(() => {
     return [...residential, ...specialized]
 })
 
+const accountLabel = computed(() => accountTypeLabel(member.value))
+const registeredOn = computed(() => registrationLabel(user.value, member.value))
+
 const userServices = computed(() => {
     const id = Number(userId)
     return serviceStore.services.filter(s => s.prestation?.userId === id)
@@ -124,6 +128,29 @@ const loadData = async () => {
     user.value = membersStore.getUserById(userId.toString())
     // Get certification member info
     member.value = membersStore.getMemberByUserId(userId.toString())
+
+    try {
+        const detail: any = await $fetch(joinApi(apiBase, `${ApiEndpoints.allUsers}/${userId}`), { headers: authH })
+        const payload = detail?.data ?? detail
+        if (payload && typeof payload === 'object') {
+            const nestedUser = payload.user || payload.member?.user
+            const nestedMember = payload.member || payload.profile
+            const nestedAccounts = payload.accounts || payload.member?.accounts
+            if (nestedUser && typeof nestedUser === 'object') {
+                user.value = { ...(user.value || {}), ...nestedUser }
+            } else if (!payload.member && !payload.profile) {
+                user.value = { ...(user.value || {}), ...payload }
+            }
+            if (nestedMember && typeof nestedMember === 'object') {
+                member.value = { ...(member.value || {}), ...nestedMember }
+            }
+            if (Array.isArray(nestedAccounts)) {
+                member.value = { ...(member.value || {}), accounts: nestedAccounts }
+            }
+        }
+    } catch (e) {
+        console.error('Détail utilisateur indisponible:', e)
+    }
     
     // Fetch user-generated content in background
     try {
@@ -289,6 +316,11 @@ const downloadPDF = async () => {
                                 <MapPin class="h-4 w-4 text-primary/60" />
                                 {{ user.city }}, {{ user.country }}
                             </div>
+                            <Badge variant="secondary" class="font-bold">{{ accountLabel }}</Badge>
+                            <div class="flex items-center gap-1.5 text-muted-foreground text-sm">
+                                <Calendar class="h-4 w-4 text-primary/60" />
+                                Inscrit le {{ registeredOn }}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -311,6 +343,19 @@ const downloadPDF = async () => {
                                 <div>
                                     <label class="text-[10px] font-bold text-muted-foreground uppercase opacity-70">Nom</label>
                                     <p class="font-bold text-sm">{{ member?.lastName || '—' }}</p>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4 pb-2 border-b border-muted/50">
+                                <div>
+                                    <label class="text-[10px] font-bold text-muted-foreground uppercase opacity-70">Type de compte</label>
+                                    <p class="font-bold text-sm">{{ accountLabel }}</p>
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-bold text-muted-foreground uppercase opacity-70 flex items-center gap-1">
+                                        <Calendar class="h-3 w-3" /> Inscription
+                                    </label>
+                                    <p class="font-bold text-sm">{{ registeredOn }}</p>
                                 </div>
                             </div>
 
