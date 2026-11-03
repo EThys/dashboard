@@ -92,6 +92,8 @@ export const ApiEndpoints = {
     protectedPropertyHotels: `${v}/protected/property/hotels`,
     /** Indisponible / de nouveau en ligne — `PUT …/hotels/sold/{hotelId}`, body `{ status }` */
     soldHotel: `${v}/protected/property/hotels/sold/`,
+    /** Chambre indisponible / de nouveau en ligne — `PUT …/chambres/sold/{chambreId}`, body `{ status }` */
+    soldHotelRoom: `${v}/protected/property/chambres/sold/`,
     propertyHotelsByOwner: `${v}/private/property/hotels/owner/`,
     propertyHotelRoom: `${v}/private/property/hotels/chambre`,
     /** Liste publique des chambres (filtrer côté client par hôtel si besoin) */
