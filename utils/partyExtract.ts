@@ -49,21 +49,34 @@ export function pickOwnerHostFromListing(ent: Record<string, unknown> | undefine
     )
 }
 
+function profileRecord(u: Record<string, unknown>): Record<string, unknown> | undefined {
+    const profile = u.profile
+    if (profile && typeof profile === 'object' && !Array.isArray(profile)) return profile as Record<string, unknown>
+    return undefined
+}
+
+function named(source: Record<string, unknown> | undefined): string {
+    if (!source) return ''
+    const direct =
+        (typeof source.fullName === 'string' && source.fullName.trim()) ||
+        (typeof source.full_name === 'string' && source.full_name.trim()) ||
+        (typeof source.username === 'string' && source.username.trim()) ||
+        (typeof source.name === 'string' && source.name.trim()) ||
+        ''
+    if (direct) return direct
+    return [source.firstName ?? source.first_name ?? source.prenom, source.lastName ?? source.last_name ?? source.nom]
+        .filter((part) => part != null && String(part).trim())
+        .map((part) => String(part).trim())
+        .join(' ')
+        .trim()
+}
+
 export function memberDisplayName(u: Record<string, unknown> | undefined, fallbackUserId?: number): string {
     if (!u) {
         if (fallbackUserId != null && Number.isFinite(fallbackUserId)) return `Membre #${fallbackUserId}`
         return '—'
     }
-    const n =
-        (typeof u.fullName === 'string' && u.fullName.trim()) ||
-        (typeof u.username === 'string' && u.username.trim()) ||
-        (typeof u.name === 'string' && u.name.trim()) ||
-        [u.firstName, u.lastName]
-            .filter((x) => x != null && String(x).trim())
-            .map(String)
-            .join(' ')
-            .trim() ||
-        ''
+    const n = named(u) || named(profileRecord(u))
     if (n) return n
     const id = typeof u.userId === 'number' ? u.userId : parseInt(String(u.userId ?? ''), 10)
     if (Number.isFinite(id)) return `Membre #${id}`

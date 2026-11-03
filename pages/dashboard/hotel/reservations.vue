@@ -16,6 +16,7 @@ useHead({
     </div>
     <ReservationsBookingView
       embedded
+      searchable
       initial-perspective="host"
       host-reservation-scope="chambre"
     />

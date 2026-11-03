@@ -6,7 +6,7 @@ export function firstUrlFromImageLike(value: unknown): string | undefined {
     if (Array.isArray(value)) return firstUrlFromImageArray(value)
     if (typeof value === 'object') {
         const o = value as Record<string, unknown>
-        const p = o.publicPath ?? o.path ?? o.url
+        const p = o.publicPath ?? o.path ?? o.url ?? o.image
         if (typeof p === 'string' && p.trim()) return p.trim()
     }
     return undefined
@@ -18,7 +18,7 @@ export function firstUrlFromImageArray(arr: unknown): string | undefined {
         if (typeof el === 'string' && el.trim()) return el.trim()
         if (el && typeof el === 'object') {
             const o = el as Record<string, unknown>
-            const p = o.publicPath ?? o.path ?? o.url
+            const p = o.publicPath ?? o.path ?? o.url ?? o.image
             if (typeof p === 'string' && p.trim()) return p.trim()
         }
     }
@@ -52,6 +52,32 @@ export function extractListingPhotoFromEntity(ent: Record<string, unknown> | und
     if (typeof ent.image === 'string' && ent.image.trim()) {
         const s = ent.image.trim()
         if (!/avatar|ui-avatars|gravatar/i.test(s)) return s
+    }
+    return undefined
+}
+
+/** Photos renvoyées à côté de la réservation (`imageChambre`, `imageTerrain`, etc.). */
+export function extractReservationSiblingPhoto(root: Record<string, unknown> | undefined): string | undefined {
+    if (!root) return undefined
+    const keys = [
+        'imageChambre',
+        'imageHotel',
+        'imageTerrain',
+        'imageVacance',
+        'imageBureau',
+        'imageFestive',
+        'imageFuneraire',
+        'imageProperty',
+        'chambreImage',
+    ]
+    for (const key of keys) {
+        const photo = firstUrlFromImageArray(root[key]) || firstUrlFromImageLike(root[key])
+        if (photo) return photo
+    }
+    const hotel = root.hotel
+    if (hotel && typeof hotel === 'object' && !Array.isArray(hotel)) {
+        const photo = extractListingPhotoFromEntity(hotel as Record<string, unknown>)
+        if (photo) return photo
     }
     return undefined
 }

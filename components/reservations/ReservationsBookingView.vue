@@ -18,6 +18,7 @@ import {
     X,
     ChevronLeft,
     ChevronRight,
+    Search,
 } from 'lucide-vue-next'
 import { Button, Badge } from '@/components/ui'
 import { useReservationStore, type ReservationListItem } from '@/stores/reservations'
@@ -38,8 +39,10 @@ const props = withDefaults(
          * `all` = tous les types d’annonces (comportement par défaut).
          */
         hostReservationScope?: 'all' | 'chambre'
+        /** Champ de recherche (nom du client, téléphone, chambre, référence). */
+        searchable?: boolean
     }>(),
-    { embedded: false, initialPerspective: 'mine', hostReservationScope: 'all' }
+    { embedded: false, initialPerspective: 'mine', hostReservationScope: 'all', searchable: false }
 )
 
 const showBannerSubtitle = ref(true)
@@ -55,15 +58,32 @@ onMounted(() => {
 
 const resStore = useReservationStore()
 const auth = useAuthStore()
-const list = ref<ReservationListItem[]>([])
-const loading = ref(true)
 const activeTab = ref(0)
+const refreshing = ref(false)
+const searchQuery = ref('')
 /** Pagination */
 const currentPage = ref(1)
 const itemsPerPage = 6
 
 /** Mes demandes (client) vs demandes reçues sur mes biens (hôte, endpoints `.../user/host/`) */
 const perspective = ref<'mine' | 'host'>(props.initialPerspective)
+
+function cachedReservations() {
+    const uid = auth.user?.userId || (auth.user as { id?: number } | null)?.id
+    if (perspective.value === 'mine') {
+        return resStore.userReservationsLoaded && resStore.userReservationsOwnerId === uid
+            ? resStore.userReservations
+            : null
+    }
+    if (!(resStore.hostReservationsLoaded && resStore.hostReservationsOwnerId === uid)) return null
+    if (props.hostReservationScope === 'chambre') {
+        return resStore.hostReservations.filter((item) => item.sourceCategory === 'chambre')
+    }
+    return resStore.hostReservations
+}
+
+const list = ref<ReservationListItem[]>(cachedReservations() ?? [])
+const loading = ref(cachedReservations() === null)
 
 const tabs = [
     { key: 'PENDING', label: 'En attente' },
@@ -76,12 +96,12 @@ const tabs = [
  * @param force — `true` = forcer le refresh API (ignore le cache Pinia)
  */
 async function load(force = false) {
-    // Si on a déjà des données dans le store et qu'on ne force pas, la fluidité est prioritaire
-    const hasData = perspective.value === 'mine' 
-        ? resStore.userReservations.length > 0 
-        : resStore.hostReservations.length > 0
-
-    if (!hasData || force) {
+    const cached = cachedReservations()
+    if (cached) {
+        list.value = cached
+        loading.value = false
+        if (force) refreshing.value = true
+    } else {
         loading.value = true
     }
 
@@ -93,12 +113,12 @@ async function load(force = false) {
                   ? await resStore.fetchHostChambreReservationsOnly(force)
                   : await resStore.fetchHostReservations(force)
         list.value = data
-        // Reset pagination on load
-        currentPage.value = 1
+        if (!cached) currentPage.value = 1
     } catch (e) {
         console.error(e)
     } finally {
         loading.value = false
+        refreshing.value = false
     }
 }
 
@@ -130,6 +150,10 @@ watch(activeTab, () => {
     currentPage.value = 1
 })
 
+watch(searchQuery, () => {
+    currentPage.value = 1
+})
+
 const counts = computed(() => resStore.countByStatus(list.value))
 
 function filterByTab(items: ReservationListItem[], tabKey: string) {
@@ -148,7 +172,54 @@ function filterByTab(items: ReservationListItem[], tabKey: string) {
         })
 }
 
+function foldSearch(value: string) {
+    return value
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim()
+}
+
+function personFields(item: ReservationListItem) {
+    const rawUser = item.raw.user ?? item.raw.client ?? item.raw.member
+    if (!rawUser || typeof rawUser !== 'object' || Array.isArray(rawUser)) return ''
+    const user = rawUser as Record<string, unknown>
+    const profile = user.profile && typeof user.profile === 'object' ? (user.profile as Record<string, unknown>) : {}
+    return [user.username, user.fullName, user.firstName, user.lastName, user.prenom, user.nom, profile.fullName, profile.firstName, profile.lastName]
+        .filter((part) => typeof part === 'string' && part.trim())
+        .join(' ')
+}
+
+function matchesSearch(item: ReservationListItem, query: string) {
+    const blob = foldSearch(
+        [
+            item.guestDisplayName,
+            personFields(item),
+            item.guestPhone,
+            item.guestEmail,
+            item.hostDisplayName,
+            item.propertyTitle,
+            item.propertyType,
+            item.message,
+            item.reservationId,
+        ]
+            .filter((part) => part != null && String(part).trim() && String(part).trim() !== '—')
+            .join(' ')
+    )
+    return blob.includes(query)
+}
+
 const filteredList = computed(() => {
+    const query = foldSearch(searchQuery.value)
+    if (query) {
+        return [...list.value]
+            .filter((item) => matchesSearch(item, query))
+            .sort((a, b) => {
+                const da = new Date(a.createdAt || a.startDate || 0).getTime()
+                const db = new Date(b.createdAt || b.startDate || 0).getTime()
+                return db - da
+            })
+    }
     const key = tabs[activeTab.value]?.key
     if (!key) return []
     return filterByTab(list.value, key)
@@ -327,10 +398,10 @@ const shellClass = computed(() =>
             type="button"
             variant="secondary"
             class="h-11 shrink-0 rounded-xl border-0 bg-white/15 font-bold text-white hover:bg-white/25"
-            :disabled="loading"
+            :disabled="refreshing"
             @click="load(true)"
           >
-            <Loader2 v-if="loading" class="mr-2 size-4 animate-spin" />
+            <Loader2 v-if="refreshing" class="mr-2 size-4 animate-spin" />
             <RefreshCw v-else class="mr-2 size-4" />
             Actualiser
           </Button>
@@ -432,40 +503,43 @@ const shellClass = computed(() =>
         </div>
       </div>
 
+      <div v-if="searchable" class="relative mb-6">
+        <Search class="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+        <input
+          v-model="searchQuery"
+          type="search"
+          placeholder="Rechercher par nom, téléphone, chambre ou référence…"
+          class="h-12 w-full rounded-2xl border border-slate-200 bg-white pl-11 pr-4 text-sm shadow-sm outline-none transition focus:border-[#1976D2]"
+        />
+      </div>
+
       <div v-if="loading && list.length === 0" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         <UiCasaListCardShimmer v-for="i in 6" :key="i" />
       </div>
 
       <div v-else class="relative">
         <div
-          v-if="loading && list.length > 0"
-          class="pointer-events-auto absolute inset-0 z-20 flex items-start justify-center rounded-3xl bg-white/80 pt-24 backdrop-blur-sm"
-        >
-          <Loader2 class="size-10 animate-spin text-[#1976D2]" />
-        </div>
-
-        <div
           v-if="!displayed.length"
           class="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-slate-200 bg-white py-20 text-center"
         >
-          <Loader2
-            v-if="loading"
-            class="mb-4 size-12 animate-spin text-[#1976D2]"
-          />
-          <template v-else>
-            <Calendar class="mb-4 size-14 text-[#1976D2]/30" />
-            <p class="text-lg font-bold text-slate-800">Aucune réservation</p>
-            <p class="mt-2 max-w-sm text-sm text-slate-500">
-              Aucune donnée à afficher pour ce statut.
-            </p>
-            <NuxtLink
-              v-if="!embedded"
-              to="/properties"
-              class="mt-8 inline-flex h-12 items-center rounded-xl bg-[#1976D2] px-8 text-sm font-bold text-white shadow-lg shadow-blue-600/25 transition hover:bg-[#1565C0]"
-            >
-              Explorer les biens
-            </NuxtLink>
-          </template>
+          <Calendar class="mb-4 size-14 text-[#1976D2]/30" />
+          <p class="text-lg font-bold text-slate-800">
+            {{ searchQuery.trim() ? 'Aucun résultat' : 'Aucune réservation' }}
+          </p>
+          <p class="mt-2 max-w-sm text-sm text-slate-500">
+            {{
+              searchQuery.trim()
+                ? 'Aucune personne ni réservation ne correspond à cette recherche.'
+                : 'Aucune donnée à afficher pour ce statut.'
+            }}
+          </p>
+          <NuxtLink
+            v-if="!embedded"
+            to="/properties"
+            class="mt-8 inline-flex h-12 items-center rounded-xl bg-[#1976D2] px-8 text-sm font-bold text-white shadow-lg shadow-blue-600/25 transition hover:bg-[#1565C0]"
+          >
+            Explorer les biens
+          </NuxtLink>
         </div>
 
         <div v-else class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">

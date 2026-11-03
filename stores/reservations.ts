@@ -4,9 +4,13 @@ import { evaluateReservationEligibility } from '@/composables/useReservationElig
 import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
 import {
     extractListingPhotoFromEntity,
+    extractReservationSiblingPhoto,
+    firstUrlFromImageArray,
+    firstUrlFromImageLike,
     getReservationListingEntity,
     resolveReservationPropertyDetailId,
 } from '@/utils/mediaExtract'
+import { unwrapArrayPayload } from '@/utils/apiListResponse'
 import {
     memberAvatar,
     memberDisplayName,
@@ -36,6 +40,8 @@ export interface ReservationListItem {
     guestDisplayName?: string
     guestProfileImage?: string
     guestUserId?: number
+    guestPhone?: string
+    guestEmail?: string
     /** Hôte / annonceur du bien — surtout utile en vue « mes réservations ». */
     hostDisplayName?: string
     hostProfileImage?: string
@@ -43,6 +49,83 @@ export interface ReservationListItem {
     sourceCategory: string
     userImage?: string
     raw: Record<string, unknown>
+}
+
+function memberText(user: Record<string, unknown> | undefined, keys: string[]): string | undefined {
+    if (!user) return undefined
+    const profile = user.profile
+    const sources = [
+        user,
+        profile && typeof profile === 'object' && !Array.isArray(profile) ? (profile as Record<string, unknown>) : undefined,
+    ]
+    for (const source of sources) {
+        if (!source) continue
+        for (const key of keys) {
+            const value = source[key]
+            if (typeof value === 'string' && value.trim() && value.trim().toLowerCase() !== 'null') return value.trim()
+            if (typeof value === 'number' && Number.isFinite(value)) return String(value)
+        }
+    }
+    return undefined
+}
+
+function numericId(value: unknown): number | undefined {
+    if (typeof value === 'number' && Number.isFinite(value)) return value
+    const parsed = parseInt(String(value ?? ''), 10)
+    return Number.isFinite(parsed) ? parsed : undefined
+}
+
+function reservationRoomId(item: ReservationListItem): number | undefined {
+    const raw = item.raw
+    const chambre = raw.chambre && typeof raw.chambre === 'object' ? (raw.chambre as Record<string, unknown>) : undefined
+    const reservation = raw.reservation && typeof raw.reservation === 'object' ? (raw.reservation as Record<string, unknown>) : undefined
+    return numericId(chambre?.id) ?? numericId(raw.chambreId) ?? numericId(reservation?.chambreId)
+}
+
+function reservationHotelId(item: ReservationListItem): number | undefined {
+    const raw = item.raw
+    const chambre = raw.chambre && typeof raw.chambre === 'object' ? (raw.chambre as Record<string, unknown>) : undefined
+    const hotel = raw.hotel && typeof raw.hotel === 'object' ? (raw.hotel as Record<string, unknown>) : undefined
+    const reservation = raw.reservation && typeof raw.reservation === 'object' ? (raw.reservation as Record<string, unknown>) : undefined
+    return (
+        numericId(chambre?.hotelId) ??
+        numericId(hotel?.id) ??
+        numericId(raw.hotelId) ??
+        numericId(reservation?.hotelId)
+    )
+}
+
+async function attachMissingRoomPhotos(items: ReservationListItem[], apiBase: string): Promise<ReservationListItem[]> {
+    if (!items.length || items.every((item) => item.propertyImage)) return items
+    const byRoom = new Map<number, string>()
+    const byHotel = new Map<number, string>()
+    try {
+        const payload = await $fetch(joinApi(apiBase, ApiEndpoints.propertyHotelsPublic))
+        for (const row of unwrapArrayPayload<Record<string, unknown>>(payload)) {
+            const hotel = (row.hotel && typeof row.hotel === 'object' ? row.hotel : row) as Record<string, unknown>
+            const hotelId = numericId(hotel.id ?? hotel.hotelId)
+            const hotelPhoto =
+                extractListingPhotoFromEntity(hotel) ||
+                firstUrlFromImageArray(row.images) ||
+                firstUrlFromImageLike(row.image)
+            if (hotelId && hotelPhoto) byHotel.set(hotelId, hotelPhoto)
+            const structure = Array.isArray(row.structure) ? row.structure : []
+            for (const entry of structure) {
+                if (!entry || typeof entry !== 'object') continue
+                const block = entry as { chambre?: Record<string, unknown>; image?: unknown }
+                const roomId = numericId(block.chambre?.id)
+                const roomPhoto = firstUrlFromImageArray(block.image) || hotelPhoto
+                if (roomId && roomPhoto) byRoom.set(roomId, roomPhoto)
+            }
+        }
+    } catch {
+        return items
+    }
+    return items.map((item) => {
+        if (item.propertyImage) return item
+        const photo = byRoom.get(reservationRoomId(item) ?? -1) || byHotel.get(reservationHotelId(item) ?? -1)
+        return photo ? { ...item, propertyImage: photo } : item
+    })
 }
 
 function getStatusLabel(status: string): string {
@@ -95,7 +178,10 @@ function normalizeReservation(raw: unknown, sourceCategory: string): Reservation
         propertyTitle = labels[sourceCategory] || 'Réservation'
     }
 
-    let propertyImage = extractListingPhotoFromEntity(listingEnt)
+    let propertyImage =
+        extractReservationSiblingPhoto(r) ||
+        extractReservationSiblingPhoto(merged) ||
+        extractListingPhotoFromEntity(listingEnt)
     if (!propertyImage && prop) {
         propertyImage = extractListingPhotoFromEntity(prop)
     }
@@ -164,6 +250,8 @@ function normalizeReservation(raw: unknown, sourceCategory: string): Reservation
         guestDisplayName: memberDisplayName(guestUserRec, guestUserId),
         guestProfileImage: userImage || memberAvatar(guestUserRec),
         guestUserId,
+        guestPhone: memberText(guestUserRec, ['phone', 'telephone', 'phoneNumber', 'tel']),
+        guestEmail: memberText(guestUserRec, ['email']),
         hostDisplayName: memberDisplayName(hostUserRec, hostUserId),
         hostProfileImage: memberAvatar(hostUserRec),
         hostUserId,
@@ -199,6 +287,10 @@ export const useReservationStore = defineStore('reservations', {
         userReservations: [] as ReservationListItem[],
         hostReservations: [] as ReservationListItem[],
         platformReservations: [] as ReservationListItem[],
+        userReservationsOwnerId: null as number | null,
+        hostReservationsOwnerId: null as number | null,
+        userReservationsLoaded: false,
+        hostReservationsLoaded: false,
     }),
 
     actions: {
@@ -308,8 +400,6 @@ export const useReservationStore = defineStore('reservations', {
          * Toutes les réservations du membre (standard + spécialisées), comme ReservationController.getMyReservations().
          */
         async fetchUserReservations(force = false): Promise<ReservationListItem[]> {
-            if (!force && this.userReservations.length > 0) return this.userReservations
-
             const auth = useAuthStore()
             const config = useRuntimeConfig()
 
@@ -324,6 +414,9 @@ export const useReservationStore = defineStore('reservations', {
 
             const userId = user.userId || (user as { id?: number }).id
             if (userId == null) return []
+            if (!force && this.userReservationsLoaded && this.userReservationsOwnerId === userId) {
+                return this.userReservations
+            }
 
             const apiBase = config.public.apiBase as string
             const headers = { Authorization: `Bearer ${auth.token}` }
@@ -374,6 +467,8 @@ export const useReservationStore = defineStore('reservations', {
             })
 
             this.userReservations = deduped
+            this.userReservationsOwnerId = userId
+            this.userReservationsLoaded = true
             return deduped
         },
 
@@ -425,8 +520,6 @@ export const useReservationStore = defineStore('reservations', {
          * ReservationController.getHostReservations() (endpoints `.../user/host/{id}`).
          */
         async fetchHostReservations(force = false): Promise<ReservationListItem[]> {
-            if (!force && this.hostReservations.length > 0) return this.hostReservations
-
             const auth = useAuthStore()
             const config = useRuntimeConfig()
 
@@ -441,6 +534,9 @@ export const useReservationStore = defineStore('reservations', {
 
             const userId = user.userId || (user as { id?: number }).id
             if (userId == null) return []
+            if (!force && this.hostReservationsLoaded && this.hostReservationsOwnerId === userId) {
+                return this.hostReservations
+            }
 
             const apiBase = config.public.apiBase as string
             const headers = { Authorization: `Bearer ${auth.token}` }
@@ -485,6 +581,8 @@ export const useReservationStore = defineStore('reservations', {
             })
 
             this.hostReservations = deduped
+            this.hostReservationsOwnerId = userId
+            this.hostReservationsLoaded = true
             return deduped
         },
 
@@ -498,7 +596,10 @@ export const useReservationStore = defineStore('reservations', {
             
             if (!force && this.hostReservations.length > 0) {
                  const cached = this.hostReservations.filter(r => r.sourceCategory === 'chambre')
-                 if (cached.length > 0) return cached
+                 if (cached.length > 0) {
+                    const apiBase = useRuntimeConfig().public.apiBase as string
+                    return attachMissingRoomPhotos(cached, apiBase)
+                 }
             }
 
             const config = useRuntimeConfig()
@@ -530,7 +631,7 @@ export const useReservationStore = defineStore('reservations', {
                     const db = b.createdAt || b.startDate || ''
                     return db.localeCompare(da)
                 })
-                return collected
+                return attachMissingRoomPhotos(collected, apiBase)
             } catch (e) {
                 console.warn(`[reservations host chambre] ${path}`, e)
                 return []
