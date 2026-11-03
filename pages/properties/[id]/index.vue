@@ -12,6 +12,7 @@ import CasaLoader from '@/components/ui/CasaLoader.vue'
 import PropertyVisitModal from '@/components/modals/PropertyVisitModal.vue'
 import DetailShimmer from '@/components/front/DetailShimmer.vue'
 import { encodeId, decodeId } from '@/utils/urlObfuscator'
+import { lowestHotelRoomOffer } from '@/utils/hotelStartingPrice'
 import { ShieldCheck, Calendar as CalendarIcon, Loader2 } from 'lucide-vue-next'
 import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
 import { formatCurrency } from '@/utils/currency'
@@ -69,6 +70,9 @@ const { pending: isLoading } = useAsyncData(
       }
     }
     
+    if (propertyStore.hotelRooms.length === 0) {
+      await propertyStore.fetchHotels(config.public.apiBase as string)
+    }
     return true
   },
   {
@@ -76,6 +80,14 @@ const { pending: isLoading } = useAsyncData(
     server: false
   }
 )
+
+const hotelStarting = computed(() => {
+  const current = property.value
+  if (!current?.isHotel) return null
+  const embedded = current.hotelChambres || []
+  const listed = propertyStore.hotelRooms.filter((room) => Number(room.hotelId) === Number(current.id))
+  return lowestHotelRoomOffer(embedded.length ? embedded : listed)
+})
 
 // Normalize property for display
 const property = computed<NormalizedProperty | null>(() => {
@@ -320,6 +332,12 @@ function onVisitModalClose() {
                                     <span class="text-lg text-white/80 font-normal">{{ property.frequency }}</span>
                                 </div>
                                 <div class="text-xs opacity-70 mt-1">{{ property.currencyLabel }}</div>
+                            </div>
+                            <div v-else-if="hotelStarting" class="text-right text-white mb-2">
+                                <div class="text-sm opacity-80 mb-1">À partir de</div>
+                                <div class="text-3xl font-black text-primary drop-shadow-sm filter brightness-110">
+                                    {{ hotelStarting.formatted }}
+                                </div>
                             </div>
                             <div v-else class="text-right text-white mb-2 rounded-2xl border border-white/20 bg-white/10 px-4 py-3 backdrop-blur-md">
                                 <div class="text-xs font-bold uppercase tracking-wider opacity-90">Hôtel</div>

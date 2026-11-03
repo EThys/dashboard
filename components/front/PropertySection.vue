@@ -7,6 +7,10 @@ import { encodeId } from '@/utils/urlObfuscator'
 import { getPublicListingStatus } from '@/utils/listingAvailability'
 import { getPublicTransactionBadgeLabel, isLocationTransactionType } from '@/utils/transactionDisplay'
 import { formatListingPlace } from '@/utils/propertyNormalizer'
+import { lowestHotelRoomOffer } from '@/utils/hotelStartingPrice'
+import { usePropertyStore } from '@/stores/properties'
+
+const propertyStore = usePropertyStore()
 
 const props = defineProps<{
     title: string
@@ -41,23 +45,28 @@ const normalizeItem = (item: any) => {
         addr = p.address
         img = p.image
         const loc = formatListingPlace(p) || 'RDC'
+        const embedded = Array.isArray(item.structure)
+            ? item.structure.map((row: any) => row?.chambre).filter(Boolean)
+            : []
+        const listed = propertyStore.hotelRooms.filter((room) => Number(room.hotelId) === Number(p?.id))
+        const offer = lowestHotelRoomOffer(embedded.length ? embedded : listed)
         return {
             id: p?.id || p?.propertyId || 0,
             title: p?.title || 'Sans titre',
             location: loc || 'RDC',
-            price: '—',
-            hidePrice: true,
-            currencyCode: 'USD',
-            currencySymbol: '$',
-            currencyLabel: 'USD',
-            currency: 'USD',
+            price: offer?.formatted || '—',
+            hidePrice: !offer,
+            currencyCode: offer?.currencyCode || 'USD',
+            currencySymbol: offer?.currencyCode === 'CDF' ? 'FC' : '$',
+            currencyLabel: offer ? 'À partir de' : 'USD',
+            currency: offer ? '' : 'USD',
             image: img || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800&q=80',
             publisherImage: item.image || '',
             postBy: item.postBy || '',
             tag: 'Hébergement',
             transactionType: 'hébergement',
             frequency: '',
-            priceLabel: 'Tarifs par chambre',
+            priceLabel: offer ? 'À partir de' : 'Tarifs par chambre',
             listingStatus: getPublicListingStatus(p as Record<string, unknown>, undefined),
         }
     } else {
@@ -249,8 +258,7 @@ onUnmounted(() => {
                     <!-- Price Badge Floating Bottom Left -->
                     <div class="absolute bottom-4 left-4 text-white z-10 flex flex-col max-w-[85%]">
                          <template v-if="item.hidePrice">
-                           <span class="text-xs font-medium opacity-90">Adresse</span>
-                           <div class="text-sm font-bold leading-tight line-clamp-2">{{ item.location }}</div>
+                           <span class="text-xs font-medium opacity-90">Tarifs par chambre</span>
                          </template>
                          <template v-else>
                            <span class="text-xs font-medium opacity-90">{{ item.priceLabel }}</span>

@@ -5,6 +5,7 @@ import type {
     FuneraireResponse,
     TerrainResponse,
     HotelResponse,
+    HotelChambreApi,
     PropertyResponse,
     AnyPropertyResponse
 } from '@/types/property'
@@ -94,6 +95,7 @@ export const usePropertyStore = defineStore('properties', {
         festives: [] as FestiveResponse[],
         bureaux: [] as BureauResponse[],
         hotels: [] as HotelResponse[],
+        hotelRooms: [] as HotelChambreApi[],
 
         lastFetch: null as Date | null,
         typesLastFetch: null as Date | null
@@ -211,13 +213,20 @@ export const usePropertyStore = defineStore('properties', {
 
         async fetchHotels(apiBase: string) {
             try {
-                const data = await $fetch<{ data: HotelResponse[] }>(
-                    joinApi(apiBase, ApiEndpoints.propertyHotelsPublic),
-                    { timeout: 10000 }
-                )
+                const [data, roomsPayload] = await Promise.all([
+                    $fetch<{ data: HotelResponse[] }>(
+                        joinApi(apiBase, ApiEndpoints.propertyHotelsPublic),
+                        { timeout: 10000 }
+                    ),
+                    $fetch<{ data?: HotelChambreApi[] }>(
+                        joinApi(apiBase, ApiEndpoints.propertyHotelRoomsPublic),
+                        { timeout: 10000 }
+                    ).catch(() => ({ data: [] as HotelChambreApi[] })),
+                ])
                 if (data && data.data) {
                     this.hotels = data.data
                 }
+                this.hotelRooms = Array.isArray(roomsPayload?.data) ? roomsPayload.data : []
             } catch (e) {
                 console.error("Failed fetch hotels", e)
             }
