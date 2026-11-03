@@ -168,12 +168,14 @@ export const useSolicitationStore = defineStore('solicitations', {
         isUpdating: false,
         userSolicitations: [] as SolicitationListItem[],
         hostSolicitations: [] as SolicitationListItem[],
+        userSolicitationsOwnerId: null as number | null,
+        hostSolicitationsOwnerId: null as number | null,
+        userSolicitationsLoaded: false,
+        hostSolicitationsLoaded: false,
     }),
 
     actions: {
         async fetchUserSolicitations(force = false): Promise<SolicitationListItem[]> {
-            if (!force && this.userSolicitations.length > 0) return this.userSolicitations
-
             const auth = useAuthStore()
             const config = useRuntimeConfig()
             if (!auth.isAuthenticated || !auth.user) auth.checkSession()
@@ -181,6 +183,9 @@ export const useSolicitationStore = defineStore('solicitations', {
 
             const userId = auth.user!.userId || (auth.user as { id?: number }).id
             if (userId == null) return []
+            if (!force && this.userSolicitationsLoaded && this.userSolicitationsOwnerId === userId) {
+                return this.userSolicitations
+            }
 
             const apiBase = config.public.apiBase as string
             const url = joinApi(apiBase, `${ApiEndpoints.sollicitationsByUser}${userId}`)
@@ -196,6 +201,8 @@ export const useSolicitationStore = defineStore('solicitations', {
                 }
                 out.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
                 this.userSolicitations = out
+                this.userSolicitationsOwnerId = userId
+                this.userSolicitationsLoaded = true
                 return out
             } catch (e) {
                 console.warn('[solicitations user]', e)
@@ -204,8 +211,6 @@ export const useSolicitationStore = defineStore('solicitations', {
         },
 
         async fetchHostSolicitations(force = false): Promise<SolicitationListItem[]> {
-            if (!force && this.hostSolicitations.length > 0) return this.hostSolicitations
-
             const auth = useAuthStore()
             const config = useRuntimeConfig()
             if (!auth.isAuthenticated || !auth.user) auth.checkSession()
@@ -213,6 +218,9 @@ export const useSolicitationStore = defineStore('solicitations', {
 
             const userId = auth.user!.userId || (auth.user as { id?: number }).id
             if (userId == null) return []
+            if (!force && this.hostSolicitationsLoaded && this.hostSolicitationsOwnerId === userId) {
+                return this.hostSolicitations
+            }
 
             const apiBase = config.public.apiBase as string
             const url = joinApi(apiBase, `${ApiEndpoints.sollicitationsByHost}${userId}`)
@@ -228,6 +236,8 @@ export const useSolicitationStore = defineStore('solicitations', {
                 }
                 out.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
                 this.hostSolicitations = out
+                this.hostSolicitationsOwnerId = userId
+                this.hostSolicitationsLoaded = true
                 return out
             } catch (e) {
                 console.warn('[solicitations host]', e)

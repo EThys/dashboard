@@ -31,9 +31,8 @@ const props = withDefaults(
 
 const solStore = useSolicitationStore()
 const auth = useAuthStore()
-const list = ref<SolicitationListItem[]>([])
-const loading = ref(true)
 const showBannerSubtitle = ref(true)
+const refreshing = ref(false)
 
 onMounted(() => {
     const seen = localStorage.getItem('casanayo_sol_banner_seen')
@@ -46,6 +45,21 @@ onMounted(() => {
 
 const activeTab = ref(0)
 const perspective = ref<'mine' | 'host'>('mine')
+
+function cachedSolicitations() {
+    const uid = auth.user?.userId || (auth.user as { id?: number } | null)?.id
+    if (perspective.value === 'mine') {
+        return solStore.userSolicitationsLoaded && solStore.userSolicitationsOwnerId === uid
+            ? solStore.userSolicitations
+            : null
+    }
+    return solStore.hostSolicitationsLoaded && solStore.hostSolicitationsOwnerId === uid
+        ? solStore.hostSolicitations
+        : null
+}
+
+const list = ref<SolicitationListItem[]>(cachedSolicitations() ?? [])
+const loading = ref(cachedSolicitations() === null)
 
 const tabs = [
     { key: 'ALL', label: 'Toutes' },
@@ -63,11 +77,12 @@ const currentPage = ref(1)
 const itemsPerPage = 6
 
 async function load(force = false) {
-    const hasData = perspective.value === 'mine' 
-        ? solStore.userSolicitations.length > 0 
-        : solStore.hostSolicitations.length > 0
-
-    if (!hasData || force) {
+    const cached = cachedSolicitations()
+    if (cached) {
+        list.value = cached
+        loading.value = false
+        if (force) refreshing.value = true
+    } else {
         loading.value = true
     }
 
@@ -77,11 +92,12 @@ async function load(force = false) {
                 ? await solStore.fetchUserSolicitations(force)
                 : await solStore.fetchHostSolicitations(force)
         list.value = data
-        currentPage.value = 1
+        if (!cached) currentPage.value = 1
     } catch (e) {
         console.error(e)
     } finally {
         loading.value = false
+        refreshing.value = false
     }
 }
 
@@ -275,10 +291,10 @@ async function handleDownloadSolicitationPdf() {
             type="button"
             variant="secondary"
             class="h-11 shrink-0 rounded-xl border-0 bg-white/15 font-bold text-white hover:bg-white/25"
-            :disabled="loading"
+            :disabled="refreshing"
             @click="load(true)"
           >
-            <Loader2 v-if="loading" class="mr-2 size-4 animate-spin" />
+            <Loader2 v-if="refreshing" class="mr-2 size-4 animate-spin" />
             <RefreshCw v-else class="mr-2 size-4" />
             Actualiser
           </Button>
@@ -376,22 +392,10 @@ async function handleDownloadSolicitationPdf() {
 
       <div v-else class="relative">
         <div
-          v-if="loading && list.length > 0"
-          class="pointer-events-auto absolute inset-0 z-20 flex items-start justify-center rounded-3xl bg-white/80 pt-24 backdrop-blur-sm"
-        >
-          <Loader2 class="size-10 animate-spin text-[#1976D2]" />
-        </div>
-
-        <div
           v-if="!displayed.length"
           class="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-slate-200 bg-white py-20 text-center"
         >
-          <Loader2
-            v-if="loading"
-            class="mb-4 size-12 animate-spin text-[#1976D2]"
-          />
-          <template v-else>
-            <Wrench class="mb-4 size-14 text-[#1976D2]/30" />
+          <Wrench class="mb-4 size-14 text-[#1976D2]/30" />
             <p class="text-lg font-bold text-slate-800">Aucune sollicitation ici</p>
             <p class="mt-2 max-w-sm text-sm text-slate-500">
               Changez d’onglet ou de liste (mes demandes / hôte).
@@ -403,7 +407,6 @@ async function handleDownloadSolicitationPdf() {
             >
               Voir les services
             </NuxtLink>
-          </template>
         </div>
 
         <div v-else class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
