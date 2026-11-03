@@ -264,6 +264,7 @@ export const ApiEndpoints = {
     deletePrestation: 'prestations/',
     updatePrestation: `${v}/private/prestations/update/`,
 
+    publicCotation: `${v}/public/cotation`,
     cotation: `${v}/private/cotation`,
     deleteCotation: `${v}/protected/cotation/delete`,
 

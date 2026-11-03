@@ -5,6 +5,9 @@ import VueEasyLightbox from 'vue-easy-lightbox'
 import { formatCurrency, getCurrencyLabel } from '@/utils/currency'
 import { encodeId, decodeId } from '@/utils/urlObfuscator'
 import { useServiceStore } from '@/stores/services'
+import { useAuthStore } from '@/stores/auth'
+import { useSolicitationStore } from '@/stores/solicitations'
+import { toast } from 'vue-sonner'
 import DetailShimmer from '@/components/front/DetailShimmer.vue'
 import ServiceSolicitationModal from '@/components/modals/ServiceSolicitationModal.vue'
 import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
@@ -18,6 +21,8 @@ const router = useRouter()
 const config = useRuntimeConfig()
 const serviceId = computed(() => decodeId(route.params.id as string))
 const serviceStore = useServiceStore()
+const authStore = useAuthStore()
+const solicitationStore = useSolicitationStore()
 
 // Local fallback for direct ID fetch
 const fetchedService = ref<any>(null)
@@ -90,8 +95,6 @@ const service = computed(() => {
             isVerified: true
         },
         images: images.map((img: any) => img.path),
-        rating: 4.9,
-        reviews: 12
     }
 })
 
@@ -176,6 +179,176 @@ const shareService = async () => {
   }
 }
 
+type ServiceReview = {
+    id: number
+    userId: number | null
+    sollicitationId: number | null
+    name: string
+    profile: string | null
+    cote: number
+    commentaire: string
+    createdAt: string | null
+}
+
+const reviews = ref<ServiceReview[]>([])
+const reviewsLoading = ref(true)
+
+function reviewPrestationId(raw: any): number | null {
+    const direct = Number(raw?.prestationId)
+    if (Number.isFinite(direct) && direct > 0) return direct
+    const sol = raw?.sollicitation
+    const nested = Number(sol?.prestationId ?? sol?.prestation?.id)
+    return Number.isFinite(nested) && nested > 0 ? nested : null
+}
+
+async function loadReviews(prestationId: number) {
+    reviewsLoading.value = true
+    try {
+        const data = await $fetch<any>(
+            joinApi(config.public.apiBase as string, ApiEndpoints.publicCotation)
+        )
+        const raw = Array.isArray(data) ? data : (data?.cotation ?? data?.cotations ?? [])
+        reviews.value = (Array.isArray(raw) ? raw : [])
+            .filter((item: any) => reviewPrestationId(item) === prestationId)
+            .map((item: any) => ({
+                id: Number(item.id) || 0,
+                userId: Number(item.userId) || null,
+                sollicitationId: Number(item.sollicitationId) || null,
+                name: String(item.name || item.user?.fullName || item.user?.username || 'Client').trim(),
+                profile: item.profile || item.user?.profilePicture || null,
+                cote: Math.min(5, Math.max(0, Number(item.cote) || 0)),
+                commentaire: String(item.commentaire || '').trim(),
+                createdAt: item.createdAt ? String(item.createdAt) : null,
+            }))
+            .sort((a: ServiceReview, b: ServiceReview) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+    } catch {
+        reviews.value = []
+    } finally {
+        reviewsLoading.value = false
+    }
+}
+
+const averageRating = computed(() => {
+    if (!reviews.value.length) return null
+    const total = reviews.value.reduce((sum, review) => sum + review.cote, 0)
+    return total / reviews.value.length
+})
+
+const averageLabel = computed(() =>
+    averageRating.value == null ? '' : averageRating.value.toFixed(1).replace('.', ',')
+)
+
+function formatReviewDate(value: string | null) {
+    if (!value) return ''
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return ''
+    return new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }).format(date)
+}
+
+function reviewInitials(name: string) {
+    const parts = name.split(/\s+/).filter(Boolean)
+    if (!parts.length) return '?'
+    if (parts.length === 1) return parts[0].slice(0, 1).toUpperCase()
+    return (parts[0].slice(0, 1) + parts[parts.length - 1].slice(0, 1)).toUpperCase()
+}
+
+const currentUserId = computed(() => {
+    const raw = authStore.user?.userId ?? (authStore.user as { id?: number } | null)?.id
+    const id = Number(raw)
+    return Number.isFinite(id) && id > 0 ? id : null
+})
+
+const mySolicitation = computed(() => {
+    const prestationId = Number(serviceId.value)
+    if (!prestationId || !currentUserId.value) return null
+    const mine = solicitationStore.userSolicitations
+        .filter((item) => Number(item.prestationId) === prestationId)
+        .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+    const reviewed = reviews.value.find((review) => review.userId === currentUserId.value)
+    if (reviewed?.sollicitationId) {
+        return mine.find((item) => item.id === reviewed.sollicitationId) ?? mine[0] ?? null
+    }
+    return mine[0] ?? null
+})
+
+const myReview = computed(() =>
+    reviews.value.find((review) => review.userId != null && review.userId === currentUserId.value) ?? null
+)
+
+const reviewCote = ref(0)
+const reviewComment = ref('')
+const reviewSending = ref(false)
+const solicitationsReady = ref(false)
+
+function syncReviewForm() {
+    reviewCote.value = myReview.value?.cote ? Math.round(myReview.value.cote) : 0
+    reviewComment.value = myReview.value?.commentaire || ''
+}
+
+async function loadMySolicitations() {
+    authStore.checkSession()
+    solicitationsReady.value = false
+    if (!authStore.isAuthenticated) {
+        solicitationsReady.value = true
+        return
+    }
+    await solicitationStore.fetchUserSolicitations(true)
+    solicitationsReady.value = true
+    syncReviewForm()
+}
+
+async function submitReview() {
+    if (!authStore.isAuthenticated || !authStore.token || !currentUserId.value) {
+        toast.error('Connectez-vous pour laisser un avis.')
+        return navigateTo(`/login?redirect=${encodeURIComponent(route.fullPath)}`)
+    }
+    const solicitation = mySolicitation.value
+    if (!solicitation) {
+        toast.error('Demandez d’abord ce service pour pouvoir le noter.')
+        return
+    }
+    if (reviewCote.value < 1) {
+        toast.error('Choisissez une note de 1 à 5.')
+        return
+    }
+    const commentaire = reviewComment.value.trim()
+    if (commentaire.length < 2) {
+        toast.error('Écrivez quelques mots sur votre expérience.')
+        return
+    }
+
+    reviewSending.value = true
+    try {
+        await $fetch(joinApi(config.public.apiBase as string, ApiEndpoints.cotation), {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${authStore.token}` },
+            body: {
+                userId: currentUserId.value,
+                sollicitationId: solicitation.id,
+                commentaire,
+                cote: reviewCote.value,
+            },
+        })
+        toast.success(myReview.value ? 'Votre avis a été mis à jour.' : 'Merci, votre avis est publié.')
+        await loadReviews(Number(serviceId.value))
+        syncReviewForm()
+    } catch (error: any) {
+        const message = error?.data?.message || error?.data?.detailMessage || 'Impossible d’enregistrer l’avis.'
+        toast.error(String(message))
+    } finally {
+        reviewSending.value = false
+    }
+}
+
+watch(serviceId, (id) => {
+    if (id) loadReviews(Number(id))
+}, { immediate: true })
+
+watch(myReview, () => syncReviewForm())
+
+authStore.checkSession()
+onMounted(loadMySolicitations)
+
 // Modal Logic
 const isModalOpen = ref(false)
 const contactProvider = () => {
@@ -256,11 +429,11 @@ const contactProvider = () => {
                             <h1 class="text-3xl md:text-5xl lg:text-6xl font-black text-white leading-tight drop-shadow-lg">
                                 {{ service.title }}
                             </h1>
-                            <div class="flex items-center gap-4 text-white/90">
+                            <div v-if="reviews.length" class="flex items-center gap-4 text-white/90">
                             <div class="flex items-center gap-1.5">
                                     <Star class="h-5 w-5 text-yellow-500 fill-yellow-500" />
-                                    <span class="font-bold text-lg">{{ service.rating }}</span>
-                                    <span class="text-sm opacity-80">({{ service.reviews }} avis)</span>
+                                    <span class="font-bold text-lg">{{ averageLabel }}</span>
+                                    <span class="text-sm opacity-80">({{ reviews.length }} avis)</span>
                             </div>
                             </div>
                         </div>
@@ -303,6 +476,110 @@ const contactProvider = () => {
                             </h2>
                             <div class="prose dark:prose-invert max-w-none text-muted-foreground leading-relaxed whitespace-pre-line">
                                 {{ service.description }}
+                            </div>
+                        </div>
+
+                        <!-- Avis -->
+                        <div>
+                            <div class="flex items-end justify-between gap-4 mb-6">
+                                <h2 class="text-2xl font-bold">Avis clients</h2>
+                                <p v-if="reviews.length" class="text-sm text-muted-foreground">
+                                    {{ averageLabel }} / 5 · {{ reviews.length }} avis
+                                </p>
+                            </div>
+
+                            <div v-if="!authStore.isAuthenticated" class="mb-6 rounded-3xl border border-border/50 bg-card p-6">
+                                <p class="font-bold">Vous avez utilisé ce service ?</p>
+                                <p class="mt-1 text-sm text-muted-foreground">Connectez-vous pour laisser une note et un commentaire.</p>
+                                <NuxtLink
+                                    :to="`/login?redirect=${encodeURIComponent(route.fullPath)}`"
+                                    class="mt-4 inline-flex h-11 items-center rounded-xl bg-primary px-5 text-sm font-bold text-white"
+                                >
+                                    Se connecter
+                                </NuxtLink>
+                            </div>
+                            <div v-else-if="!solicitationsReady" class="mb-6 rounded-3xl border border-border/50 bg-card p-6 text-sm text-muted-foreground">
+                                Vérification de votre demande...
+                            </div>
+                            <form v-else-if="mySolicitation" class="mb-6 rounded-3xl border border-border/50 bg-card p-6 shadow-sm" @submit.prevent="submitReview">
+                                <p class="font-bold">{{ myReview ? 'Modifier mon avis' : 'Laisser un avis' }}</p>
+                                <p class="mt-1 text-sm text-muted-foreground">Votre note aide les autres à choisir ce prestataire.</p>
+                                <div class="mt-4 flex items-center gap-1">
+                                    <button
+                                        v-for="star in 5"
+                                        :key="star"
+                                        type="button"
+                                        class="rounded-full p-1"
+                                        :aria-label="`${star} étoile${star > 1 ? 's' : ''}`"
+                                        @click="reviewCote = star"
+                                    >
+                                        <Star
+                                            class="h-7 w-7"
+                                            :class="star <= reviewCote ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground/40'"
+                                        />
+                                    </button>
+                                </div>
+                                <textarea
+                                    v-model="reviewComment"
+                                    rows="3"
+                                    maxlength="500"
+                                    placeholder="Décrivez votre expérience"
+                                    class="mt-4 w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-primary"
+                                />
+                                <Button type="submit" class="mt-4 rounded-xl" :disabled="reviewSending">
+                                    {{ reviewSending ? 'Envoi...' : (myReview ? 'Mettre à jour' : 'Publier mon avis') }}
+                                </Button>
+                            </form>
+                            <div v-else class="mb-6 rounded-3xl border border-dashed border-border bg-muted/30 p-6 text-sm text-muted-foreground">
+                                Envoyez d’abord une demande pour ce service. Vous pourrez ensuite le noter.
+                            </div>
+
+                            <div v-if="reviewsLoading" class="rounded-3xl border border-border/50 bg-card p-6 text-sm text-muted-foreground">
+                                Chargement des avis...
+                            </div>
+                            <div v-else-if="!reviews.length" class="rounded-3xl border border-dashed border-border bg-muted/30 p-8 text-center text-muted-foreground">
+                                Aucun avis pour le moment.
+                            </div>
+                            <div v-else class="space-y-4">
+                                <article
+                                    v-for="review in reviews"
+                                    :key="review.id"
+                                    class="rounded-3xl border border-border/50 bg-card p-6 shadow-sm"
+                                >
+                                    <div class="flex items-start gap-4">
+                                        <img
+                                            v-if="review.profile"
+                                            :src="review.profile"
+                                            :alt="review.name"
+                                            class="h-12 w-12 rounded-full object-cover"
+                                        />
+                                        <div
+                                            v-else
+                                            class="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary"
+                                        >
+                                            {{ reviewInitials(review.name) }}
+                                        </div>
+                                        <div class="min-w-0 flex-1">
+                                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                                <h3 class="font-bold">{{ review.name }}</h3>
+                                                <time v-if="review.createdAt" class="text-xs text-muted-foreground">
+                                                    {{ formatReviewDate(review.createdAt) }}
+                                                </time>
+                                            </div>
+                                            <div class="mt-1 flex items-center gap-0.5">
+                                                <Star
+                                                    v-for="star in 5"
+                                                    :key="star"
+                                                    class="h-4 w-4"
+                                                    :class="star <= Math.round(review.cote) ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground/30'"
+                                                />
+                                            </div>
+                                            <p v-if="review.commentaire" class="mt-3 text-sm leading-relaxed text-muted-foreground whitespace-pre-line">
+                                                {{ review.commentaire }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </article>
                             </div>
                         </div>
 
