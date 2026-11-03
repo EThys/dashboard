@@ -1,1 +1,0 @@
-import{bn as i,N as r,U as a}from"./BpQwhZGR.js";const s=i((t,o)=>{const e=r();if(e.isAuthenticated&&e.user&&!e.user.certified&&t.path!=="/compte/certification-requise"&&t.path!=="/login")return a("/compte/certification-requise")});export{s as default};
