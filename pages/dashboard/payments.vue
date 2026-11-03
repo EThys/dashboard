@@ -193,55 +193,42 @@ function formatAmount(amount: string | number | undefined, code: string | undefi
       </div>
     </div>
 
-    <div class="grid gap-4 lg:grid-cols-2">
-      <!-- Taux de change -->
-      <div class="rounded-2xl border border-border bg-card p-6 shadow-sm">
-        <div class="mb-4 flex items-center gap-2">
-          <TrendingUp class="h-5 w-5 text-primary" />
-          <h2 class="text-lg font-bold">Taux de référence</h2>
+    <div class="grid items-start gap-3 sm:grid-cols-2">
+      <div class="rounded-xl border border-border bg-card px-4 py-3 shadow-sm">
+        <div class="flex items-center justify-between gap-3">
+          <div class="flex min-w-0 items-center gap-2">
+            <TrendingUp class="h-4 w-4 shrink-0 text-primary" />
+            <h2 class="truncate text-sm font-bold">Taux de référence</h2>
+          </div>
+          <p class="shrink-0 text-base font-black text-primary">
+            1 USD = {{ devises.find((d: any) => d.code === 'CDF')?.taux || devises.find((d: any) => d.code === 'CDF')?.tauxLocal || 2200 }} FC
+          </p>
         </div>
-        <p class="mb-4 text-sm text-muted-foreground">
-          Le champ <span class="font-medium">taux</span> sert de base aux conversions côté application.
-        </p>
-        <div v-if="!devises.length && !pending" class="text-sm text-muted-foreground">
+        <p v-if="!devises.length && !pending" class="mt-1 text-xs text-muted-foreground">
           Aucune devise chargée.
+        </p>
+      </div>
+
+      <div class="rounded-xl border border-border bg-card px-4 py-3 shadow-sm">
+        <div class="flex items-center gap-2">
+          <DollarSign class="h-4 w-4 shrink-0 text-emerald-500" />
+          <h2 class="text-sm font-bold">Volume encaissé</h2>
         </div>
-        <div v-else class="space-y-3">
-          <div v-if="devises.length > 0" class="flex flex-col items-center justify-center rounded-xl bg-primary/10 p-6 text-center shadow-inner">
-            <p class="text-xs font-semibold uppercase text-muted-foreground mb-2">Conversion courante de la plateforme</p>
-            <span class="text-2xl font-black text-primary">
-              1 USD = {{ devises.find((d: any) => d.code === 'CDF')?.taux || devises.find((d: any) => d.code === 'CDF')?.tauxLocal || 2200 }} FC
+        <div v-if="Object.keys(successTotals).length > 0" class="mt-2 flex flex-wrap gap-2">
+          <div
+            v-for="(val, cur) in successTotals"
+            :key="cur"
+            class="inline-flex items-center gap-2 rounded-lg border border-emerald-100 bg-emerald-50/40 px-3 py-1.5 dark:border-emerald-900/30 dark:bg-emerald-950/20"
+          >
+            <Check class="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span class="text-sm font-black text-emerald-600 dark:text-emerald-400">
+              {{ val.toLocaleString('fr-CD') }} {{ cur }}
             </span>
           </div>
         </div>
-      </div>
-
-      <!-- Totaux Succès -->
-      <div class="rounded-2xl border border-border bg-card p-6 shadow-sm">
-        <div class="mb-4 flex items-center gap-2">
-          <DollarSign class="h-5 w-5 text-emerald-500" />
-          <h2 class="text-lg font-bold">Volume Total Encaissé (Succès)</h2>
-        </div>
-        <div v-if="Object.keys(successTotals).length > 0" class="grid gap-4 sm:grid-cols-2">
-          <div 
-            v-for="(val, cur) in successTotals" 
-            :key="cur"
-            class="flex items-center justify-between rounded-xl border border-emerald-100 bg-emerald-50/30 p-4 dark:border-emerald-900/30 dark:bg-emerald-950/20"
-          >
-            <div>
-               <p class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Total {{ cur }}</p>
-               <p class="text-2xl font-black text-emerald-600 dark:text-emerald-400">
-                 {{ val.toLocaleString('fr-CD') }} <span class="text-sm font-bold">{{ cur }}</span>
-               </p>
-            </div>
-            <div class="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 dark:bg-emerald-900 dark:text-emerald-400">
-               <Check class="h-5 w-5" />
-            </div>
-          </div>
-        </div>
-        <div v-else class="text-sm text-muted-foreground py-4">
-          Aucun paiement réussi pour l'instant avec les filtres actuels.
-        </div>
+        <p v-else class="mt-1 text-xs text-muted-foreground">
+          Aucun paiement réussi avec les filtres actuels.
+        </p>
       </div>
     </div>
 
