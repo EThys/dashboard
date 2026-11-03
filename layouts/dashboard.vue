@@ -116,7 +116,7 @@ onClickOutside(userMenuRef, () => {
     isUserMenuOpen.value = false
 })
 
-function goTo(event: MouseEvent, path: string) {
+async function goTo(event: MouseEvent, path: string) {
   if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return
   event.preventDefault()
   isMobileMenuOpen.value = false
@@ -128,15 +128,11 @@ function goTo(event: MouseEvent, path: string) {
       query[key] = value
     })
   }
-  navigateTo({ path: pathname, query }).catch(() => {
-    window.location.assign(path)
-  }).finally(() => {
-    window.setTimeout(() => {
-      if (decodeURIComponent(route.fullPath) !== decodeURIComponent(path)) {
-        window.location.assign(path)
-      }
-    }, 400)
-  })
+  try {
+    await navigateTo({ path: pathname, query })
+  } catch {
+    await router.push({ path: pathname, query })
+  }
 }
 
 function isItemActive(path: string) {
