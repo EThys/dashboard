@@ -4,6 +4,7 @@ import { MapPin, Phone, Compass } from 'lucide-vue-next'
 import { Button } from '@/components/ui'
 import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
 import { encodeId } from '@/utils/urlObfuscator'
+import { dateFromMediaUrl, parseApiDay } from '@/utils/hotelTimeline'
 import { useAuthStore } from '@/stores/auth'
 import type { AgenceListEntry } from '@/types/agency'
 import ListPagination from '@/components/dashboard/ListPagination.vue'
@@ -24,8 +25,33 @@ const { data: publicRows, pending: pendingPublic } = await useAsyncData(
 )
 
 const agencyPage = ref(1)
-const agencyPageSize = 6
-const agencyRows = computed(() => publicRows.value ?? [])
+const agencyPageSize = 12
+
+function agencyListed(row: AgenceListEntry) {
+  const agence = row.agence as AgenceListEntry['agence'] & { available?: boolean; active?: boolean }
+  return agence.available !== false && agence.active !== false
+}
+
+function agencyStamp(row: AgenceListEntry) {
+  const agence = row.agence as AgenceListEntry['agence'] & { createdAt?: unknown; dateCreated?: unknown }
+  const parsed = parseApiDay(agence.createdAt) || parseApiDay(agence.dateCreated)
+  if (parsed) return parsed.getTime()
+  const media = dateFromMediaUrl(agence.logo || '')
+  return media ? media.getTime() : 0
+}
+
+const agencyRows = computed(() => {
+  const rows = [...(publicRows.value ?? [])]
+  rows.sort((a, b) => {
+    const rankA = agencyListed(a) ? 0 : 1
+    const rankB = agencyListed(b) ? 0 : 1
+    if (rankA !== rankB) return rankA - rankB
+    const delta = agencyStamp(b) - agencyStamp(a)
+    if (delta !== 0) return delta
+    return b.agence.id - a.agence.id
+  })
+  return rows
+})
 const pagedAgencies = computed(() => {
   const start = (agencyPage.value - 1) * agencyPageSize
   return agencyRows.value.slice(start, start + agencyPageSize)

@@ -35,6 +35,7 @@ import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
 import { reloadNuxtApp } from '#app'
 import { unwrapArrayPayload } from '@/utils/apiListResponse'
 import { formatListingPlace } from '@/utils/propertyNormalizer'
+import { dateFromMediaUrl, parseApiDay, publishedOn } from '@/utils/hotelTimeline'
 
 const propertyStore = usePropertyStore()
 const serviceStore = useServiceStore()
@@ -63,7 +64,77 @@ serviceStore.fetchCategories(config.public.apiBase)
 const currentFilter = ref('all')
 const searchQuery = ref('')
 const currentPage = ref(1)
-const itemsPerPage = 6
+const itemsPerPage = 12
+
+function collectMediaUrls(value: unknown, into: string[], depth = 0) {
+  if (value == null || depth > 6) return
+  if (typeof value === 'string') {
+    if (!value.startsWith('http')) return
+    const decoded = decodeURIComponent(value).toLowerCase()
+    if (/profil|avatar|gravatar/.test(decoded)) return
+    into.push(value)
+    return
+  }
+  if (Array.isArray(value)) {
+    for (const entry of value) collectMediaUrls(entry, into, depth + 1)
+    return
+  }
+  if (typeof value === 'object') {
+    for (const entry of Object.values(value as Record<string, unknown>)) collectMediaUrls(entry, into, depth + 1)
+  }
+}
+
+function publicationDate(entity: Record<string, unknown>, source: unknown) {
+  const imageUrls: string[] = []
+  collectMediaUrls(source, imageUrls)
+  const extraDates: unknown[] = []
+  const structure = source && typeof source === 'object' ? (source as { structure?: unknown }).structure : undefined
+  if (Array.isArray(structure)) {
+    for (const entry of structure) {
+      if (!entry || typeof entry !== 'object') continue
+      const row = entry as { chambre?: Record<string, unknown> }
+      const room = row.chambre && typeof row.chambre === 'object' ? row.chambre : (entry as Record<string, unknown>)
+      extraDates.push(room.createdAt, room.updatedAt)
+    }
+  }
+  const when = publishedOn({
+    createdAt: entity.createdAt ?? entity.dateCreated,
+    imageUrls,
+    extraDates,
+  })
+  return {
+    date: when
+      ? when.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
+      : '—',
+    rawDate: when || new Date(0),
+  }
+}
+
+function listingStamp(item: { rawDate?: Date; id?: number; image?: string; raw?: Record<string, unknown> }) {
+  const direct = item.rawDate instanceof Date ? item.rawDate.getTime() : Number.NaN
+  if (Number.isFinite(direct) && direct > 0) return direct
+  const raw = item.raw || {}
+  const entity = (raw.property || raw.terrain || raw.bureau || raw.festive || raw.funeraire || raw.hotel || raw.prestation || raw) as Record<string, unknown>
+  const parsed = parseApiDay(entity.createdAt ?? entity.dateCreated ?? entity.updatedAt)
+  if (parsed) return parsed.getTime()
+  const media = typeof item.image === 'string' ? dateFromMediaUrl(item.image) : null
+  return media ? media.getTime() : 0
+}
+
+function compareListedThenRecent(
+  a: { rawDate?: Date; id?: number; image?: string; raw?: Record<string, unknown> },
+  b: { rawDate?: Date; id?: number; image?: string; raw?: Record<string, unknown> },
+  direction: 'newest' | 'oldest',
+  listed: (item: typeof a) => boolean,
+) {
+  const rankA = listed(a) ? 0 : 1
+  const rankB = listed(b) ? 0 : 1
+  if (rankA !== rankB) return rankA - rankB
+  const delta = listingStamp(b) - listingStamp(a)
+  if (delta !== 0) return direction === 'oldest' ? -delta : delta
+  const idDelta = Number(b.id ?? 0) - Number(a.id ?? 0)
+  return direction === 'oldest' ? -idDelta : idDelta
+}
 
 function moneyLabel(amount: number | string, code?: string | number | null) {
   const raw = String(code ?? '').toUpperCase()
@@ -297,8 +368,7 @@ const allPublications = computed(() => {
       status: status,
       author: publicationAuthor(item, allPropertiesData.value?.owners),
       description: p.description || 'Aucune description fournie.',
-      date: new Date(p.createdAt || p.dateCreated).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }),
-      rawDate: new Date(p.createdAt || p.dateCreated),
+      ...publicationDate(p, item),
       transactionType: p.transactionType || 'vente',
       deviseCode: item.devise?.code,
       rawType: typeName,
@@ -451,8 +521,7 @@ const allServices = computed(() => {
       status: p.active ? 'Active' : 'Inactive',
       author: item.postBy?.replace('@@', '') || 'Inconnu',
       description: p.description || 'Aucune description fournie.',
-      date: new Date(p.dateCreated).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }),
-      rawDate: new Date(p.dateCreated),
+      ...publicationDate(p, item),
       raw: item
     }
   })
@@ -518,14 +587,14 @@ const filteredServices = computed(() => {
         else if (status === 'certified') list = list.filter((s: any) => s.raw.prestation.certified)
     }
 
-    // Sorting
-    list = [...list].sort((a: any, b: any) => {
-        if (serviceSortOrder.value === 'newest') {
-            return b.rawDate.getTime() - a.rawDate.getTime()
-        } else {
-            return a.rawDate.getTime() - b.rawDate.getTime()
-        }
-    })
+    list = [...list].sort((a: any, b: any) =>
+        compareListedThenRecent(
+            a,
+            b,
+            serviceSortOrder.value === 'oldest' ? 'oldest' : 'newest',
+            (item) => item.status === 'Active',
+        ),
+    )
 
     return list
 })
@@ -617,16 +686,14 @@ const filteredPublications = computed(() => {
     pubs = pubs.filter((p: any) => p.rawType === propertyTypeFilter.value)
   }
 
-  // Sorting
-  pubs.sort((a: any, b: any) => {
-    if (sortOrder.value === 'newest') {
-      return b.rawDate.getTime() - a.rawDate.getTime()
-    } else {
-      return a.rawDate.getTime() - b.rawDate.getTime()
-    }
-  })
-
-  return pubs
+  return [...pubs].sort((a: any, b: any) =>
+    compareListedThenRecent(
+      a,
+      b,
+      sortOrder.value === 'oldest' ? 'oldest' : 'newest',
+      (item) => item.status === 'Active',
+    ),
+  )
 })
 
 const filteredPropertyPublications = computed(() =>
@@ -702,7 +769,9 @@ const filteredHotelPublications = computed(() => {
       p.author.toLowerCase().includes(q)
     )
   }
-  return pubs
+  return [...pubs].sort((a, b) =>
+    compareListedThenRecent(a, b, 'newest', (item) => isHotelListed(item)),
+  )
 })
 
 const hotelTotalPages = computed(() => Math.ceil(filteredHotelPublications.value.length / itemsPerPage))
