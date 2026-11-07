@@ -245,11 +245,11 @@ const navPillActive =
                         <Compass class="size-4" />
                         Mes agences (tourisme)
                     </NuxtLink>
-                    <NuxtLink v-if="!auth.user?.premium" to="/compte/abonnement" @click="isDropdownOpen = false" class="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-primary/5 hover:text-primary rounded-2xl transition-all">
+                    <NuxtLink to="/compte/abonnement" @click="isDropdownOpen = false" class="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-primary/5 hover:text-primary rounded-2xl transition-all">
                         <CreditCard class="size-4" />
                         Abonnement Premium
                     </NuxtLink>
-                    <NuxtLink v-else to="/compte/paiements" @click="isDropdownOpen = false" class="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-primary/5 hover:text-primary rounded-2xl transition-all">
+                    <NuxtLink to="/compte/paiements" @click="isDropdownOpen = false" class="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-primary/5 hover:text-primary rounded-2xl transition-all">
                         <Receipt class="size-4" />
                         Historique des paiements
                     </NuxtLink>
@@ -432,13 +432,13 @@ const navPillActive =
                      </div>
                      Sollicitations (services)
                   </NuxtLink>
-                  <NuxtLink v-if="!auth.user?.premium" to="/compte/abonnement" @click="isMobileMenuOpen = false" class="flex items-center gap-4 text-lg font-bold text-slate-600">
+                  <NuxtLink to="/compte/abonnement" @click="isMobileMenuOpen = false" class="flex items-center gap-4 text-lg font-bold text-slate-600">
                      <div class="size-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
                         <CreditCard class="w-5 h-5" />
                      </div>
                      Abonnement Premium
                   </NuxtLink>
-                  <NuxtLink v-else to="/compte/paiements" @click="isMobileMenuOpen = false" class="flex items-center gap-4 text-lg font-bold text-slate-600">
+                  <NuxtLink to="/compte/paiements" @click="isMobileMenuOpen = false" class="flex items-center gap-4 text-lg font-bold text-slate-600">
                      <div class="size-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center">
                         <Receipt class="w-5 h-5" />
                      </div>

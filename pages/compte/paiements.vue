@@ -7,6 +7,8 @@ import {
     RefreshCw,
     Download,
     Loader2,
+    ChevronLeft,
+    ChevronRight,
 } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { usePaymentStore, type PaymentRow } from '@/stores/payment'
@@ -26,12 +28,32 @@ const auth = useAuthStore()
 const payment = usePaymentStore()
 
 const downloadingId = ref<string | number | null>(null)
+const pageSize = 8
+const currentPage = ref(1)
 
 const currentUserId = computed(() => auth.user?.userId ?? (auth.user as { id?: number } | null)?.id ?? null)
 
 const payments = computed(() =>
     payment.historyReady && payment.historyUserId === currentUserId.value ? payment.history : []
 )
+
+const totalPages = computed(() => Math.max(1, Math.ceil(payments.value.length / pageSize)))
+
+const pagedPayments = computed(() => {
+    const start = (currentPage.value - 1) * pageSize
+    return payments.value.slice(start, start + pageSize)
+})
+
+const pageFrom = computed(() => (payments.value.length ? (currentPage.value - 1) * pageSize + 1 : 0))
+const pageTo = computed(() => Math.min(currentPage.value * pageSize, payments.value.length))
+
+watch(payments, () => {
+    if (currentPage.value > totalPages.value) currentPage.value = totalPages.value
+})
+
+function goToPage(page: number) {
+    currentPage.value = Math.min(Math.max(1, page), totalPages.value)
+}
 
 const pending = computed(() => !payment.historyReady || payment.historyUserId !== currentUserId.value)
 
@@ -53,6 +75,7 @@ onMounted(() => {
 })
 
 function refresh() {
+    currentPage.value = 1
     return loadHistory(true)
 }
 
@@ -233,7 +256,7 @@ async function handleDownloadReceipt(p: PaymentRow) {
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
-            <tr v-for="p in payments" :key="String(p.id ?? p.reference)" class="hover:bg-slate-50/80">
+            <tr v-for="p in pagedPayments" :key="String(p.id ?? p.reference)" class="hover:bg-slate-50/80">
               <td class="px-5 py-4">
                 <p class="font-semibold text-slate-900">{{ p.description || 'Abonnement CasaNayo' }}</p>
                 <p v-if="p.typePayment" class="text-xs text-slate-500">{{ p.typePayment }}</p>
@@ -275,7 +298,7 @@ async function handleDownloadReceipt(p: PaymentRow) {
       <!-- Mobile -->
       <ul v-if="payments.length && !pending" class="space-y-3 md:hidden">
         <li
-          v-for="p in payments"
+          v-for="p in pagedPayments"
           :key="String(p.id ?? p.reference) + '-m'"
           class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
         >
@@ -308,6 +331,45 @@ async function handleDownloadReceipt(p: PaymentRow) {
           </button>
         </li>
       </ul>
+
+      <div
+        v-if="payments.length && !pending"
+        class="mt-6 flex flex-col items-center justify-between gap-3 sm:flex-row"
+      >
+        <p class="text-xs font-semibold text-slate-500">
+          {{ pageFrom }}–{{ pageTo }} sur {{ payments.length }}
+        </p>
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 disabled:opacity-30"
+            :disabled="currentPage === 1"
+            @click="goToPage(currentPage - 1)"
+          >
+            <ChevronLeft class="size-4" />
+          </button>
+          <button
+            v-for="page in totalPages"
+            :key="page"
+            type="button"
+            class="inline-flex h-10 min-w-10 items-center justify-center rounded-xl border px-3 text-sm font-bold transition"
+            :class="page === currentPage
+              ? 'border-[#1976D2] bg-[#1976D2] text-white'
+              : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'"
+            @click="goToPage(page)"
+          >
+            {{ page }}
+          </button>
+          <button
+            type="button"
+            class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 disabled:opacity-30"
+            :disabled="currentPage === totalPages"
+            @click="goToPage(currentPage + 1)"
+          >
+            <ChevronRight class="size-4" />
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
