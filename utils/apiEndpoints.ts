@@ -302,6 +302,7 @@ export const ApiEndpoints = {
     devises: `${v}/public/devises`,
 
     advertising: `${v}/protected/pub`,
+    publicPubs: `${v}/public/pub`,
     updateActiveAds: `${v}/protected/pub/update/active/`,
 
     webSocket: 'websocket',

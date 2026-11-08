@@ -5,7 +5,7 @@ import {
     Bell, Search, Menu, AlertOctagon, Calendar,
     Home, Briefcase, ChevronLeft, User as UserIcon,
     CreditCard, Receipt, Wrench, MapPin, Building2,
-    ShieldCheck, BarChart3
+    ShieldCheck, BarChart3, Megaphone
 } from 'lucide-vue-next'
 import { Button, Sheet } from '@/components/ui'
 import { useAuthStore } from '~/stores/auth'
@@ -106,6 +106,7 @@ const sidebarSections = computed<NavSection[]>(() => {
       items: [
         { name: 'Utilisateurs', path: '/dashboard/users', icon: Users },
         { name: 'Paiements', path: '/dashboard/payments', icon: Receipt },
+        { name: 'Publicité', path: '/dashboard/publicites', icon: Megaphone },
         { name: 'Paramètres', path: '/compte/profile', icon: Settings },
       ],
     },
