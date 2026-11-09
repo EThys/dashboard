@@ -11,6 +11,7 @@ import { toast } from 'vue-sonner'
 import DetailShimmer from '@/components/front/DetailShimmer.vue'
 import ServiceSolicitationModal from '@/components/modals/ServiceSolicitationModal.vue'
 import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
+import { openServiceUrl, shareMessage } from '@/utils/openListingLink'
 
 definePageMeta({
   layout: 'default'
@@ -78,8 +79,8 @@ const service = computed(() => {
         id: p.id,
         title: p.title,
         description: p.description,
-        location: `${p.communeValue}, ${p.cityValue}`,
-        fullAddress: `${p.address}, ${p.communeValue}, ${p.cityValue}`,
+        location: [p.communeValue, p.cityValue].filter(Boolean).join(', '),
+        fullAddress: [p.address, p.quartierValue, p.communeValue, p.cityValue].filter(Boolean).join(', '),
         price: formatCurrency(p.minPrice, currencyCode),
         minPrice: p.minPrice,
         maxPrice: p.maxPrice,
@@ -157,18 +158,16 @@ onUnmounted(stopAutoScroll)
 // Share
 const shareService = async () => {
   const title = service.value?.title || ''
-  const location = service.value?.location || ''
+  const address = service.value?.fullAddress || service.value?.location || ''
   const price = service.value?.price || ''
-  const url = window.location.href
-  
-  const shareText = `Découvrez ce service : ${title} à ${location} à partir de ${price} ${url}`
+  const url = openServiceUrl(serviceId.value)
+  const shareText = shareMessage([title, address, price], url)
 
   if (navigator.share) {
     try {
         await navigator.share({
             title: title,
             text: shareText,
-            url: url
         })
     } catch (err) {
         console.log('Share canceled')

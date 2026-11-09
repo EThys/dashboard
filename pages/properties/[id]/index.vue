@@ -18,6 +18,7 @@ import { ShieldCheck, Calendar as CalendarIcon, Loader2 } from 'lucide-vue-next'
 import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
 import { formatCurrency } from '@/utils/currency'
 import { trackListingView } from '@/composables/useGoogleAnalytics'
+import { openPropertyUrl, shareMessage } from '@/utils/openListingLink'
 
 definePageMeta({
   layout: 'default'
@@ -122,6 +123,14 @@ const property = computed<NormalizedProperty | null>(() => {
   }
 })
 
+function knownUtility(value: number | null | undefined) {
+  return value === 80 || value === 60 || value === 40 || value === 20
+}
+
+function utilityLabel(value: number | null | undefined, info: string) {
+  return knownUtility(value) ? info : 'Non renseigné'
+}
+
 const listingViewSent = ref(false)
 watch(property, (item) => {
   if (!item || listingViewSent.value) return
@@ -194,20 +203,16 @@ const toggleFavorite = () => isFavorite.value = !isFavorite.value
 
 const shareProperty = async () => {
   const title = property.value?.title || ''
-  const address = property.value?.location || ''
+  const address = property.value?.fullAddress || property.value?.location || ''
   const price = property.value?.hideListingPrice ? '' : property.value?.price || ''
-  const url = window.location.href
-  
-  const shareText = property.value?.hideListingPrice
-    ? `Découvrez cet hébergement : ${title} — ${address}. ${url}`
-    : `Découvrez cette propriété : ${title} à ${address} à seulement ${price} ${url}`
+  const url = openPropertyUrl(propertyId.value, listingKind.value || 'property')
+  const shareText = shareMessage([title, address, price], url)
 
   if (navigator.share) {
     try {
         await navigator.share({
             title: title,
             text: shareText,
-            url: url
         })
     } catch (err) { console.log('Share canceled') }
   } else {

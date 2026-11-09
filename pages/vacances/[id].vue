@@ -8,6 +8,7 @@ import { encodeId, decodeId } from '@/utils/urlObfuscator'
 import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
 import { formatCurrency } from '@/utils/currency'
 import { toast } from 'vue-sonner'
+import { openPropertyUrl, shareMessage } from '@/utils/openListingLink'
 import VueEasyLightbox from 'vue-easy-lightbox'
 import DetailShimmer from '@/components/front/DetailShimmer.vue'
 import ListingReservationModal from '@/components/modals/ListingReservationModal.vue'
@@ -73,10 +74,12 @@ const toggleFavorite = () => isFavorite.value = !isFavorite.value
 
 const shareVacance = async () => {
   const title = vacance.value?.title || ''
-  const url = window.location.href
-  const shareText = `Découvrez ce séjour : ${title}. ${url}`
+  const place = [vacance.value?.address, vacance.value?.cityValue, vacance.value?.countryValue].filter(Boolean).join(', ')
+  const price = vacance.value?.price ? `${vacance.value.price} ${vacance.value?.priceCombo || ''}`.trim() : ''
+  const url = openPropertyUrl(vacanceId.value, 'vacance')
+  const shareText = shareMessage([title, place, price], url)
   if (navigator.share) {
-    try { await navigator.share({ title, text: shareText, url }) } catch {}
+    try { await navigator.share({ title, text: shareText }) } catch {}
   } else {
     navigator.clipboard.writeText(shareText)
     toast.success('Lien copié !')

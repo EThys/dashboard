@@ -290,6 +290,7 @@ export default defineNuxtConfig({
     '/': { ssr: true },
     '/properties': { ssr: true },
     '/properties/**': { ssr: true },
+    '/open/**': { ssr: true },
     '/services': { ssr: true },
     '/services/**': { ssr: true },
     '/contact': { ssr: true },
