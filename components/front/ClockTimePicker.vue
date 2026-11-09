@@ -171,9 +171,5 @@ const minuteMarks = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]
         </button>
       </template>
     </div>
-
-    <p class="text-center text-xs text-muted-foreground">
-      Cercle intérieur 00–11, extérieur 12–23. Glissez l’aiguille pour les minutes, y compris 22:15 ou 22:37.
-    </p>
   </div>
 </template>
