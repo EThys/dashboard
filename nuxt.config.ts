@@ -172,6 +172,16 @@ export default defineNuxtConfig({
   vite: {
     plugins: [
       {
+        name: 'nuxt-app-manifest-client-stub',
+        enforce: 'pre',
+        resolveId(this: { environment?: { name?: string } }, source: string, _importer: string | undefined, options?: { ssr?: boolean }) {
+          if (source !== '#app-manifest') return null
+          const server = options?.ssr === true || this.environment?.name === 'ssr'
+          if (server) return null
+          return join(__dirname, 'lib/app-manifest.mjs')
+        },
+      },
+      {
         name: 'kendo-vue2-alias',
         enforce: 'pre',
         resolveId(source: string, importer?: string) {
