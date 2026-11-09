@@ -8,7 +8,7 @@ import CasaLoader from '@/components/ui/CasaLoader.vue'
 import { encodeId } from '@/utils/urlObfuscator'
 import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
 import { getPublicListingStatus } from '@/utils/listingAvailability'
-import { getPublicTransactionBadgeLabel, isLocationTransactionType } from '@/utils/transactionDisplay'
+import { byNewest, propertyStamp } from '@/utils/recentFirst'
 
 const config = useRuntimeConfig()
 
@@ -27,7 +27,7 @@ const { data: propertiesData, isLoading } = useQuery({
 const properties = computed(() => {
   if (!propertiesData.value?.properties) return []
   
-  return propertiesData.value.properties.slice(0, 8).map((item: any) => {
+  return byNewest(propertiesData.value.properties, propertyStamp).slice(0, 8).map((item: any) => {
     const p = item.property
     const addr = item.address
     const img = item.images?.main?.[0]?.publicPath || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&q=80&w=800'

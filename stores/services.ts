@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import type { ServiceItem } from '@/types/service'
 import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
+import { byNewest, serviceStamp } from '@/utils/recentFirst'
 
 export const useServiceStore = defineStore('services', {
     state: () => ({
@@ -24,7 +25,7 @@ export const useServiceStore = defineStore('services', {
 
     actions: {
         setServices(data: ServiceItem[]) {
-            this.services = data
+            this.services = byNewest(data, serviceStamp)
             this.lastFetch = new Date()
         },
 
@@ -37,6 +38,7 @@ export const useServiceStore = defineStore('services', {
             const existingIds = new Set(this.services.map(s => s.prestation.id))
             const newServices = data.filter(s => !existingIds.has(s.prestation.id))
             this.services.push(...newServices)
+            this.services = byNewest(this.services, serviceStamp)
         },
 
         async fetchCategories(apiBase: string) {

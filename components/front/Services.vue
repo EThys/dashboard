@@ -5,6 +5,7 @@ import { formatCurrency, getCurrencyLabel } from '@/utils/currency'
 import type { ServiceResponse } from '@/types/service'
 import { encodeId } from '@/utils/urlObfuscator'
 import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
+import { byNewest, serviceStamp } from '@/utils/recentFirst'
 
 const config = useRuntimeConfig()
 
@@ -22,7 +23,7 @@ const { data: servicesData } = await useFetch<ServiceResponse>(
 })
 
 const displayedServices = computed(() => {
-    return servicesData.value?.prestations?.slice(0, 6) || []
+    return byNewest(servicesData.value?.prestations || [], serviceStamp).slice(0, 6)
 })
 </script>
 

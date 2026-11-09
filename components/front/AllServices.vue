@@ -4,10 +4,11 @@ import { Button } from '@/components/ui'
 import { formatCurrency, getCurrencyLabel } from '@/utils/currency'
 import { encodeId } from '@/utils/urlObfuscator'
 import type { ServiceResponse } from '@/types/service'
+import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
 
 // Store
 import { useServiceStore } from '@/stores/services'
-import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
+import { byNewest, serviceStamp } from '@/utils/recentFirst'
 
 const serviceStore = useServiceStore()
 const config = useRuntimeConfig()
@@ -44,9 +45,10 @@ watch(fetchResult, (newData) => {
 }, { immediate: true })
 
 const displayedServices = computed(() => {
-    if (serviceStore.services.length) return serviceStore.services.slice(0, 8)
-    if (fetchResult.value && fetchResult.value.length) return fetchResult.value.slice(0, 8)
-    return []
+    const source = serviceStore.services.length
+        ? serviceStore.services
+        : (fetchResult.value || [])
+    return byNewest(source, serviceStamp).slice(0, 8)
 })
 
 // Scroll Logic for Mobile

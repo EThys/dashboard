@@ -36,6 +36,7 @@ import { reloadNuxtApp } from '#app'
 import { unwrapArrayPayload } from '@/utils/apiListResponse'
 import { formatListingPlace } from '@/utils/propertyNormalizer'
 import { dateFromMediaUrl, parseApiDay, publishedOn } from '@/utils/hotelTimeline'
+import { byNewest, propertyStamp } from '@/utils/recentFirst'
 
 const propertyStore = usePropertyStore()
 const serviceStore = useServiceStore()
@@ -289,12 +290,12 @@ const { data: allPropertiesData, isLoading, isError } = useQuery({
 // Sync with Pinia
 watch(allPropertiesData, (newData) => {
   if (newData) {
-    propertyStore.properties = newData.properties
-    propertyStore.terrains = newData.terrains
-    propertyStore.bureaux = newData.bureaux
-    propertyStore.hotels = newData.hotels
-    propertyStore.festives = newData.festives
-    propertyStore.funeraires = newData.funeraires
+    propertyStore.properties = byNewest(newData.properties, propertyStamp)
+    propertyStore.terrains = byNewest(newData.terrains, propertyStamp)
+    propertyStore.bureaux = byNewest(newData.bureaux, propertyStamp)
+    propertyStore.hotels = byNewest(newData.hotels, propertyStamp)
+    propertyStore.festives = byNewest(newData.festives, propertyStamp)
+    propertyStore.funeraires = byNewest(newData.funeraires, propertyStamp)
   }
 }, { immediate: true })
 
