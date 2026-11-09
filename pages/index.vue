@@ -56,6 +56,14 @@ useHead({
 const config = useRuntimeConfig()
 const propertyStore = usePropertyStore()
 
+const hasHomeListings = computed(() =>
+  propertyStore.getTerrains.length > 0 ||
+  propertyStore.getBureaux.length > 0 ||
+  propertyStore.getHotels.length > 0 ||
+  propertyStore.getFestives.length > 0 ||
+  propertyStore.getFuneraires.length > 0
+)
+
 // Fetch all property types for homepage sections
 /** CSR uniquement : évite de bloquer le SSR / Suspense si le proxy API ne répond pas */
 const { pending: isLoadingProp } = useAsyncData(
@@ -79,17 +87,15 @@ const { pending: isLoadingProp } = useAsyncData(
     <Hero />
     
     <div class="reveal"><CombinedCategories /></div>
+    <PromoStrip />
 
     <div class="reveal"><FeaturedProperties /></div>
     <div class="reveal"><AllServices /></div>
 
-    <!-- Loading State for Sections -->
-    <Transition name="fade" mode="out-in">
-        <div v-if="isLoadingProp">
-            <SectionShimmer v-for="i in 2" :key="i" />
-        </div>
+    <div v-if="isLoadingProp && !hasHomeListings">
+        <SectionShimmer v-for="i in 2" :key="i" />
+    </div>
 
-        <div v-else>
         <!-- Property Sections -->
         <div v-if="propertyStore.getTerrains && propertyStore.getTerrains.length" class="reveal">
             <PropertySection 
@@ -139,21 +145,7 @@ const { pending: isLoadingProp } = useAsyncData(
                 typeId="Espace funéraire"
             />
         </div>
-        </div>
-    </Transition>
     <div class="reveal"><HowItWorks /></div>
     <div class="reveal"><AppDownload /></div>
   </div>
 </template>
-
-<style scoped>
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.5s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-</style>

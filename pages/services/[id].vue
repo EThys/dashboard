@@ -376,45 +376,40 @@ const contactProvider = () => {
         <!-- Content -->
         <div v-else class="min-h-screen">
         <!-- Hero Section (Carousel) -->
-        <div class="relative h-[60vh] md:h-[70vh] group bg-slate-900 border-b border-white/10 overflow-hidden">
+        <div class="relative h-[46vh] min-h-[300px] max-h-[540px] md:h-[52vh] group bg-slate-900 border-b border-white/10 overflow-hidden">
             
             <!-- Back Button (Absolute Top Left) -->
             <button @click="goBack" class="absolute top-4 md:top-8 left-4 md:left-8 z-30 p-2.5 rounded-full bg-black/40 backdrop-blur-md border border-white/20 text-white hover:bg-black/60 transition-all group/back">
                 <ArrowLeft class="h-6 w-6 group-hover/back:-translate-x-1 transition-transform" />
             </button>
 
-            <div class="absolute inset-0 z-0">
-                <div v-for="(img, idx) in service.images" :key="idx" 
-                    class="absolute inset-0 transition-opacity duration-700 ease-in-out"
-                    :class="idx === currentImageIndex ? 'opacity-100' : 'opacity-0'"
-                >
-                    <!-- Blurred Background Layer -->
-                    <div class="absolute inset-0 scale-110 blur-xl brightness-50">
-                        <img :src="img" class="w-full h-full object-cover opacity-80" />
-                    </div>
-                    
-                    <!-- Main Image (Fit Contain for full visibility) -->
-                    <div class="absolute inset-0 flex items-center justify-center">
-                        <img :src="img" class="w-full h-full object-contain shadow-2xl" />
-                    </div>
-
-                    <!-- Overlay Gradient for Text Readability -->
-                    <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
-                </div>
+            <div
+                class="absolute inset-0 z-0"
+                :class="service.images?.length ? 'cursor-zoom-in' : ''"
+                @dblclick="service.images?.length && showImg(currentImageIndex)"
+            >
+                <img
+                    v-if="service.images?.[currentImageIndex]"
+                    :src="service.images[currentImageIndex]"
+                    class="h-full w-full object-cover object-center"
+                    alt=""
+                    decoding="async"
+                />
+                <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/20"></div>
             </div>
 
             <!-- Navigation Buttons -->
-            <div v-if="service.images.length > 1" class="absolute inset-0 z-10 flex items-center justify-between p-4 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                <button @click="prevImage" class="p-3 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 hover:scale-110 transition-all pointer-events-auto">
+            <div v-if="service.images.length > 1" class="pointer-events-none absolute inset-y-0 left-0 right-0 z-30 flex items-center justify-between px-3 sm:px-5">
+                <button type="button" @click.stop="prevImage" aria-label="Photo précédente" class="pointer-events-auto rounded-full border border-white/30 bg-black/45 p-3 text-white backdrop-blur-md transition hover:bg-black/70">
                     <ArrowLeft class="h-6 w-6" />
                 </button>
-                <button @click="nextImage" class="p-3 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 hover:scale-110 transition-all pointer-events-auto">
+                <button type="button" @click.stop="nextImage" aria-label="Photo suivante" class="pointer-events-auto rounded-full border border-white/30 bg-black/45 p-3 text-white backdrop-blur-md transition hover:bg-black/70">
                     <ArrowLeft class="h-6 w-6 rotate-180" />
                 </button>
             </div>
 
             <!-- Header Content Overlay -->
-            <div class="absolute bottom-0 left-0 right-0 z-20 pb-12 pt-32">
+            <div class="pointer-events-none absolute bottom-0 left-0 right-0 z-20 pb-12 pt-24">
                 <div class="container mx-auto px-4 sm:px-6 lg:px-8">
                     <div class="flex flex-col md:flex-row items-end justify-between gap-6">
                         <div class="space-y-4 max-w-3xl">
@@ -446,7 +441,7 @@ const contactProvider = () => {
                                 </div>
                                 <div class="text-xs text-white/70 mt-1">{{ service.currencyLabel }}</div>
                             </div>
-                            <div class="flex gap-3 justify-end">
+                            <div class="pointer-events-auto flex gap-3 justify-end">
                                 <Button @click="toggleFavorite" size="icon" variant="secondary" class="rounded-full h-12 w-12 bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-md">
                                     <Heart class="h-5 w-5" :class="{'fill-red-500 text-red-500': isFavorite}" />
                                 </Button>

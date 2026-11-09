@@ -101,21 +101,26 @@ const reserveVacance = () => {
 
         <div v-else-if="vacance" class="min-h-screen">
             <!-- Hero section style similar to properties -->
-             <div class="relative h-[60vh] md:h-[70vh] group bg-slate-900 border-b border-white/10 overflow-hidden">
+             <div class="relative h-[46vh] min-h-[300px] max-h-[540px] md:h-[52vh] group bg-slate-900 border-b border-white/10 overflow-hidden">
                 <!-- Back Button -->
                 <button @click="goBack" class="absolute top-4 md:top-8 left-4 md:left-8 z-30 p-2.5 rounded-full bg-black/40 backdrop-blur-md border border-white/20 text-white hover:bg-black/60 transition-all">
                     <ArrowLeft class="h-6 w-6" />
                 </button>
 
                 <!-- Slider -->
-                <div class="absolute inset-0 z-0 bg-slate-800">
+                <div
+                    class="absolute inset-0 z-0 bg-slate-800"
+                    :class="images.length ? 'cursor-zoom-in' : ''"
+                    @dblclick="images.length && showLightbox(currentImageIndex)"
+                >
                     <template v-if="images.length > 0">
-                        <div v-for="(img, idx) in images" :key="idx" 
-                            class="absolute inset-0 transition-opacity duration-700 ease-in-out"
-                            :class="idx === currentImageIndex ? 'opacity-100' : 'opacity-0'"
-                        >
-                            <img :src="img" class="w-full h-full object-cover opacity-60" />
-                        </div>
+                        <img
+                            :src="images[currentImageIndex]"
+                            class="h-full w-full object-cover object-center"
+                            alt=""
+                            decoding="async"
+                        />
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/20"></div>
                     </template>
                     <div v-else class="absolute inset-0 flex items-center justify-center text-white/20">
                          <div class="text-center">
@@ -123,21 +128,20 @@ const reserveVacance = () => {
                              <p class="font-bold opacity-30">Pas de photos disponibles</p>
                          </div>
                     </div>
-                    <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent"></div>
                 </div>
 
                 <!-- Nav Arrows -->
-                <div v-if="images.length > 1" class="absolute inset-0 z-10 flex items-center justify-between p-4 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                    <button @click="prevImage" class="p-3 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 hover:scale-110 transition-all pointer-events-auto">
+                <div v-if="images.length > 1" class="pointer-events-none absolute inset-y-0 left-0 right-0 z-30 flex items-center justify-between px-3 sm:px-5">
+                    <button type="button" @click.stop="prevImage" aria-label="Photo précédente" class="pointer-events-auto rounded-full border border-white/30 bg-black/45 p-3 text-white backdrop-blur-md transition hover:bg-black/70">
                         <ArrowLeft class="h-6 w-6" />
                     </button>
-                    <button @click="nextImage" class="p-3 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 hover:scale-110 transition-all pointer-events-auto">
+                    <button type="button" @click.stop="nextImage" aria-label="Photo suivante" class="pointer-events-auto rounded-full border border-white/30 bg-black/45 p-3 text-white backdrop-blur-md transition hover:bg-black/70">
                         <ArrowLeft class="h-6 w-6 rotate-180" />
                     </button>
                 </div>
 
                 <!-- Content Overlay -->
-                <div class="absolute bottom-0 left-0 right-0 z-20 pb-12">
+                <div class="pointer-events-none absolute bottom-0 left-0 right-0 z-20 pb-12">
                      <div class="container mx-auto px-4 md:px-8">
                          <div class="flex flex-col md:flex-row items-end justify-between gap-6 uppercase">
                              <div class="space-y-4 max-w-3xl">
@@ -162,7 +166,7 @@ const reserveVacance = () => {
                                      </div>
                                      <div class="text-xs font-bold opacity-80 mt-1 uppercase tracking-wider">{{ vacance.priceCombo }}</div>
                                  </div>
-                                 <div class="flex gap-2 justify-end">
+                                 <div class="pointer-events-auto flex gap-2 justify-end">
                                     <Button @click="toggleFavorite" size="icon" variant="secondary" class="rounded-2xl h-12 w-12 bg-white/5 hover:bg-white/10 text-white border-white/10 backdrop-blur-xl">
                                         <Heart class="h-5 w-5" :class="{'fill-red-500 text-red-500': isFavorite}" />
                                     </Button>

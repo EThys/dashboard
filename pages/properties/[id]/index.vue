@@ -12,6 +12,7 @@ import CasaLoader from '@/components/ui/CasaLoader.vue'
 import PropertyVisitModal from '@/components/modals/PropertyVisitModal.vue'
 import DetailShimmer from '@/components/front/DetailShimmer.vue'
 import { encodeId, decodeId } from '@/utils/urlObfuscator'
+import { normalizeListingKind } from '@/utils/propertyLink'
 import { lowestHotelRoomOffer } from '@/utils/hotelStartingPrice'
 import { ShieldCheck, Calendar as CalendarIcon, Loader2 } from 'lucide-vue-next'
 import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
@@ -28,23 +29,41 @@ const config = useRuntimeConfig()
 const propertyStore = usePropertyStore()
 const authStore = useAuthStore()
 const propertyId = computed(() => decodeId(route.params.id as string))
+const listingKind = computed(() => normalizeListingKind(route.query.kind as string | undefined))
 
 // Local ref to store data fetched specifically for this page
 const fetchedProperty = ref<AnyPropertyResponse | null>(null)
 
 // Try to get from store first (cached)
 const rawProperty = computed<AnyPropertyResponse | undefined>(() => 
-  fetchedProperty.value || propertyStore.getPropertyById(propertyId.value)
+  fetchedProperty.value || propertyStore.getPropertyById(propertyId.value, listingKind.value)
 )
 
 const { pending: isLoading } = useAsyncData(
-  `property-${propertyId.value}`,
+  'property-detail',
   async () => {
-    // 1. If we already have it in store, we're good for immediate display
-    // But we still fetch to ensure data is fresh and complete
-    
+    const apiBase = config.public.apiBase as string
+    const id = propertyId.value
+    const kind = listingKind.value
+    fetchedProperty.value = null
+
+    if (kind && kind !== 'property') {
+      const cached = propertyStore.getPropertyById(id, kind)
+      if (cached) {
+        fetchedProperty.value = cached
+        return true
+      }
+      if (kind === 'hotel') await propertyStore.fetchHotels(apiBase)
+      if (kind === 'festive') await propertyStore.fetchFestives(apiBase)
+      if (kind === 'funeraire') await propertyStore.fetchFuneraires(apiBase)
+      if (kind === 'bureau') await propertyStore.fetchBureaux(apiBase)
+      if (kind === 'terrain') await propertyStore.fetchTerrains(apiBase)
+      fetchedProperty.value = propertyStore.getPropertyById(id, kind) ?? null
+      return true
+    }
+
     try {
-      const data = await $fetch<any>(joinApi(config.public.apiBase as string, `${ApiEndpoints.properties}/${propertyId.value}`))
+      const data = await $fetch<any>(joinApi(apiBase, `${ApiEndpoints.properties}/${id}`))
       if (data && data.properties) {
         fetchedProperty.value = data.properties as AnyPropertyResponse
         return true
@@ -53,31 +72,24 @@ const { pending: isLoading } = useAsyncData(
       console.error('Failed to fetch property details:', e)
     }
 
-    // 2. Fallback: If not found by direct ID, fetch collections as last resort
-    // (Only if we don't have it in store yet either)
-    if (!rawProperty.value) {
+    if (!fetchedProperty.value) {
       await Promise.all([
-        propertyStore.bureaux.length === 0 ? propertyStore.fetchBureaux(config.public.apiBase) : Promise.resolve(),
-        propertyStore.festives.length === 0 ? propertyStore.fetchFestives(config.public.apiBase) : Promise.resolve(),
-        propertyStore.funeraires.length === 0 ? propertyStore.fetchFuneraires(config.public.apiBase) : Promise.resolve(),
-        propertyStore.terrains.length === 0 ? propertyStore.fetchTerrains(config.public.apiBase) : Promise.resolve(),
-        propertyStore.hotels.length === 0 ? propertyStore.fetchHotels(config.public.apiBase) : Promise.resolve(),
-        propertyStore.properties.length === 0 ? propertyStore.fetchProperties(config.public.apiBase) : Promise.resolve(),
+        propertyStore.bureaux.length === 0 ? propertyStore.fetchBureaux(apiBase) : Promise.resolve(),
+        propertyStore.festives.length === 0 ? propertyStore.fetchFestives(apiBase) : Promise.resolve(),
+        propertyStore.funeraires.length === 0 ? propertyStore.fetchFuneraires(apiBase) : Promise.resolve(),
+        propertyStore.terrains.length === 0 ? propertyStore.fetchTerrains(apiBase) : Promise.resolve(),
+        propertyStore.hotels.length === 0 ? propertyStore.fetchHotels(apiBase) : Promise.resolve(),
+        propertyStore.properties.length === 0 ? propertyStore.fetchProperties(apiBase) : Promise.resolve(),
       ])
-      const fromStore = propertyStore.getPropertyById(propertyId.value)
-      if (fromStore && 'hotel' in fromStore) {
-        fetchedProperty.value = fromStore as AnyPropertyResponse
-      }
-    }
-    
-    if (propertyStore.hotelRooms.length === 0) {
-      await propertyStore.fetchHotels(config.public.apiBase as string)
+      const fromStore = propertyStore.getPropertyById(id)
+      if (fromStore) fetchedProperty.value = fromStore
     }
     return true
   },
   {
     lazy: true,
-    server: false
+    server: false,
+    watch: [() => route.fullPath],
   }
 )
 
@@ -127,14 +139,18 @@ watch(property, (item) => {
 // Carousel / Hero Logic
 const currentImageIndex = ref(0)
 const nextImage = () => {
-  if (property.value?.images?.length) {
-    currentImageIndex.value = (currentImageIndex.value + 1) % property.value.images.length
-  }
+  const total = property.value?.images?.length || 0
+  if (!total) return
+  currentImageIndex.value = (currentImageIndex.value + 1) % total
+  stopAutoScroll()
+  startAutoScroll()
 }
 const prevImage = () => {
-  if (property.value?.images?.length) {
-    currentImageIndex.value = (currentImageIndex.value - 1 + property.value.images.length) % property.value.images.length
-  }
+  const total = property.value?.images?.length || 0
+  if (!total) return
+  currentImageIndex.value = (currentImageIndex.value - 1 + total) % total
+  stopAutoScroll()
+  startAutoScroll()
 }
 
 // Auto Scroll
@@ -250,7 +266,7 @@ function onVisitModalClose() {
         <div v-else-if="property" class="min-h-screen">
             
         <!-- Hero Section (Immersive) -->
-        <div class="relative h-[60vh] md:h-[70vh] group bg-slate-900 border-b border-white/10 overflow-hidden">
+        <div class="relative h-[46vh] min-h-[300px] max-h-[540px] md:h-[52vh] group bg-slate-900 border-b border-white/10 overflow-hidden">
             
             <!-- Back Button -->
             <button @click="goBack" class="absolute top-4 md:top-8 left-4 md:left-8 z-30 p-2.5 rounded-full bg-black/40 backdrop-blur-md border border-white/20 text-white hover:bg-black/60 transition-all group/back">
@@ -262,39 +278,34 @@ function onVisitModalClose() {
                 <Maximize class="h-6 w-6 group-hover/zoom:scale-110 transition-transform" />
             </button>
 
-            <!-- Image Slider -->
-            <div class="absolute inset-0 z-0">
-                <div v-for="(img, idx) in property.images" :key="idx" 
-                    class="absolute inset-0 transition-opacity duration-700 ease-in-out"
-                    :class="idx === currentImageIndex ? 'opacity-100' : 'opacity-0'"
-                >
-                    <!-- Blurred Background -->
-                    <div class="absolute inset-0 scale-110 blur-xl brightness-50">
-                        <img :src="img" class="w-full h-full object-cover opacity-80" />
-                    </div>
-                    
-                    <!-- Main Image (Contained) -->
-                    <div class="absolute inset-0 flex items-center justify-center">
-                        <img :src="img" class="w-full h-full object-contain shadow-2xl" />
-                    </div>
-
-                    <!-- Gradients -->
-                    <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
-                </div>
+            <!-- Image -->
+            <div
+                class="absolute inset-0 z-0"
+                :class="property.images?.length ? 'cursor-zoom-in' : ''"
+                @dblclick="property.images?.length && showLightbox(currentImageIndex)"
+            >
+                <img
+                    v-if="property.images?.[currentImageIndex]"
+                    :src="property.images[currentImageIndex]"
+                    class="h-full w-full object-cover object-center"
+                    alt=""
+                    decoding="async"
+                />
+                <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/20"></div>
             </div>
 
             <!-- Nav Arrows -->
-            <div v-if="property.images.length > 1" class="absolute inset-0 z-10 flex items-center justify-between p-4 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                <button @click="prevImage" class="p-3 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 hover:scale-110 transition-all pointer-events-auto">
+            <div v-if="property.images.length > 1" class="pointer-events-none absolute inset-y-0 left-0 right-0 z-30 flex items-center justify-between px-3 sm:px-5">
+                <button type="button" @click.stop="prevImage" aria-label="Photo précédente" class="pointer-events-auto rounded-full border border-white/30 bg-black/45 p-3 text-white backdrop-blur-md transition hover:bg-black/70">
                     <ArrowLeft class="h-6 w-6" />
                 </button>
-                <button @click="nextImage" class="p-3 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 hover:scale-110 transition-all pointer-events-auto">
+                <button type="button" @click.stop="nextImage" aria-label="Photo suivante" class="pointer-events-auto rounded-full border border-white/30 bg-black/45 p-3 text-white backdrop-blur-md transition hover:bg-black/70">
                     <ArrowLeft class="h-6 w-6 rotate-180" />
                 </button>
             </div>
 
             <!-- Hero Content Overlay -->
-            <div class="absolute bottom-0 left-0 right-0 z-20 pb-12 pt-32">
+            <div class="pointer-events-none absolute bottom-0 left-0 right-0 z-20 pb-12 pt-24">
                 <div class="container mx-auto px-4 sm:px-6 lg:px-8">
                     <div class="flex flex-col md:flex-row items-end justify-between gap-6">
                         <div class="space-y-4 max-w-3xl">
@@ -343,7 +354,7 @@ function onVisitModalClose() {
                                 <div class="text-xs font-bold uppercase tracking-wider opacity-90">Hôtel</div>
                                 <p class="text-sm font-medium leading-snug mt-1">Les tarifs sont affichés par chambre ci-dessous.</p>
                             </div>
-                            <div class="flex gap-3 justify-end">
+                            <div class="pointer-events-auto flex gap-3 justify-end">
                                 <Button @click="toggleFavorite" size="icon" variant="secondary" class="rounded-full h-12 w-12 bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-md">
                                     <Heart class="h-5 w-5" :class="{'fill-red-500 text-red-500': isFavorite}" />
                                 </Button>
@@ -525,27 +536,27 @@ function onVisitModalClose() {
             <Hotel class="h-7 w-7 text-primary" />
             Chambres & tarifs
           </h2>
-          <div class="grid gap-6 sm:grid-cols-2">
+          <div class="grid items-stretch gap-6 sm:grid-cols-2">
             <NuxtLink
               v-for="ch in property.hotelChambres"
               :key="ch.id"
               :to="`/properties/${route.params.id}/chambres/${encodeId(ch.id)}`"
-              class="group flex flex-col overflow-hidden rounded-3xl border border-border/50 bg-card text-left shadow-sm transition hover:ring-2 hover:ring-primary/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              class="group flex h-full flex-col overflow-hidden rounded-3xl border border-border/50 bg-card text-left shadow-sm transition hover:ring-2 hover:ring-primary/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
-              <div class="aspect-[5/3] bg-muted">
+              <div class="h-52 w-full shrink-0 overflow-hidden bg-muted">
                 <img
                   v-if="ch.image"
                   :src="ch.image"
                   alt=""
-                  class="h-full w-full object-cover transition group-hover:scale-[1.02]"
+                  class="h-full w-full object-cover"
                 />
-                <div v-else class="flex h-full items-center justify-center text-muted-foreground/40">
+                <div v-else class="flex h-full w-full items-center justify-center text-muted-foreground/40">
                   <BedDouble class="h-12 w-12" />
                 </div>
               </div>
-              <div class="flex flex-1 flex-col gap-2 p-5">
-                <h3 class="text-lg font-bold group-hover:text-primary">{{ ch.title }}</h3>
-                <p class="line-clamp-4 text-sm text-muted-foreground">{{ ch.description }}</p>
+              <div class="flex min-h-[11.5rem] flex-1 flex-col gap-2 p-5">
+                <h3 class="line-clamp-1 text-lg font-bold group-hover:text-primary">{{ ch.title }}</h3>
+                <p class="line-clamp-3 min-h-[3.75rem] text-sm text-muted-foreground">{{ ch.description }}</p>
                 <p class="text-xs font-medium text-primary">Voir le détail →</p>
                 <div class="mt-auto flex flex-wrap items-end justify-between gap-2 border-t border-border/50 pt-4">
                   <div>
