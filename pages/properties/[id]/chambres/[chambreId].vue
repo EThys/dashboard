@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { ArrowLeft, BedDouble, Calendar, Loader2, MapPin } from 'lucide-vue-next'
+import { ArrowLeft, BedDouble, Calendar, ChevronLeft, ChevronRight, Loader2, MapPin, Maximize } from 'lucide-vue-next'
 import { Button, Input, Label } from '@/components/ui'
 import ClockTimePicker from '@/components/front/ClockTimePicker.vue'
-import { decodeId, encodeId } from '@/utils/urlObfuscator'
+import VueEasyLightbox from 'vue-easy-lightbox'
+import { decodeId } from '@/utils/urlObfuscator'
+import { propertyPublicPath } from '@/utils/propertyLink'
 import { normalizeHotel } from '@/utils/propertyNormalizer'
 import { formatCurrency } from '@/utils/currency'
 import { useAuthStore } from '@/stores/auth'
@@ -37,9 +39,22 @@ const { data, pending } = await useAsyncData(
 const hotel = computed(() => data.value?.hotel ?? null)
 const room = computed(() => data.value?.room ?? null)
 const galleryIndex = ref(0)
+const lightboxVisible = ref(false)
 const images = computed(() => room.value?.images?.length ? room.value.images : room.value?.image ? [room.value.image] : [])
 
-const hotelPath = computed(() => `/properties/${encodeId(hotelId.value)}`)
+function showImage(next: number) {
+  const total = images.value.length
+  if (!total) return
+  galleryIndex.value = (next + total) % total
+}
+
+function openLightbox(index = galleryIndex.value) {
+  if (!images.value.length) return
+  galleryIndex.value = index
+  lightboxVisible.value = true
+}
+
+const hotelPath = computed(() => propertyPublicPath(hotelId.value, 'hotel'))
 const place = computed(() => hotel.value?.fullAddress || hotel.value?.location || '')
 
 const isSending = ref(false)
@@ -113,21 +128,56 @@ async function reserve() {
       <div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div class="space-y-6">
           <div class="overflow-hidden rounded-3xl border border-border/50 bg-muted">
-            <div class="aspect-[16/10]">
-              <img v-if="images[galleryIndex]" :src="images[galleryIndex]" :alt="room.title" class="h-full w-full object-cover" />
+            <div class="group relative h-72 w-full sm:h-96">
+              <button
+                v-if="images[galleryIndex]"
+                type="button"
+                class="absolute inset-0"
+                aria-label="Agrandir la photo"
+                @click="openLightbox(galleryIndex)"
+              >
+                <img :src="images[galleryIndex]" :alt="room.title" class="h-full w-full object-cover" />
+              </button>
               <div v-else class="flex h-full items-center justify-center text-muted-foreground/40">
                 <BedDouble class="h-16 w-16" />
               </div>
+              <button
+                v-if="images.length > 1"
+                type="button"
+                class="absolute left-3 top-1/2 z-10 -translate-y-1/2 rounded-full border border-white/30 bg-black/45 p-2.5 text-white backdrop-blur-md hover:bg-black/70"
+                aria-label="Photo précédente"
+                @click="showImage(galleryIndex - 1)"
+              >
+                <ChevronLeft class="h-5 w-5" />
+              </button>
+              <button
+                v-if="images.length > 1"
+                type="button"
+                class="absolute right-3 top-1/2 z-10 -translate-y-1/2 rounded-full border border-white/30 bg-black/45 p-2.5 text-white backdrop-blur-md hover:bg-black/70"
+                aria-label="Photo suivante"
+                @click="showImage(galleryIndex + 1)"
+              >
+                <ChevronRight class="h-5 w-5" />
+              </button>
+              <button
+                v-if="images.length"
+                type="button"
+                class="absolute right-3 top-3 z-10 rounded-full border border-white/30 bg-black/45 p-2.5 text-white backdrop-blur-md hover:bg-black/70"
+                aria-label="Zoom"
+                @click="openLightbox(galleryIndex)"
+              >
+                <Maximize class="h-5 w-5" />
+              </button>
             </div>
           </div>
-          <div v-if="images.length > 1" class="flex flex-wrap gap-2">
+          <div v-if="images.length" class="grid grid-cols-4 gap-2 sm:grid-cols-5">
             <button
               v-for="(url, index) in images"
               :key="url + index"
               type="button"
-              class="h-16 w-16 overflow-hidden rounded-xl border-2"
+              class="h-20 overflow-hidden rounded-xl border-2"
               :class="index === galleryIndex ? 'border-primary' : 'border-transparent opacity-80'"
-              @click="galleryIndex = index"
+              @click="openLightbox(index)"
             >
               <img :src="url" alt="" class="h-full w-full object-cover" />
             </button>
@@ -206,4 +256,10 @@ async function reserve() {
       </div>
     </div>
   </div>
+  <VueEasyLightbox
+    :visible="lightboxVisible"
+    :imgs="images"
+    :index="galleryIndex"
+    @hide="lightboxVisible = false"
+  />
 </template>
