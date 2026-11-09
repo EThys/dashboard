@@ -3,6 +3,7 @@ import { Wrench, MapPin, Star, Search, Filter, Loader2, ChevronDown, Calendar, S
 import { Button } from '@/components/ui'
 import { formatCurrency, getCurrencyLabel } from '@/utils/currency'
 import type { ServiceItem, ServiceResponse, ServiceDetail } from '@/types/service'
+import { byNewest, serviceStamp } from '@/utils/recentFirst'
 
 definePageMeta({
   layout: 'default'
@@ -66,13 +67,33 @@ const isAdmin = computed(() => authStore.isAdmin)
 
 // Advanced Filters state
 const showAdvancedFilters = ref(false)
-const minPrice = ref<number | null>(null)
-const maxPrice = ref<number | null>(null)
+const minPriceText = ref('')
+const maxPriceText = ref('')
 const selectedCurrency = ref('all') // 'all', 'USD', 'CDF'
-const startDate = ref('')
-const endDate = ref('')
 const selectedExperience = ref('all') // 'all' | '1' | '3' | '5' | '10'
-const selectedStatus = ref('all') // 'all' | 'active' | 'inactive' | 'certified'
+const selectedCity = ref('all')
+const selectedCommune = ref('all')
+const selectedQuartier = ref('all')
+
+function foldPlace(value: unknown) {
+    return String(value ?? '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim()
+}
+
+function samePlace(candidate: unknown, selected: string) {
+    const left = foldPlace(candidate)
+    const right = foldPlace(selected)
+    return !!left && !!right && (left === right || left.includes(right) || right.includes(left))
+}
+
+function asPrice(value: unknown): number | null {
+    if (value === null || value === undefined || value === '') return null
+    const amount = typeof value === 'number' ? value : Number(String(value).replace(/\s/g, '').replace(',', '.'))
+    return Number.isFinite(amount) && amount >= 0 ? amount : null
+}
 
 const toggleAdvanced = () => showAdvancedFilters.value = !showAdvancedFilters.value
 
@@ -127,10 +148,7 @@ watch(() => route.query.categoryId, async (newId) => {
 
 // Filtered Services (Client-side refinement)
 const filteredServices = computed(() => {
-  let list = services.value
-
-  // Apply Search & Day Filter
-  return list.filter(item => {
+  const list = services.value.filter(item => {
     const s = item.prestation
     const matchesSearch = s.title.toLowerCase().includes(searchQuery.value.toLowerCase()) || 
                           s.description.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
@@ -141,45 +159,30 @@ const filteredServices = computed(() => {
 
     const matchesDay = selectedDay.value === 'all' || s.plageJourPrestation.includes(selectedDay.value)
 
-    let matchesFilters = true
-    if (showAdvancedFilters.value) {
-        // Price
-        if (minPrice.value !== null) matchesFilters = matchesFilters && (s.minPrice >= minPrice.value)
-        if (maxPrice.value !== null) matchesFilters = matchesFilters && (s.minPrice <= maxPrice.value)
-        
-        // Currency
-        if (selectedCurrency.value !== 'all') {
-            const currencyCode = getCurrencyCode(s.deviseId)
-            matchesFilters = matchesFilters && (currencyCode === selectedCurrency.value)
-        }
+    const matchesCity = selectedCity.value === 'all' || samePlace(s.cityValue, selectedCity.value)
+    const matchesCommune = selectedCommune.value === 'all' || samePlace(s.communeValue, selectedCommune.value) || samePlace(s.address, selectedCommune.value)
+    const matchesQuartier = selectedQuartier.value === 'all' || samePlace(s.quartierValue, selectedQuartier.value) || samePlace(s.address, selectedQuartier.value)
 
-        // Date Range
-        if (startDate.value) {
-            matchesFilters = matchesFilters && (new Date(s.dateCreated) >= new Date(startDate.value))
-        }
-        if (endDate.value) {
-             const end = new Date(endDate.value)
-             end.setHours(23, 59, 59)
-             matchesFilters = matchesFilters && (new Date(s.dateCreated) <= end)
-        }
-
-        // Experience
-        if (selectedExperience.value !== 'all') {
-             const exp = parseInt(s.experience || '0')
-             const target = parseInt(selectedExperience.value)
-             matchesFilters = matchesFilters && (exp >= target)
-        }
-
-        // Status
-        if (selectedStatus.value !== 'all') {
-            if (selectedStatus.value === 'active') matchesFilters = matchesFilters && s.active
-            if (selectedStatus.value === 'inactive') matchesFilters = matchesFilters && !s.active
-            if (selectedStatus.value === 'certified') matchesFilters = matchesFilters && s.certified
-        }
+    let minBound = asPrice(minPriceText.value)
+    let maxBound = asPrice(maxPriceText.value)
+    if (minBound !== null && maxBound !== null && minBound > maxBound) {
+        const swapped = minBound
+        minBound = maxBound
+        maxBound = swapped
     }
+    const asking = asPrice(s.minPrice)
+    const matchesPrice = (minBound === null && maxBound === null)
+        || (asking !== null && (minBound === null || asking >= minBound) && (maxBound === null || asking <= maxBound))
 
-    return matchesSearch && matchesDay && matchesCategory && matchesFilters
+    const matchesCurrency = selectedCurrency.value === 'all' || getCurrencyCode(s.deviseId) === selectedCurrency.value
+
+    const matchesExperience = selectedExperience.value === 'all'
+        || parseInt(s.experience || '0') >= parseInt(selectedExperience.value)
+
+    return matchesSearch && matchesDay && matchesCategory && matchesCity && matchesCommune && matchesQuartier && matchesPrice && matchesCurrency && matchesExperience
   })
+
+  return byNewest(list, serviceStamp)
 })
 
 // Pagination
@@ -200,7 +203,35 @@ const scrollToTop = () => {
 }
 
 watch(currentPage, () => scrollToTop())
-watch([searchQuery, selectedDay, selectedCategory, minPrice, maxPrice, selectedCurrency, startDate, endDate, selectedExperience, selectedStatus], () => {
+const cityOptions = computed(() => uniqueServicePlaces('cityValue'))
+const communeOptions = computed(() => uniqueServicePlaces('communeValue', selectedCity.value))
+const quartierOptions = computed(() => uniqueServicePlaces('quartierValue', selectedCity.value, selectedCommune.value))
+
+function uniqueServicePlaces(
+    field: 'cityValue' | 'communeValue' | 'quartierValue',
+    city = 'all',
+    commune = 'all',
+) {
+    const values = new Set<string>()
+    for (const item of services.value) {
+        const row = item.prestation
+        if (city !== 'all' && !samePlace(row.cityValue, city)) continue
+        if (field === 'quartierValue' && commune !== 'all' && !samePlace(row.communeValue, commune)) continue
+        const value = String(row[field] || '').trim()
+        if (value) values.add(value)
+    }
+    return [...values].sort((a, b) => a.localeCompare(b, 'fr'))
+}
+
+watch(selectedCity, () => {
+    selectedCommune.value = 'all'
+    selectedQuartier.value = 'all'
+})
+watch(selectedCommune, () => {
+    selectedQuartier.value = 'all'
+})
+
+watch([searchQuery, selectedDay, selectedCategory, selectedCity, selectedCommune, selectedQuartier, minPriceText, maxPriceText, selectedCurrency, selectedExperience], () => {
     currentPage.value = 1
     scrollToTop()
 })
@@ -321,6 +352,30 @@ const toggleCertification = async (service: ServiceDetail) => {
             </div>
         </div>
 
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            <div class="relative">
+                <select v-model="selectedCity" class="w-full h-12 px-4 bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary text-foreground cursor-pointer appearance-none">
+                    <option value="all">Toutes les villes</option>
+                    <option v-for="city in cityOptions" :key="city" :value="city">{{ city }}</option>
+                </select>
+                <ChevronDown class="pointer-events-none absolute right-4 top-4 h-4 w-4 text-muted-foreground" />
+            </div>
+            <div class="relative">
+                <select v-model="selectedCommune" class="w-full h-12 px-4 bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary text-foreground cursor-pointer appearance-none">
+                    <option value="all">Toutes les communes</option>
+                    <option v-for="commune in communeOptions" :key="commune" :value="commune">{{ commune }}</option>
+                </select>
+                <ChevronDown class="pointer-events-none absolute right-4 top-4 h-4 w-4 text-muted-foreground" />
+            </div>
+            <div class="relative">
+                <select v-model="selectedQuartier" class="w-full h-12 px-4 bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary text-foreground cursor-pointer appearance-none">
+                    <option value="all">Tous les quartiers</option>
+                    <option v-for="quartier in quartierOptions" :key="quartier" :value="quartier">{{ quartier }}</option>
+                </select>
+                <ChevronDown class="pointer-events-none absolute right-4 top-4 h-4 w-4 text-muted-foreground" />
+            </div>
+        </div>
+
         <!-- Advanced Filters Area (Collapsible) -->
         <div v-if="showAdvancedFilters" class="mt-6 pt-6 border-t border-border grid grid-cols-1 md:grid-cols-4 gap-6 animate-in slide-in-from-top-2">
             
@@ -328,8 +383,9 @@ const toggleCertification = async (service: ServiceDetail) => {
             <div class="space-y-2">
                 <label class="text-sm font-medium text-muted-foreground">Prix Min</label>
                 <input 
-                    v-model.number="minPrice" 
-                    type="number" 
+                    v-model="minPriceText" 
+                    type="text"
+                    inputmode="decimal"
                     placeholder="0"
                     class="w-full h-10 px-3 rounded-lg border border-input bg-background focus:ring-2 focus:ring-primary"
                 />
@@ -339,35 +395,12 @@ const toggleCertification = async (service: ServiceDetail) => {
             <div class="space-y-2">
                 <label class="text-sm font-medium text-muted-foreground">Prix Max</label>
                 <input 
-                    v-model.number="maxPrice" 
-                    type="number" 
+                    v-model="maxPriceText" 
+                    type="text"
+                    inputmode="decimal"
                     placeholder="Max"
                     class="w-full h-10 px-3 rounded-lg border border-input bg-background focus:ring-2 focus:ring-primary"
                 />
-            </div>
-
-             <!-- Start Date -->
-             <div class="space-y-2">
-                <label class="text-sm font-medium text-muted-foreground">Date Début</label>
-                <div class="relative">
-                    <input 
-                        v-model="startDate" 
-                        type="date" 
-                        class="w-full h-10 px-3 rounded-lg border border-input bg-background focus:ring-2 focus:ring-primary"
-                    />
-                </div>
-            </div>
-
-            <!-- End Date -->
-            <div class="space-y-2">
-                <label class="text-sm font-medium text-muted-foreground">Date Fin</label>
-                <div class="relative">
-                    <input 
-                        v-model="endDate" 
-                        type="date" 
-                        class="w-full h-10 px-3 rounded-lg border border-input bg-background focus:ring-2 focus:ring-primary"
-                    />
-                </div>
             </div>
 
             <!-- Experience -->
@@ -382,20 +415,6 @@ const toggleCertification = async (service: ServiceDetail) => {
                     <option value="3">3+ ans</option>
                     <option value="5">5+ ans</option>
                     <option value="10">10+ ans</option>
-                </select>
-            </div>
-
-            <!-- Status (Admin) -->
-             <div class="space-y-2">
-                <label class="text-sm font-medium text-muted-foreground">Statut</label>
-                <select 
-                    v-model="selectedStatus"
-                    class="w-full h-10 px-3 rounded-lg border border-input bg-background focus:ring-2 focus:ring-primary"
-                >
-                    <option value="all">Tous</option>
-                    <option value="certified">Certifié</option>
-                    <option value="active">Actif</option>
-                    <option value="inactive">Inactif</option>
                 </select>
             </div>
 
@@ -415,6 +434,8 @@ const toggleCertification = async (service: ServiceDetail) => {
 
       </div>
     </div>
+
+    <PromoStrip />
 
     <!-- Services Grid -->
     <section class="py-16 bg-muted/30">

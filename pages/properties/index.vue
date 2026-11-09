@@ -6,8 +6,9 @@ import { formatCurrency, getCurrencyLabel } from '@/utils/currency'
 import { lowestHotelRoomOffer } from '@/utils/hotelStartingPrice'
 import PropertyCardShimmer from '@/components/front/PropertyCardShimmer.vue'
 import CasaLoader from '@/components/ui/CasaLoader.vue'
-import { encodeId } from '@/utils/urlObfuscator'
+import { propertyPublicPath } from '@/utils/propertyLink'
 import { getPublicListingStatus } from '@/utils/listingAvailability'
+import { compareNewest } from '@/utils/recentFirst'
 import { getPublicTransactionBadgeLabel, isLocationTransactionType, isLodgingTransactionType } from '@/utils/transactionDisplay'
 
 definePageMeta({
@@ -90,6 +91,11 @@ const selectedCommune = ref('all')
 const selectedQuartier = ref('all')
 const sortOrder = ref('desc')
 
+function listingDate(value: unknown) {
+  const time = value ? new Date(String(value)).getTime() : NaN
+  return Number.isFinite(time) ? new Date(time) : new Date(0)
+}
+
 const kinshasaCommunes = new Set([
     'bandalungwa', 'barumbu', 'bumbu', 'gombe', 'kalamu', 'kasa-vubu', 'kasavubu',
     'kimbanseke', 'kinshasa', 'kintambo', 'kisenso', 'lemba', 'limete',
@@ -130,11 +136,11 @@ watch(() => route.query.city, (newCity) => {
     searchInputText.value = newCity?.toString() || ''
 })
 watch(() => route.query.minPrice, (value) => {
-    minPrice.value = asPrice(value)
+    minPriceText.value = value == null || value === '' ? '' : String(value)
     if (asPrice(value) !== null) showAdvancedFilters.value = true
 })
 watch(() => route.query.maxPrice, (value) => {
-    maxPrice.value = asPrice(value)
+    maxPriceText.value = value == null || value === '' ? '' : String(value)
     if (asPrice(value) !== null) showAdvancedFilters.value = true
 })
 watch(() => route.query.currency, (value) => {
@@ -156,8 +162,8 @@ function currencyKey(code: unknown) {
 }
 
 const showAdvancedFilters = ref(!!(route.query.minPrice || route.query.maxPrice))
-const minPrice = ref<number | null>(asPrice(route.query.minPrice))
-const maxPrice = ref<number | null>(asPrice(route.query.maxPrice))
+const minPriceText = ref(route.query.minPrice == null ? '' : String(route.query.minPrice))
+const maxPriceText = ref(route.query.maxPrice == null ? '' : String(route.query.maxPrice))
 const selectedCurrency = ref(currencyKey(route.query.currency) || 'all') // 'all', 'USD', 'CDF'
 const roomCount = ref('all') // 'all', '1', '2', '3', '4+'
 
@@ -233,10 +239,10 @@ const properties = computed(() => {
     const listedRooms = propertyStore.hotelRooms.filter((room) => Number(room.hotelId) === Number(id))
     const hotelOffer = isHotel ? lowestHotelRoomOffer(embeddedRooms.length ? embeddedRooms : listedRooms) : null
     const currencyCode = hotelOffer?.currencyCode || item.devise?.code || 'USD'
-    const priceVal = isHotel ? (hotelOffer?.amount || 0) : (p.price || 0)
+    const priceVal = asPrice(isHotel ? hotelOffer?.amount : p.price)
     const priceDisplay = isHotel
         ? (hotelOffer?.formatted || '—')
-        : formatCurrency(priceVal, currencyCode)
+        : formatCurrency(priceVal ?? 0, currencyCode)
 
     // Calculate Display Area
     const displayArea = p.surface && p.surface > 0 
@@ -267,21 +273,16 @@ const properties = computed(() => {
        area: displayArea,
        transaction: isHotel ? 'hébergement' : (p.transactionType || 'vente'),
        category: item._category,
-       date: p.createdAt ? new Date(p.createdAt) : new Date(),
+       date: listingDate(p.createdAt),
        listingStatus: getPublicListingStatus(p as Record<string, unknown>, p.transactionType as string | undefined),
     }
   })
   .sort((a, b) => {
-      // 1. Sort by Category (properties first)
-      if (a.category === 'property' && b.category !== 'property') return -1
-      if (a.category !== 'property' && b.category === 'property') return 1
-      
-      // 2. Sort by Date
-      if (sortOrder.value === 'asc') {
-          return a.date.getTime() - b.date.getTime()
-      } else {
-          return b.date.getTime() - a.date.getTime()
-      }
+      const newest = compareNewest(
+          { at: a.date, id: a.id },
+          { at: b.date, id: b.id },
+      )
+      return sortOrder.value === 'asc' ? -newest : newest
   })
 })
 
@@ -355,8 +356,8 @@ const hasActiveFilters = computed(() =>
     selectedCity.value !== 'all' ||
     selectedCommune.value !== 'all' ||
     selectedQuartier.value !== 'all' ||
-    minPrice.value !== null ||
-    maxPrice.value !== null
+    asPrice(minPriceText.value) !== null ||
+    asPrice(maxPriceText.value) !== null
 )
 
 const resetFilters = () => {
@@ -367,10 +368,29 @@ const resetFilters = () => {
     selectedCity.value = 'all'
     selectedCommune.value = 'all'
     selectedQuartier.value = 'all'
-    minPrice.value = null
-    maxPrice.value = null
+    minPriceText.value = ''
+    maxPriceText.value = ''
     selectedCurrency.value = 'all'
     roomCount.value = 'all'
+}
+
+function matchesAskingPrice(property: { hidePrice?: boolean, priceValue?: unknown, currencyCode?: string }) {
+    let minBound = asPrice(minPriceText.value)
+    let maxBound = asPrice(maxPriceText.value)
+    const currencySelected = selectedCurrency.value !== 'all'
+    if (minBound !== null && maxBound !== null && minBound > maxBound) {
+        const swapped = minBound
+        minBound = maxBound
+        maxBound = swapped
+    }
+    const amount = asPrice(property.priceValue)
+    const hasPrice = amount !== null && amount > 0
+    if (currencySelected && (property.hidePrice || currencyKey(property.currencyCode) !== selectedCurrency.value)) return false
+    if (minBound === null && maxBound === null) return true
+    if (!hasPrice || amount === null) return false
+    if (minBound !== null && amount < minBound) return false
+    if (maxBound !== null && amount > maxBound) return false
+    return true
 }
 
 // ----------------------------------------------------------------------------
@@ -404,17 +424,7 @@ const filteredProperties = computed(() => {
       })
    }
 
-   const minBound = asPrice(minPrice.value)
-   const maxBound = asPrice(maxPrice.value)
-   if (minBound !== null) {
-       res = res.filter(p => !p.hidePrice && p.priceValue >= minBound)
-   }
-   if (maxBound !== null) {
-       res = res.filter(p => !p.hidePrice && p.priceValue <= maxBound)
-   }
-   if (selectedCurrency.value !== 'all') {
-       res = res.filter(p => !p.hidePrice && currencyKey(p.currencyCode) === selectedCurrency.value)
-   }
+   res = res.filter((p) => matchesAskingPrice(p))
 
    // Advanced Filters Panel Specifics
    if (showAdvancedFilters.value) {
@@ -457,7 +467,7 @@ const scrollToTop = () => {
 }
 
 // Reset pagination when filters change (do not include showAdvancedFilters to prevent scrolling when toggling)
-watch([selectedType, selectedTransaction, selectedCity, selectedCommune, selectedQuartier, minPrice, maxPrice, selectedCurrency, roomCount, sortOrder], () => {
+watch([selectedType, selectedTransaction, selectedCity, selectedCommune, selectedQuartier, minPriceText, maxPriceText, selectedCurrency, roomCount, sortOrder], () => {
   currentPage.value = 1
   scrollToTop()
 })
@@ -604,13 +614,13 @@ watch(searchQuery, () => {
 
         <!-- Advanced Filters Area (Collapsible) -->
         <div v-if="showAdvancedFilters" class="mt-6 pt-6 border-t border-border grid grid-cols-1 md:grid-cols-4 gap-6 animate-in slide-in-from-top-2">
-            
             <!-- Min Price -->
             <div class="space-y-2">
-                <label class="text-sm font-medium text-muted-foreground">Prix Minimum</label>
+                <label class="text-sm font-medium text-muted-foreground">Prix minimum</label>
                 <input 
-                    v-model.number="minPrice" 
-                    type="number" 
+                    v-model="minPriceText" 
+                    type="text"
+                    inputmode="decimal"
                     placeholder="0"
                     class="w-full h-10 px-3 rounded-lg border border-input bg-background focus:ring-2 focus:ring-primary"
                 />
@@ -618,10 +628,11 @@ watch(searchQuery, () => {
 
             <!-- Max Price -->
             <div class="space-y-2">
-                <label class="text-sm font-medium text-muted-foreground">Prix Maximum</label>
+                <label class="text-sm font-medium text-muted-foreground">Prix maximum</label>
                 <input 
-                    v-model.number="maxPrice" 
-                    type="number" 
+                    v-model="maxPriceText" 
+                    type="text"
+                    inputmode="decimal"
                     placeholder="Illimité"
                     class="w-full h-10 px-3 rounded-lg border border-input bg-background focus:ring-2 focus:ring-primary"
                 />
@@ -673,6 +684,8 @@ watch(searchQuery, () => {
       </div>
     </div>
 
+    <PromoStrip />
+
     <!-- Properties Grid (Updated to 4 cols) -->
     <section id="properties-grid" class="pb-20 bg-muted/30 pt-4">
       <div class="container mx-auto px-4">
@@ -696,7 +709,7 @@ watch(searchQuery, () => {
           <NuxtLink 
             v-for="property in paginatedProperties" 
             :key="property.id"
-            :to="`/properties/${encodeId(property.id)}`"
+            :to="propertyPublicPath(property.id, property.category)"
             class="group bg-card rounded-3xl overflow-hidden border border-border/50 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 flex flex-col h-full"
           >
             <!-- Image -->
