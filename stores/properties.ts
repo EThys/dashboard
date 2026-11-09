@@ -10,6 +10,7 @@ import type {
     AnyPropertyResponse
 } from '@/types/property'
 import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
+import { byNewest, propertyStamp } from '@/utils/recentFirst'
 
 /** Catégories alignées sur Endpoints.dart (`v1/protected/property/...`) */
 export type PublicationCategory = 'property' | 'terrain' | 'bureau' | 'festive' | 'funeraire' | 'hotel'
@@ -102,7 +103,29 @@ export const usePropertyStore = defineStore('properties', {
     }),
 
     getters: {
-        getPropertyById: (state) => (id: number): AnyPropertyResponse | undefined => {
+        getPropertyById: (state) => (id: number, kind?: string | null): AnyPropertyResponse | undefined => {
+            const wanted = String(kind || '').toLowerCase()
+            const sameId = (item: AnyPropertyResponse) => {
+                const p = 'property' in item ? item.property :
+                    'terrain' in item ? item.terrain :
+                        'funeraire' in item ? item.funeraire :
+                            'festive' in item ? item.festive :
+                                'bureau' in item ? item.bureau :
+                                    'hotel' in item ? item.hotel : null
+                if (!p) return false
+                const itemId = 'id' in p ? p.id : 'propertyId' in p ? p.propertyId : null
+                return String(itemId) === String(id)
+            }
+
+            if (wanted === 'hotel') return state.hotels.find(sameId)
+            if (wanted === 'festive') return state.festives.find(sameId)
+            if (wanted === 'funeraire') return state.funeraires.find(sameId)
+            if (wanted === 'bureau') return state.bureaux.find(sameId)
+            if (wanted === 'terrain') return state.terrains.find(sameId)
+            if (wanted === 'property') {
+                return state.properties.find((item) => item.property && String(item.property.propertyId) === String(id))
+            }
+
             // First check main properties array
             let found = state.properties.find((item) => {
                 return item.property && String(item.property.propertyId) === String(id)
@@ -144,7 +167,7 @@ export const usePropertyStore = defineStore('properties', {
 
     actions: {
         setProperties(data: PropertyResponse[]) {
-            this.properties = data
+            this.properties = byNewest(data, propertyStamp)
             this.lastFetch = new Date()
         },
 
@@ -171,7 +194,7 @@ export const usePropertyStore = defineStore('properties', {
             try {
                 const data = await $fetch<{ terrain: TerrainResponse[] }>(joinApi(apiBase, ApiEndpoints.propertyTerrains), { timeout: 10000 })
                 if (data && data.terrain) {
-                    this.terrains = data.terrain
+                    this.terrains = byNewest(data.terrain, propertyStamp)
                 }
             } catch (e) {
                 console.error("Failed fetch terrains", e)
@@ -182,7 +205,7 @@ export const usePropertyStore = defineStore('properties', {
             try {
                 const data = await $fetch<{ funeraires: FuneraireResponse[] }>(joinApi(apiBase, ApiEndpoints.propertyFuneraires), { timeout: 10000 })
                 if (data && data.funeraires) {
-                    this.funeraires = data.funeraires
+                    this.funeraires = byNewest(data.funeraires, propertyStamp)
                 }
             } catch (e) {
                 console.error("Failed fetch funeraires", e)
@@ -193,7 +216,7 @@ export const usePropertyStore = defineStore('properties', {
             try {
                 const data = await $fetch<{ festives: FestiveResponse[] }>(joinApi(apiBase, ApiEndpoints.propertyFestives), { timeout: 10000 })
                 if (data && data.festives) {
-                    this.festives = data.festives
+                    this.festives = byNewest(data.festives, propertyStamp)
                 }
             } catch (e) {
                 console.error("Failed fetch festives", e)
@@ -204,7 +227,7 @@ export const usePropertyStore = defineStore('properties', {
             try {
                 const data = await $fetch<{ bureaux: BureauResponse[] }>(joinApi(apiBase, ApiEndpoints.propertyBureaux), { timeout: 10000 })
                 if (data && data.bureaux) {
-                    this.bureaux = data.bureaux
+                    this.bureaux = byNewest(data.bureaux, propertyStamp)
                 }
             } catch (e) {
                 console.error("Failed fetch bureaux", e)
@@ -224,7 +247,7 @@ export const usePropertyStore = defineStore('properties', {
                     ).catch(() => ({ data: [] as HotelChambreApi[] })),
                 ])
                 if (data && data.data) {
-                    this.hotels = data.data
+                    this.hotels = byNewest(data.data, propertyStamp)
                 }
                 this.hotelRooms = Array.isArray(roomsPayload?.data) ? roomsPayload.data : []
             } catch (e) {
@@ -238,7 +261,7 @@ export const usePropertyStore = defineStore('properties', {
                     timeout: 15000,
                 })
                 if (data && data.properties) {
-                    this.properties = data.properties
+                    this.properties = byNewest(data.properties, propertyStamp)
                     this.lastFetch = new Date()
                 }
             } catch (e) {

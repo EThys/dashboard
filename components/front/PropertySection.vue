@@ -3,12 +3,13 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { MapPin, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import { Button } from '@/components/ui'
 import { formatCurrency, getCurrencyLabel } from '@/utils/currency'
-import { encodeId } from '@/utils/urlObfuscator'
+import { propertyPublicPath } from '@/utils/propertyLink'
 import { getPublicListingStatus } from '@/utils/listingAvailability'
 import { getPublicTransactionBadgeLabel, isLocationTransactionType } from '@/utils/transactionDisplay'
 import { formatListingPlace } from '@/utils/propertyNormalizer'
 import { lowestHotelRoomOffer } from '@/utils/hotelStartingPrice'
 import { usePropertyStore } from '@/stores/properties'
+import { byNewest, propertyStamp } from '@/utils/recentFirst'
 
 const propertyStore = usePropertyStore()
 
@@ -52,6 +53,7 @@ const normalizeItem = (item: any) => {
         const offer = lowestHotelRoomOffer(embedded.length ? embedded : listed)
         return {
             id: p?.id || p?.propertyId || 0,
+            kind: 'hotel',
             title: p?.title || 'Sans titre',
             location: loc || 'RDC',
             price: offer?.formatted || '—',
@@ -116,8 +118,11 @@ const normalizeItem = (item: any) => {
         }
     }
     
+    const kind = item.terrain ? 'terrain' : item.funeraire ? 'funeraire' : item.festive ? 'festive' : item.bureau ? 'bureau' : 'property'
+
     return {
         id: p?.id || p?.propertyId || 0,
+        kind,
         title: p?.title || 'Sans titre',
         location: locationStr,
         price: formatCurrency(priceVal, currencyCode),
@@ -137,7 +142,7 @@ const normalizeItem = (item: any) => {
 }
 
 const displayItems = computed(() => {
-    return props.items.slice(0, 8).map(normalizeItem)
+    return byNewest(props.items || [], propertyStamp).slice(0, 8).map(normalizeItem)
 })
 
 const viewAllTo = computed(() => {
@@ -227,7 +232,7 @@ onUnmounted(() => {
                 <NuxtLink 
                     v-for="(item, index) in displayItems" 
                     :key="item.id"
-                    :to="`/properties/${encodeId(item.id)}`"
+                    :to="propertyPublicPath(item.id, item.kind)"
                     class="group flex-none snap-center w-[280px] md:w-auto bg-card rounded-3xl overflow-hidden border border-border hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/10 hover:-translate-y-2 transition-all duration-500 reveal flex flex-col h-full"
                     :class="(index as number) % 3 === 0 ? 'reveal-delay-100' : (index as number) % 3 === 1 ? 'reveal-delay-200' : 'reveal-delay-300'"
                 >

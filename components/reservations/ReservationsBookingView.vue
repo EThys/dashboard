@@ -23,7 +23,7 @@ import {
 import { Button, Badge } from '@/components/ui'
 import { useReservationStore, type ReservationListItem } from '@/stores/reservations'
 import { toast } from 'vue-sonner'
-import { encodeId } from '@/utils/urlObfuscator'
+import { propertyPublicPath } from '@/utils/propertyLink'
 import { useReservationStompRefresh } from '@/composables/useDebouncedStompRefresh'
 import { useAuthStore } from '@/stores/auth'
 import { downloadReservationDocumentPdf } from '@/utils/reservationSolicitationPdf'
@@ -845,7 +845,7 @@ const shellClass = computed(() =>
               </Button>
               <NuxtLink
                 v-if="detailRes.propertyDetailId != null"
-                :to="`/properties/${encodeId(detailRes.propertyDetailId)}`"
+                :to="propertyPublicPath(detailRes.propertyDetailId, detailRes.sourceCategory)"
                 class="inline-flex h-12 flex-1 items-center justify-center rounded-xl bg-[#1976D2] text-sm font-bold text-white shadow-lg hover:bg-[#1565C0] active:scale-95 transition-transform"
                 @click="closeDetail"
               >
