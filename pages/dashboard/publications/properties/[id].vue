@@ -33,6 +33,10 @@ const propertyStore = usePropertyStore()
 const queryClient = useQueryClient()
 const propertyId = String(route.params.id)
 
+function knownUtility(value: number | null | undefined) {
+  return value === 80 || value === 60 || value === 40 || value === 20
+}
+
 const isUpdating = ref(false)
 
 /** Détail direct — admin uniquement.
@@ -545,6 +549,8 @@ const property = computed(() => {
     electricityInfo: n.electricityInfo,
     water: n.water,
     waterInfo: n.waterInfo,
+    isFestive: n.isFestive,
+    isFuneraire: n.isFuneraire,
     address: {
       full: addr.address,
       commune: addr.communeValue,
