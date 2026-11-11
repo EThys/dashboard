@@ -25,13 +25,13 @@ const statusFilter = ref<'all' | 'online' | 'offline'>('all')
 const serverPage = ref(false)
 
 function handleNewHotel() {
-  if (!auth.user?.premium) {
+    if (!auth.user?.premium) {
     toast.info('Abonnement requis', {
       description: 'Un abonnement Premium est nécessaire pour publier un hôtel.',
-    })
-    return navigateTo('/compte/abonnement')
-  }
-  router.push('/dashboard/hotel/hotels/new')
+        })
+        return navigateTo('/compte/abonnement')
+    }
+    router.push('/dashboard/hotel/hotels/new')
 }
 
 interface RoomLite {
@@ -150,9 +150,10 @@ function stayPeriod(raw: unknown) {
   const lower = value.toLowerCase()
   if (lower.includes('heure') || lower.includes('hour') || lower.includes('/h')) return 'par heure'
   if (lower.includes('nuit') || lower.includes('night')) return 'par nuit'
-  if (lower.includes('jour') || lower.includes('day')) return 'par jour'
+  if (lower.includes('séjour') || lower.includes('sejour')) return 'par séjour'
   if (lower.includes('semaine') || lower.includes('week')) return 'par semaine'
   if (lower.includes('mois') || lower.includes('month')) return 'par mois'
+  if (lower.includes('jour') || lower.includes('day')) return 'par jour'
   return value
 }
 

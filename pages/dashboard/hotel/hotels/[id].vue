@@ -177,6 +177,17 @@ const roomImageFiles = ref<File[]>([])
 const roomPreviewUrls = ref<string[]>([])
 const roomFileInputRef = ref<HTMLInputElement | null>(null)
 
+const roomTariffs = [
+  { value: 'par nuit', label: 'Par nuit' },
+  { value: 'par heure', label: 'Par heure' },
+  { value: 'par jour', label: 'Par jour' },
+  { value: 'par séjour', label: 'Par séjour' },
+  { value: 'par semaine', label: 'Par semaine' },
+  { value: 'par mois', label: 'Par mois' },
+]
+const roomTariff = ref('par nuit')
+const roomTariffLabel = ref('')
+
 const roomForm = ref({
   title: '',
   description: '',
@@ -187,6 +198,15 @@ const roomForm = ref({
   isAvailable: true,
   available: true,
 })
+
+const roomTariffCaption = computed(
+  () => roomTariffs.find((item) => item.value === roomTariff.value)?.label || 'Par nuit',
+)
+
+function composedPriceHeure() {
+  const label = roomTariffLabel.value.trim()
+  return label ? `${label} · ${roomTariff.value}` : roomTariff.value
+}
 
 function revokeRoomPreviews() {
   roomPreviewUrls.value.forEach((u) => URL.revokeObjectURL(u))
@@ -231,6 +251,8 @@ function roomImageUrls(r: Record<string, unknown>) {
 watch(showRoomModal, (open) => {
   if (!open) {
     clearRoomImages()
+    roomTariff.value = 'par nuit'
+    roomTariffLabel.value = ''
     roomForm.value = {
       title: '',
       description: '',
@@ -269,7 +291,7 @@ async function submitRoom() {
         description: roomForm.value.description.trim(),
         numberPiece: Number(roomForm.value.numberPiece) || 1,
         price: Number(roomForm.value.price) || 0,
-        priceHeure: String(roomForm.value.priceHeure || ''),
+        priceHeure: composedPriceHeure(),
         isAvailable: roomForm.value.isAvailable,
         images: imageEntries,
         available: roomForm.value.available,
@@ -810,7 +832,7 @@ async function toggleRoomListing(room: Record<string, unknown>, event: Event) {
             </div>
             <div class="grid grid-cols-2 gap-3">
               <div class="space-y-2">
-                <Label>Prix / nuit</Label>
+                <Label>Montant</Label>
                 <Input v-model.number="roomForm.price" type="number" step="0.01" class="h-11 rounded-xl" />
               </div>
               <div class="space-y-2">
@@ -819,8 +841,19 @@ async function toggleRoomListing(room: Record<string, unknown>, event: Event) {
               </div>
             </div>
             <div class="space-y-2">
-              <Label>Info horaire (optionnel)</Label>
-              <Input v-model="roomForm.priceHeure" class="h-11 rounded-xl" placeholder="ex. Check-in 14h" />
+              <Label>Tarif</Label>
+              <select v-model="roomTariff" class="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm">
+                <option v-for="item in roomTariffs" :key="item.value" :value="item.value">{{ item.label }}</option>
+              </select>
+            </div>
+            <div class="space-y-2">
+              <Label>Libellé du tarif</Label>
+              <div class="grid grid-cols-5 gap-2">
+                <Input v-model="roomTariffLabel" class="col-span-3 h-11 rounded-xl" placeholder="ex. Petit-déjeuner inclus" />
+                <div class="col-span-2 flex h-11 items-center rounded-xl border border-primary/30 bg-primary/10 px-3 text-sm font-semibold text-primary">
+                  {{ roomTariffCaption }}
+                </div>
+              </div>
             </div>
             <div class="space-y-2">
               <Label>Devise</Label>
