@@ -4,6 +4,7 @@ import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
 import { User, Mail, Phone, MapPin, LogOut, Camera, Loader2 } from 'lucide-vue-next'
 import { Button } from '@/components/ui'
 import { toast } from 'vue-sonner'
+import { readCardNumber } from '@/utils/cardNumber'
 
 const auth = useAuthStore()
 const config = useRuntimeConfig()
@@ -96,7 +97,7 @@ async function saveInfo() {
                 cardBack: profile.value?.cardBack || '',
                 typeCardId: 1,
                 parrainId: 0,
-                numberCard: profile.value?.numberCard || '',
+                ...(readCardNumber(profile.value) ? { numberCard: readCardNumber(profile.value) } : {}),
                 user: {
                     email: email || 'string',
                     phone: form.phone.trim(),

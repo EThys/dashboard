@@ -13,6 +13,7 @@ import {
 import { useAuthStore } from '~/stores/auth'
 import { ApiEndpoints, joinApi } from '@/utils/apiEndpoints'
 import { toast } from 'vue-sonner'
+import { readCardNumber } from '@/utils/cardNumber'
 
 definePageMeta({
   layout: 'dashboard'
@@ -174,7 +175,7 @@ const submitCertification = async () => {
       cardFront: form.value.imageFront,
       cardBack: form.value.imageBack || '',
       typeCardId: form.value.selectedCardTypeId,
-      numberCard: form.value.cardNumber,
+      numberCard: form.value.cardNumber.trim(),
       user: {
         email: auth.user?.email || 'string',
         phone: isPhoneRequired.value ? form.value.phone : auth.user?.phone,
@@ -183,11 +184,16 @@ const submitCertification = async () => {
       }
     }
 
-    await $fetch(verificationUrl, {
+    const response: any = await $fetch(verificationUrl, {
       method: 'PUT',
       headers: { Authorization: `Bearer ${auth.token}` },
       body: payload
     })
+
+    const savedNumber = readCardNumber(response, response?.person, response?.profile) || payload.numberCard
+    if (savedNumber) {
+      auth.updateMember({ profile: { numberCard: savedNumber } })
+    }
 
     toast.success('Vérification envoyée !', {
       description: 'Vos documents sont en cours de validation par nos services.',
@@ -213,6 +219,7 @@ onMounted(() => {
     isPhoneRequired.value = true
   }
   form.value.address = auth.profile?.address || auth.user?.city || ''
+  form.value.cardNumber = readCardNumber(auth.profile)
   fetchCardTypes()
 })
 

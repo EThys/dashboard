@@ -19,6 +19,7 @@ import { useServiceStore } from '~/stores/services'
 import { toast } from 'vue-sonner'
 import VueEasyLightbox from 'vue-easy-lightbox'
 import { accountTypeLabel, registrationLabel } from '@/utils/userAccount'
+import { readCardNumber } from '@/utils/cardNumber'
 
 definePageMeta({
   layout: 'dashboard'
@@ -126,8 +127,11 @@ const loadData = async () => {
     
     // Get basic user info from store
     user.value = membersStore.getUserById(userId.toString())
-    // Get certification member info
-    member.value = membersStore.getMemberByUserId(userId.toString())
+    const wanted = userId.toString()
+    member.value = membersStore.members.find((item: any) => {
+        const ids = [item?.userId, item?.user?.userId, item?.user?.id]
+        return ids.some((id) => id != null && String(id) === wanted)
+    }) || membersStore.getMemberByUserId(wanted)
 
     try {
         const detail: any = await $fetch(joinApi(apiBase, `${ApiEndpoints.allUsers}/${userId}`), { headers: authH })
@@ -142,7 +146,13 @@ const loadData = async () => {
                 user.value = { ...(user.value || {}), ...payload }
             }
             if (nestedMember && typeof nestedMember === 'object') {
-                member.value = { ...(member.value || {}), ...nestedMember }
+                const previousNumber = readCardNumber(member.value)
+                const merged = { ...(member.value || {}), ...nestedMember }
+                const numberCard = readCardNumber(merged, payload) || previousNumber
+                member.value = numberCard ? { ...merged, numberCard } : merged
+            } else {
+                const numberCard = readCardNumber(member.value, payload)
+                if (numberCard) member.value = { ...(member.value || {}), numberCard }
             }
             if (Array.isArray(nestedAccounts)) {
                 member.value = { ...(member.value || {}), accounts: nestedAccounts }
@@ -387,7 +397,7 @@ const downloadPDF = async () => {
                                     <label class="text-[10px] font-bold text-muted-foreground uppercase opacity-70">Numéro de Carte</label>
                                     <div class="flex items-center gap-2 font-mono bg-background px-2 py-1.5 rounded border text-[11px] mt-1">
                                         <CreditCard class="h-3 w-3 text-muted-foreground" />
-                                        {{ (member?.numberCard && member.numberCard !== 'string') ? member.numberCard : (member?.number_card && member.number_card !== 'string' ? member.number_card : 'Non spécifié') }}
+                                        {{ readCardNumber(member) || 'Non spécifié' }}
                                     </div>
                                 </div>
                             </div>
