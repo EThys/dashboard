@@ -56,7 +56,7 @@ export function parsePublicityList(body: unknown): PublicityAd[] {
         description: asText(row.description),
         imagePath,
         imageUrl: resolvePubImage(imagePath),
-        isActive: asBool(row.isActive ?? row.active, true),
+        isActive: asBool(row.isActive ?? row.is_active ?? row.active, true),
         createdAt: asText(row.createdAt),
       }
     })

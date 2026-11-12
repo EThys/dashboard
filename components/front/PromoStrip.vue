@@ -4,7 +4,7 @@ import { fetchPublicAds, type PublicityAd } from '@/utils/publicity'
 
 const config = useRuntimeConfig()
 
-const { data } = await useAsyncData(
+const { data, refresh } = await useAsyncData(
   'public-pubs',
   () => fetchPublicAds(config.public.apiBase as string),
   { server: false, lazy: true, default: () => [] as PublicityAd[] },
@@ -45,6 +45,7 @@ watch(ads, () => {
 
 onMounted(() => {
   reduceMotion.value = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  refresh()
   start()
 })
 
