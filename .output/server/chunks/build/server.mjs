@@ -1,5 +1,5 @@
 import process from 'node:process';globalThis._importMeta_=globalThis._importMeta_||{url:"file:///_entry.js",env:process.env};import { hasInjectionContext, inject, defineComponent, shallowRef, getCurrentInstance, provide, cloneVNode, h, createElementBlock, ref, defineAsyncComponent, computed, unref, shallowReactive, Suspense, Fragment, useSSRContext, createApp, mergeProps, withCtx, createVNode, onErrorCaptured, onServerPrefetch, resolveDynamicComponent, reactive, effectScope, nextTick, getCurrentScope, toRef, isReadonly, toRaw, isRef, isShallow, isReactive } from 'vue';
-import { p as parseURL, l as encodePath, m as decodePath, h as createError$1, n as hasProtocol, o as isScriptProtocol, k as joinURL, w as withQuery, q as klona, r as sanitizeStatusCode, v as getRequestHeader, d as destr, x as isEqual, y as getContext, z as setCookie, A as getCookie, B as deleteCookie, $ as $fetch$1, C as createHooks, D as defu, E as executeAsync } from '../_/nitro.mjs';
+import { p as parseURL, n as encodePath, o as decodePath, k as createError$1, q as hasProtocol, r as isScriptProtocol, m as joinURL, w as withQuery, v as klona, x as sanitizeStatusCode, y as getRequestHeader, d as destr, z as isEqual, A as getContext, B as setCookie, C as getCookie, D as deleteCookie, $ as $fetch$1, E as createHooks, F as defu, G as executeAsync } from '../_/nitro.mjs';
 import { u as useSeoMeta$1, p as publicAssetsURL, a as useHead$1, h as headSymbol, b as baseURL } from '../routes/renderer.mjs';
 import { defineStore, setActivePinia, createPinia, shouldHydrate } from 'pinia';
 import { useRoute as useRoute$1, RouterView, createMemoryHistory, createRouter, START_LOCATION } from 'vue-router';
@@ -486,6 +486,9 @@ const matcher = /* @__PURE__ */ (() => {
     if (s[1] === "properties") {
       r.unshift({ data: $0, params: { "_": s.slice(2).join("/") } });
     }
+    if (s[1] === "open") {
+      r.unshift({ data: $0, params: { "_": s.slice(2).join("/") } });
+    }
     if (s[1] === "services") {
       r.unshift({ data: $0, params: { "_": s.slice(2).join("/") } });
     }
@@ -535,54 +538,56 @@ const unhead_k2P3m_ZDyjlr2mMYnoDPwavjsDN8hBlk9cFai0bbopU = /* @__PURE__ */ defin
 function toArray(value) {
   return Array.isArray(value) ? value : [value];
 }
-const __nuxt_page_meta$B = {
+const __nuxt_page_meta$D = {
   layout: "default"
+};
+const __nuxt_page_meta$C = {
+  layout: "default"
+};
+const __nuxt_page_meta$B = {
+  layout: "empty"
 };
 const __nuxt_page_meta$A = {
   layout: "default"
 };
-const __nuxt_page_meta$z = {
-  layout: "empty"
-};
-const __nuxt_page_meta$y = {
+const __nuxt_page_meta$z = { layout: "default" };
+const __nuxt_page_meta$y = { layout: "default" };
+const __nuxt_page_meta$x = {
   layout: "default"
 };
-const __nuxt_page_meta$x = { layout: "default" };
 const __nuxt_page_meta$w = { layout: "default" };
-const __nuxt_page_meta$v = {
-  layout: "default"
-};
-const __nuxt_page_meta$u = { layout: "default" };
-const __nuxt_page_meta$t = { layout: "default" };
-const __nuxt_page_meta$s = {
+const __nuxt_page_meta$v = { layout: "default" };
+const __nuxt_page_meta$u = {
   layout: "empty"
+};
+const __nuxt_page_meta$t = {
+  layout: "empty"
+};
+const __nuxt_page_meta$s = {
+  layout: "default"
 };
 const __nuxt_page_meta$r = {
-  layout: "empty"
+  layout: "dashboard"
 };
 const __nuxt_page_meta$q = {
-  layout: "default"
-};
-const __nuxt_page_meta$p = {
   layout: "dashboard"
 };
+const __nuxt_page_meta$p = { layout: "empty" };
 const __nuxt_page_meta$o = {
-  layout: "dashboard"
+  layout: "default"
 };
 const __nuxt_page_meta$n = {
-  layout: "default"
-};
-const __nuxt_page_meta$m = {
   layout: "dashboard"
 };
+const __nuxt_page_meta$m = { layout: "dashboard" };
 const __nuxt_page_meta$l = { layout: "dashboard" };
-const __nuxt_page_meta$k = { layout: "dashboard" };
+const __nuxt_page_meta$k = {
+  layout: "default"
+};
 const __nuxt_page_meta$j = {
   layout: "default"
 };
-const __nuxt_page_meta$i = {
-  layout: "default"
-};
+const __nuxt_page_meta$i = { layout: "dashboard" };
 const __nuxt_page_meta$h = {
   layout: "dashboard"
 };
@@ -625,14 +630,14 @@ const _routes = [
   {
     name: "team",
     path: "/team",
-    meta: __nuxt_page_meta$B || {},
+    meta: __nuxt_page_meta$D || {},
     component: () => import('./team-C4_SVGDd.mjs')
   },
   {
     name: "index",
     path: "/",
-    meta: __nuxt_page_meta$A || {},
-    component: () => import('./index-BsQdaQoU.mjs')
+    meta: __nuxt_page_meta$C || {},
+    component: () => import('./index-CR7GgwAF.mjs')
   },
   {
     name: "legal",
@@ -642,8 +647,8 @@ const _routes = [
   {
     name: "login",
     path: "/login",
-    meta: __nuxt_page_meta$z || {},
-    component: () => import('./login-DPCF3M0m.mjs')
+    meta: __nuxt_page_meta$B || {},
+    component: () => import('./login-B7O4Z2bX.mjs')
   },
   {
     name: "terms",
@@ -653,7 +658,7 @@ const _routes = [
   {
     name: "contact",
     path: "/contact",
-    meta: __nuxt_page_meta$y || {},
+    meta: __nuxt_page_meta$A || {},
     component: () => import('./contact-CFIuifwl.mjs')
   },
   {
@@ -669,7 +674,7 @@ const _routes = [
   {
     name: "security",
     path: "/security",
-    component: () => import('./security-DJQvp3FJ.mjs')
+    component: () => import('./security-gAtVdsTP.mjs')
   },
   {
     name: "test-toast",
@@ -679,26 +684,26 @@ const _routes = [
   {
     name: "agences-id",
     path: "/agences/:id()",
-    meta: __nuxt_page_meta$x || {},
-    component: () => import('./_id_-BtdbHMK2.mjs')
+    meta: __nuxt_page_meta$z || {},
+    component: () => import('./_id_-CHj32vPL.mjs')
   },
   {
     name: "agences",
     path: "/agences",
-    meta: __nuxt_page_meta$w || {},
-    component: () => import('./index-DCLz8KQn.mjs')
+    meta: __nuxt_page_meta$y || {},
+    component: () => import('./index-B44XX4dB.mjs')
   },
   {
     name: "services-id",
     path: "/services/:id()",
-    meta: __nuxt_page_meta$v || {},
-    component: () => import('./_id_-BLX1TrJm.mjs')
+    meta: __nuxt_page_meta$x || {},
+    component: () => import('./_id_-VSIexgc-.mjs')
   },
   {
     name: "vacances-id",
     path: "/vacances/:id()",
-    meta: __nuxt_page_meta$u || {},
-    component: () => import('./_id_-0ql4Fwvy.mjs')
+    meta: __nuxt_page_meta$w || {},
+    component: () => import('./_id_-Ci05Mr5v.mjs')
   },
   {
     name: "booking-policy",
@@ -708,174 +713,186 @@ const _routes = [
   {
     name: "compte-agences",
     path: "/compte/agences",
-    meta: __nuxt_page_meta$t || {},
-    component: () => import('./agences-D_Q-ITrS.mjs')
+    meta: __nuxt_page_meta$v || {},
+    component: () => import('./agences-Cb1eVOf2.mjs')
   },
   {
     name: "compte-profile",
     path: "/compte/profile",
-    component: () => import('./profile-BvydMUFx.mjs')
+    component: () => import('./profile-Bb-6BxDC.mjs')
   },
   {
     name: "register-admin",
     path: "/register/admin",
-    meta: __nuxt_page_meta$s || {},
+    meta: __nuxt_page_meta$u || {},
     component: () => import('./admin-CYHrspqN.mjs')
   },
   {
     name: "register",
     path: "/register",
-    meta: __nuxt_page_meta$r || {},
-    component: () => import('./index-xfKoUug5.mjs')
+    meta: __nuxt_page_meta$t || {},
+    component: () => import('./index-C4wzaMHL.mjs')
   },
   {
     name: "services",
     path: "/services",
-    meta: __nuxt_page_meta$q || {},
-    component: () => import('./index-C7NnXKL5.mjs')
+    meta: __nuxt_page_meta$s || {},
+    component: () => import('./index-DOCXwMYO.mjs')
   },
   {
     name: "dashboard",
     path: "/dashboard",
-    meta: __nuxt_page_meta$p || {},
-    component: () => import('./index-rhCVUf_o.mjs')
+    meta: __nuxt_page_meta$r || {},
+    component: () => import('./index--Audlwmh.mjs')
   },
   {
     name: "compte-paiements",
     path: "/compte/paiements",
-    meta: __nuxt_page_meta$o || {},
-    component: () => import('./paiements-N-GtjoF8.mjs')
+    meta: __nuxt_page_meta$q || {},
+    component: () => import('./paiements-z7DycF_K.mjs')
+  },
+  {
+    name: "open-type-id",
+    path: "/open/:type()/:id()",
+    meta: __nuxt_page_meta$p || {},
+    component: () => import('./_id_-C6u6E-UB.mjs')
   },
   {
     name: "properties",
     path: "/properties",
-    meta: __nuxt_page_meta$n || {},
-    component: () => import('./index--HytO88j.mjs')
+    meta: __nuxt_page_meta$o || {},
+    component: () => import('./index-Dh23tnbB.mjs')
   },
   {
     name: "compte-abonnement",
     path: "/compte/abonnement",
-    meta: __nuxt_page_meta$m || {},
-    component: () => import('./abonnement-CbxOQ7Jg.mjs')
+    meta: __nuxt_page_meta$n || {},
+    component: () => import('./abonnement-BF0OQdOw.mjs')
   },
   {
     name: "dashboard-agences",
     path: "/dashboard/agences",
-    meta: __nuxt_page_meta$l || {},
-    component: () => import('./agences-BV91b0w1.mjs')
+    meta: __nuxt_page_meta$m || {},
+    component: () => import('./agences-CLIvFZSX.mjs')
   },
   {
     name: "dashboard-payments",
     path: "/dashboard/payments",
-    meta: __nuxt_page_meta$k || {},
-    component: () => import('./payments-Bu1uUy_2.mjs')
+    meta: __nuxt_page_meta$l || {},
+    component: () => import('./payments-CbU-ydT7.mjs')
   },
   {
     name: "compte-reservations",
     path: "/compte/reservations",
-    meta: { ...__nuxt_page_meta$j || {}, ...{ "middleware": ["certification-check"] } },
-    component: () => import('./reservations-C1czGFhq.mjs')
+    meta: { ...__nuxt_page_meta$k || {}, ...{ "middleware": ["certification-check"] } },
+    component: () => import('./reservations-DpJIokEF.mjs')
   },
   {
     name: "compte-notifications",
     path: "/compte/notifications",
+    meta: __nuxt_page_meta$j || {},
+    component: () => import('./notifications-C8eETgXs.mjs')
+  },
+  {
+    name: "dashboard-publicites",
+    path: "/dashboard/publicites",
     meta: __nuxt_page_meta$i || {},
-    component: () => import('./notifications-BurNnz36.mjs')
+    component: () => import('./publicites-DXFK_v90.mjs')
   },
   {
     name: "dashboard-users-id",
     path: "/dashboard/users/:id()",
     meta: __nuxt_page_meta$h || {},
-    component: () => import('./_id_-DhgNqXW5.mjs')
+    component: () => import('./_id_-D5ds04o8.mjs')
   },
   {
     name: "compte-sollicitations",
     path: "/compte/sollicitations",
     meta: { ...__nuxt_page_meta$g || {}, ...{ "middleware": ["certification-check"] } },
-    component: () => import('./sollicitations-Q6q56Qjg.mjs')
+    component: () => import('./sollicitations-DtnXLB6Y.mjs')
   },
   {
     name: "dashboard-hotel",
     path: "/dashboard/hotel",
     meta: __nuxt_page_meta$f || {},
-    component: () => import('./index-B_p9DMdm.mjs')
+    component: () => import('./index-CXT4CGfC.mjs')
   },
   {
     name: "dashboard-users",
     path: "/dashboard/users",
     meta: __nuxt_page_meta$e || {},
-    component: () => import('./index-vBdmdOwJ.mjs')
+    component: () => import('./index-DlWkI5Wb.mjs')
   },
   {
     name: "properties-id",
     path: "/properties/:id()",
     meta: __nuxt_page_meta$d || {},
-    component: () => import('./index-CPogSXlV.mjs')
+    component: () => import('./index-CpBx7d37.mjs')
   },
   {
     name: "dashboard-statistiques",
     path: "/dashboard/statistiques",
     meta: __nuxt_page_meta$c || {},
-    component: () => import('./statistiques-D6qLA3wl.mjs')
+    component: () => import('./statistiques-CxgOnaGC.mjs')
   },
   {
     name: "dashboard-my-reservations",
     path: "/dashboard/my-reservations",
     meta: { ...__nuxt_page_meta$b || {}, ...{ "middleware": ["certification-check"] } },
-    component: () => import('./my-reservations-DvlYNdpz.mjs')
+    component: () => import('./my-reservations-v00roJXm.mjs')
   },
   {
     name: "dashboard-hotel-hotels-new",
     path: "/dashboard/hotel/hotels/new",
     meta: __nuxt_page_meta$a || {},
-    component: () => import('./new-DEJMTFW2.mjs')
+    component: () => import('./new-CDGMsTZk.mjs')
   },
   {
     name: "dashboard-my-solicitations",
     path: "/dashboard/my-solicitations",
     meta: __nuxt_page_meta$9 || {},
-    component: () => import('./my-solicitations-CqkNxxka.mjs')
+    component: () => import('./my-solicitations-CrZq5Q5U.mjs')
   },
   {
     name: "dashboard-hotel-hotels-id",
     path: "/dashboard/hotel/hotels/:id()",
     meta: __nuxt_page_meta$8 || {},
-    component: () => import('./_id_-CzyXOjuE.mjs')
+    component: () => import('./_id_-DMeMTpmP.mjs')
   },
   {
     name: "compte-certification-requise",
     path: "/compte/certification-requise",
-    component: () => import('./certification-requise-Dg6LQ9is.mjs')
+    component: () => import('./certification-requise-PAtwWErY.mjs')
   },
   {
     name: "dashboard-hotel-hotels",
     path: "/dashboard/hotel/hotels",
     meta: __nuxt_page_meta$7 || {},
-    component: () => import('./index-DG_Mqqzj.mjs')
+    component: () => import('./index-D2IfNJeH.mjs')
   },
   {
     name: "dashboard-hotel-reservations",
     path: "/dashboard/hotel/reservations",
     meta: __nuxt_page_meta$6 || {},
-    component: () => import('./reservations-CDKY-mVL.mjs')
+    component: () => import('./reservations-ttX9rAlw.mjs')
   },
   {
     name: "dashboard-publications",
     path: "/dashboard/publications",
     meta: __nuxt_page_meta$5 || {},
-    component: () => import('./index--kIpoiHw.mjs')
+    component: () => import('./index-DJYpr9H7.mjs')
   },
   {
     name: "dashboard-certification",
     path: "/dashboard/certification",
     meta: __nuxt_page_meta$4 || {},
-    component: () => import('./index-D-wyAsCc.mjs')
+    component: () => import('./index-lUsaxOAw.mjs')
   },
   {
     name: "dashboard-publications-hotels-id",
     path: "/dashboard/publications/hotels/:id()",
     meta: __nuxt_page_meta$3 || {},
-    component: () => import('./_id_-R8eq0nYE.mjs')
+    component: () => import('./_id_-BOZV_Cbv.mjs')
   },
   {
     name: "dashboard-publications-services-id",
@@ -887,13 +904,13 @@ const _routes = [
     name: "properties-id-chambres-chambreId",
     path: "/properties/:id()/chambres/:chambreId()",
     meta: __nuxt_page_meta$1 || {},
-    component: () => import('./_chambreId_-BF9mIB3C.mjs')
+    component: () => import('./_chambreId_-BqEiMTN8.mjs')
   },
   {
     name: "dashboard-publications-properties-id",
     path: "/dashboard/publications/properties/:id()",
     meta: __nuxt_page_meta || {},
-    component: () => import('./_id_-ZnkpWLu-.mjs')
+    component: () => import('./_id_-5nUS2Vzr.mjs')
   }
 ];
 const _wrapInTransition = (props, children) => {
@@ -1260,9 +1277,11 @@ const ApiEndpoints = {
   protectedAgencesByOwner: `${v}/protected/agences/owner`,
   devises: `${v}/public/devises`,
   advertising: `${v}/protected/pub`,
+  publicPubs: `${v}/public/pub`,
   updateActiveAds: `${v}/protected/pub/update/active/`,
   webSocket: "websocket"
 };
+const MIGRATION_API_ORIGIN = "https://migration.casanayo.com";
 const useMembersStore = defineStore("members", {
   state: () => ({
     users: [],
@@ -1332,6 +1351,34 @@ const useMembersStore = defineStore("members", {
     }
   }
 });
+function compareNewest(left, right) {
+  const leftTime = timeOf(left.at);
+  const rightTime = timeOf(right.at);
+  if (leftTime !== rightTime) return rightTime - leftTime;
+  return (Number(right.id) || 0) - (Number(left.id) || 0);
+}
+function byNewest(items, stamp) {
+  return [...items].sort((a, b) => compareNewest(stamp(a), stamp(b)));
+}
+function propertyStamp(item) {
+  const entity = item?.property || item?.terrain || item?.funeraire || item?.festive || item?.bureau || item?.hotel || item;
+  return {
+    at: entity?.createdAt ?? entity?.dateCreated ?? entity?.updatedAt ?? item?.createdAt,
+    id: entity?.propertyId ?? entity?.id ?? item?.id
+  };
+}
+function serviceStamp(item) {
+  const entity = item?.prestation || item;
+  return {
+    at: entity?.dateCreated ?? entity?.createdAt ?? entity?.updatedAt,
+    id: entity?.id
+  };
+}
+function timeOf(value) {
+  if (value == null || value === "") return 0;
+  const time = new Date(String(value)).getTime();
+  return Number.isFinite(time) ? time : 0;
+}
 function publicationEnableUrl(apiBase, category, id) {
   switch (category) {
     case "property":
@@ -1411,7 +1458,22 @@ const usePropertyStore = defineStore("properties", {
     typesLastFetch: null
   }),
   getters: {
-    getPropertyById: (state) => (id) => {
+    getPropertyById: (state) => (id, kind) => {
+      const wanted = String(kind || "").toLowerCase();
+      const sameId = (item) => {
+        const p = "property" in item ? item.property : "terrain" in item ? item.terrain : "funeraire" in item ? item.funeraire : "festive" in item ? item.festive : "bureau" in item ? item.bureau : "hotel" in item ? item.hotel : null;
+        if (!p) return false;
+        const itemId = "id" in p ? p.id : "propertyId" in p ? p.propertyId : null;
+        return String(itemId) === String(id);
+      };
+      if (wanted === "hotel") return state.hotels.find(sameId);
+      if (wanted === "festive") return state.festives.find(sameId);
+      if (wanted === "funeraire") return state.funeraires.find(sameId);
+      if (wanted === "bureau") return state.bureaux.find(sameId);
+      if (wanted === "terrain") return state.terrains.find(sameId);
+      if (wanted === "property") {
+        return state.properties.find((item) => item.property && String(item.property.propertyId) === String(id));
+      }
       let found = state.properties.find((item) => {
         return item.property && String(item.property.propertyId) === String(id);
       });
@@ -1440,7 +1502,7 @@ const usePropertyStore = defineStore("properties", {
   },
   actions: {
     setProperties(data) {
-      this.properties = data;
+      this.properties = byNewest(data, propertyStamp);
       this.lastFetch = /* @__PURE__ */ new Date();
     },
     setTypes(data) {
@@ -1462,7 +1524,7 @@ const usePropertyStore = defineStore("properties", {
       try {
         const data = await $fetch(joinApi(apiBase, ApiEndpoints.propertyTerrains), { timeout: 1e4 });
         if (data && data.terrain) {
-          this.terrains = data.terrain;
+          this.terrains = byNewest(data.terrain, propertyStamp);
         }
       } catch (e) {
         console.error("Failed fetch terrains", e);
@@ -1472,7 +1534,7 @@ const usePropertyStore = defineStore("properties", {
       try {
         const data = await $fetch(joinApi(apiBase, ApiEndpoints.propertyFuneraires), { timeout: 1e4 });
         if (data && data.funeraires) {
-          this.funeraires = data.funeraires;
+          this.funeraires = byNewest(data.funeraires, propertyStamp);
         }
       } catch (e) {
         console.error("Failed fetch funeraires", e);
@@ -1482,7 +1544,7 @@ const usePropertyStore = defineStore("properties", {
       try {
         const data = await $fetch(joinApi(apiBase, ApiEndpoints.propertyFestives), { timeout: 1e4 });
         if (data && data.festives) {
-          this.festives = data.festives;
+          this.festives = byNewest(data.festives, propertyStamp);
         }
       } catch (e) {
         console.error("Failed fetch festives", e);
@@ -1492,7 +1554,7 @@ const usePropertyStore = defineStore("properties", {
       try {
         const data = await $fetch(joinApi(apiBase, ApiEndpoints.propertyBureaux), { timeout: 1e4 });
         if (data && data.bureaux) {
-          this.bureaux = data.bureaux;
+          this.bureaux = byNewest(data.bureaux, propertyStamp);
         }
       } catch (e) {
         console.error("Failed fetch bureaux", e);
@@ -1511,7 +1573,7 @@ const usePropertyStore = defineStore("properties", {
           ).catch(() => ({ data: [] }))
         ]);
         if (data && data.data) {
-          this.hotels = data.data;
+          this.hotels = byNewest(data.data, propertyStamp);
         }
         this.hotelRooms = Array.isArray(roomsPayload?.data) ? roomsPayload.data : [];
       } catch (e) {
@@ -1524,7 +1586,7 @@ const usePropertyStore = defineStore("properties", {
           timeout: 15e3
         });
         if (data && data.properties) {
-          this.properties = data.properties;
+          this.properties = byNewest(data.properties, propertyStamp);
           this.lastFetch = /* @__PURE__ */ new Date();
         }
       } catch (e) {
@@ -1754,7 +1816,7 @@ const useServiceStore = defineStore("services", {
   },
   actions: {
     setServices(data) {
-      this.services = data;
+      this.services = byNewest(data, serviceStamp);
       this.lastFetch = /* @__PURE__ */ new Date();
     },
     setCategories(data) {
@@ -1765,6 +1827,7 @@ const useServiceStore = defineStore("services", {
       const existingIds = new Set(this.services.map((s) => s.prestation.id));
       const newServices = data.filter((s) => !existingIds.has(s.prestation.id));
       this.services.push(...newServices);
+      this.services = byNewest(this.services, serviceStamp);
     },
     async fetchCategories(apiBase) {
       if (this.categories.length > 0) return;
@@ -2088,7 +2151,7 @@ const globalMiddleware = [
   manifest_45route_45rule
 ];
 const namedMiddleware = {
-  "certification-check": () => import('./certification-check-B6NmgmRv.mjs')
+  "certification-check": () => import('./certification-check-_u3NUy8a.mjs')
 };
 const plugin$1 = /* @__PURE__ */ defineNuxtPlugin({
   name: "nuxt:router",
@@ -2435,8 +2498,8 @@ const plugins = [
   vue_query_GNtWx11mSO94O_Ctd2OG8SaawZMBzi1ne17Edj_iIOc
 ];
 const layouts = {
-  dashboard: defineAsyncComponent(() => import('./dashboard-DxSUluje.mjs').then((m) => m.default || m)),
-  default: defineAsyncComponent(() => import('./default-CkzZfEfA.mjs').then((m) => m.default || m)),
+  dashboard: defineAsyncComponent(() => import('./dashboard-UijOU6co.mjs').then((m) => m.default || m)),
+  default: defineAsyncComponent(() => import('./default-Drm-pLV7.mjs').then((m) => m.default || m)),
   empty: defineAsyncComponent(() => import('./empty-Cmv-baDf.mjs').then((m) => m.default || m))
 };
 const routeRulesMatcher = _routeRulesMatcher;
@@ -2829,5 +2892,5 @@ let entry;
 }
 const entry_default = ((ssrContext) => entry(ssrContext));
 
-export { ApiEndpoints as A, _export_sfc as _, useRouter as a, useNuxtApp as b, useRuntimeConfig as c, nuxtLinkDefaults as d, entry_default as default, encodeRoutePath as e, usePropertyStore as f, useServiceStore as g, useSeoMeta as h, asyncDataDefaults as i, joinApi as j, createError as k, useAuthStore as l, useRoute as m, navigateTo as n, _imports_0 as o, fetchDefaults as p, useRequestFetch as q, resolveRouteObject as r, useMembersStore as s, __nuxt_component_0$1 as t, useHead as u, useCookie as v, defineNuxtRouteMiddleware as w };
+export { ApiEndpoints as A, defineNuxtRouteMiddleware as B, MIGRATION_API_ORIGIN as M, _export_sfc as _, useRouter as a, useNuxtApp as b, useRuntimeConfig as c, nuxtLinkDefaults as d, entry_default as default, encodeRoutePath as e, usePropertyStore as f, useServiceStore as g, byNewest as h, useSeoMeta as i, joinApi as j, asyncDataDefaults as k, createError as l, useAuthStore as m, navigateTo as n, useRoute as o, propertyStamp as p, _imports_0 as q, resolveRouteObject as r, serviceStamp as s, fetchDefaults as t, useHead as u, useRequestFetch as v, compareNewest as w, useMembersStore as x, __nuxt_component_0$1 as y, useCookie as z };
 //# sourceMappingURL=server.mjs.map

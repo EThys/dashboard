@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "869X37PW2M.com.casa.casa.casa",
+        "paths": ["/open/*", "/open/*/*"]
+      }
+    ]
+  }
+}
