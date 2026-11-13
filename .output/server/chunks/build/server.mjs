@@ -637,7 +637,7 @@ const _routes = [
     name: "index",
     path: "/",
     meta: __nuxt_page_meta$C || {},
-    component: () => import('./index-CR7GgwAF.mjs')
+    component: () => import('./index-BeeelZED.mjs')
   },
   {
     name: "legal",
@@ -737,7 +737,7 @@ const _routes = [
     name: "services",
     path: "/services",
     meta: __nuxt_page_meta$s || {},
-    component: () => import('./index-DOCXwMYO.mjs')
+    component: () => import('./index-Bv9HdTKn.mjs')
   },
   {
     name: "dashboard",
@@ -761,7 +761,7 @@ const _routes = [
     name: "properties",
     path: "/properties",
     meta: __nuxt_page_meta$o || {},
-    component: () => import('./index-Dh23tnbB.mjs')
+    component: () => import('./index-BVvKO7Ig.mjs')
   },
   {
     name: "compte-abonnement",
@@ -803,7 +803,7 @@ const _routes = [
     name: "dashboard-users-id",
     path: "/dashboard/users/:id()",
     meta: __nuxt_page_meta$h || {},
-    component: () => import('./_id_-D5ds04o8.mjs')
+    component: () => import('./_id_-wc11Gv8L.mjs')
   },
   {
     name: "compte-sollicitations",
@@ -857,7 +857,7 @@ const _routes = [
     name: "dashboard-hotel-hotels-id",
     path: "/dashboard/hotel/hotels/:id()",
     meta: __nuxt_page_meta$8 || {},
-    component: () => import('./_id_-DMeMTpmP.mjs')
+    component: () => import('./_id_-B55VSS1Y.mjs')
   },
   {
     name: "compte-certification-requise",
@@ -868,7 +868,7 @@ const _routes = [
     name: "dashboard-hotel-hotels",
     path: "/dashboard/hotel/hotels",
     meta: __nuxt_page_meta$7 || {},
-    component: () => import('./index-D2IfNJeH.mjs')
+    component: () => import('./index-B4gd0VIz.mjs')
   },
   {
     name: "dashboard-hotel-reservations",
@@ -886,7 +886,7 @@ const _routes = [
     name: "dashboard-certification",
     path: "/dashboard/certification",
     meta: __nuxt_page_meta$4 || {},
-    component: () => import('./index-lUsaxOAw.mjs')
+    component: () => import('./index-CStIzO27.mjs')
   },
   {
     name: "dashboard-publications-hotels-id",

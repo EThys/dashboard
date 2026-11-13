@@ -1,0 +1,1 @@
+import{f as o,o as a,c as r,q as n,g as l,b0 as t,b2 as c}from"./3g8GIX7C.js";const p=["for"],i=o({__name:"Label",props:{for:{},class:{}},setup(s){return(e,d)=>(a(),r("label",{for:s.for,class:n(l(t)("text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70",e.$props.class))},[c(e.$slots,"default")],10,p))}});export{i as _};
